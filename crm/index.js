@@ -75,6 +75,13 @@ function iniciarRotinas(notificar) {
     }
   }, 15 * 60 * 1000);
   if (_timer.unref) _timer.unref();
+  // BUSCA ATIVA (Google Maps): a cada 30 min vê se há varredura vencida. Só roda com
+  // CRM_BUSCA_ATIVA=on E busca aprovada por humano (custo confirmado) — ver buscas.js.
+  const buscas = require('./buscas');
+  const tb = setInterval(() => { buscas.rodarVencidas().then((r) => {
+    for (const x of r.rodadas || []) if (x.erro && !x.lugares) notificar(`⚠️ Busca ativa do CRM falhou: ${x.erro}`);
+  }).catch(() => {}); }, 30 * 60 * 1000);
+  if (tb.unref) tb.unref();
   console.log(`[crm] ciclo de vida + automações agendados p/ ~${hora}h de Brasília`);
 }
 

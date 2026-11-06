@@ -9,6 +9,7 @@
 const repo = require('./repo');
 const app = require('./app-repo');
 const push = require('./push');
+const buscas = require('./buscas');
 const { db } = require('./db');
 
 function registrarRotasApp(server, { requireAssinante, requirePapel }) {
@@ -35,7 +36,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   // ---- config do CRM ----
   server.get('/crm/api/app/config', ...B, h((req, res) => {
     const c = app.Config.obter(tid(req));
-    res.json({ config: c ? c.config : {}, webhook_token: c ? c.webhook_token : '', tipos: app.TIPOS_CONTATO, origens: app.ORIGENS, variaveis: app.VARIAVEIS });
+    res.json({ config: c ? c.config : {}, webhook_token: c ? c.webhook_token : '', tipos: app.TIPOS_CONTATO, origens: app.ORIGENS, variaveis: app.VARIAVEIS, canais: app.Canais.CANAIS });
   }));
   server.post('/crm/api/app/config', ...GE('contatos', 'gerir_conta'), h((req, res) => res.json({ ok: true, config: app.Config.salvar(tid(req), req.body || {}).config })));
 
@@ -59,11 +60,56 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.post('/crm/api/app/contatos/importar', ...GE('importacao', 'editar'), h((req, res) => {
     res.json({ ok: true, ...app.Contatos.importarCSV(tid(req), (req.body || {}).csv, quem(req)) });
   }));
+  // ---- canais do contato (multicanal) + unificação ----
+  server.get('/crm/api/app/canais', ...B, h((req, res) => res.json({ canais: app.Canais.CANAIS, alcance: app.Canais.alcance(tid(req)) })));
+  server.post('/crm/api/app/contatos/importar-rede', ...GE('importacao', 'editar'), h((req, res) => {
+    const b = req.body || {};
+    res.json({ ok: true, ...app.Contatos.importarRedes(tid(req), b.canal, b.texto, quem(req)) });
+  }));
+  server.get('/crm/api/app/contatos-duplicados', ...G('contatos'), h((req, res) => res.json({ grupos: app.Contatos.duplicados(tid(req)) })));
+  server.post('/crm/api/app/contatos/:id/mesclar', ...GE('contatos', 'editar'), h((req, res) => res.json(app.Contatos.mesclar(tid(req), req.params.id, (req.body || {}).com, quem(req)))));
+  server.post('/crm/api/app/contatos/:id/canais', ...GE('contatos', 'editar'), h((req, res) => {
+    const b = req.body || {};
+    if (!app.Contatos.obter(tid(req), req.params.id)) return res.status(404).json({ erro: 'Contato não encontrado.' });
+    const r = app.Canais.adicionar(tid(req), req.params.id, b.canal, b.identificador, { fonte: 'manual' });
+    if (r.conflito) return res.status(400).json({ erro: 'Esse perfil já pertence a outro contato. Use "Unificar cadastros" para juntar os dois.' });
+    res.json({ ok: true, ...r });
+  }));
+  server.delete('/crm/api/app/contatos/:id/canais/:cid', ...GE('contatos', 'editar'), h((req, res) => res.json({ ok: true, ...app.Canais.remover(tid(req), req.params.id, req.params.cid) })));
+  server.post('/crm/api/app/contatos/:id/canais/:cid/optout', ...GE('contatos', 'editar'), h((req, res) => res.json(app.Canais.optOut(tid(req), req.params.id, req.params.cid, (req.body || {}).sair !== false))));
   server.post('/crm/api/app/contatos/:id/atividade', ...GE('contatos', 'editar'), h((req, res) => {
     const id = app.Atividades.registrar(tid(req), { ...(req.body || {}), contato_id: req.params.id, autor: quem(req) });
     app.recalcularScore(tid(req), req.params.id);
     res.json({ ok: true, id });
   }));
+
+  // ---- busca ativa (leads do Google Maps) ----
+  // Nada gasta sem aprovação: criar = "aguardando_aprovacao"; só gerir_conta aprova (vê a estimativa).
+  server.get('/crm/api/app/buscas', ...G('importacao'), h((req, res) => res.json({
+    buscas: buscas.listar(tid(req)), fontes: buscas.fontesDisponiveis(), frequencias: buscas.FREQ_OK, agenda_ligada: buscas.agendaLigada(),
+    teto_mes: buscas.tetoMes(), lugares_no_mes: buscas.lugaresNoMes(tid(req)), max_por_busca: buscas.MAX_POR_BUSCA })));
+  server.post('/crm/api/app/buscas', ...GE('importacao', 'editar'), h((req, res) => res.json({ ok: true, busca: buscas.criar(tid(req), req.body || {}) })));
+  server.patch('/crm/api/app/buscas/:id', ...GE('importacao', 'editar'), h((req, res) => res.json({ ok: true, ...buscas.atualizar(tid(req), req.params.id, req.body || {}) })));
+  server.post('/crm/api/app/buscas/:id/aprovar', ...GE('importacao', 'gerir_conta'), h((req, res) => res.json({ ok: true, busca: buscas.aprovar(tid(req), req.params.id, { aceite: (req.body || {}).aceite === true, por: quem(req) }) })));
+  server.post('/crm/api/app/buscas/:id/status', ...GE('importacao', 'editar'), h((req, res) => res.json({ ok: true, ...buscas.mudarStatus(tid(req), req.params.id, (req.body || {}).status) })));
+  server.post('/crm/api/app/buscas/:id/rodar', ...GE('importacao', 'gerir_conta'), h((req, res) => {
+    const b = buscas.obter(tid(req), req.params.id);
+    if (!b) return res.status(404).json({ erro: 'Busca não encontrada.' });
+    if (!b.aprovada_em) return res.status(400).json({ erro: 'Aprove a busca (estimativa de custo) antes de rodar.' });
+    if (b.status !== 'ativa') return res.status(400).json({ erro: 'A busca está pausada.' });
+    if (!b.fonte_configurada) return res.status(400).json({ erro: 'A fonte ainda não está configurada no servidor (falta a credencial). Nada foi cobrado.' });
+    // roda em segundo plano (pode levar minutos); a tela acompanha pelas execuções
+    buscas.executar(tid(req), req.params.id, { gatilho: 'manual' }).catch((e) => console.warn('[crm] busca manual falhou:', e.message));
+    res.json({ ok: true, iniciada: true });
+  }));
+  // campanha de leads de uma tag (ex.: confraternizacao-2026): nasce em RASCUNHO, nada é enviado
+  server.post('/crm/api/app/buscas/preparar-campanha', ...GE('campanhas', 'campanhas'), h((req, res) => {
+    const lim = repo.dentroLimite(tid(req), 'campanhas_mes');
+    if (!lim.ok) return res.status(400).json({ erro: `Limite de campanhas do mês atingido (${lim.limite}). Faça upgrade.` });
+    res.json({ ok: true, ...buscas.prepararCampanha(tid(req), req.body || {}, quem(req)) });
+  }));
+  server.get('/crm/api/app/buscas/:id/execucoes', ...G('importacao'), h((req, res) => res.json({ execucoes: buscas.execucoes(tid(req), req.params.id) })));
+  server.get('/crm/api/app/buscas/:id/lugares', ...G('importacao'), h((req, res) => res.json({ lugares: buscas.lugares(tid(req), req.params.id, req.query) })));
 
   // ---- empresas ----
   server.get('/crm/api/app/empresas', ...G('empresas'), h((req, res) => res.json({ empresas: app.Empresas.listar(tid(req), req.query.busca) })));
@@ -121,6 +167,8 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.post('/crm/api/app/propostas/:id/enviar', ...GE('propostas', 'propostas'), h((req, res) => res.json({ ok: true, proposta: app.Propostas.enviar(tid(req), req.params.id, quem(req)) })));
   server.post('/crm/api/app/propostas/:id/status', ...GE('propostas', 'propostas'), h((req, res) => res.json({ ok: true, proposta: app.Propostas.mudarStatus(tid(req), req.params.id, (req.body || {}).status, quem(req)) })));
 
+  require('./rotas-conversas').registrarRotasConversas(server, { G, GE, h, tid, quem });
+
   // ---- campanhas ----
   server.get('/crm/api/app/campanhas', ...G('campanhas'), h((req, res) => res.json({ campanhas: app.Campanhas.listar(tid(req)) })));
   server.post('/crm/api/app/campanhas', ...GE('campanhas', 'campanhas'), h((req, res) => {
@@ -128,7 +176,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
     if (!lim.ok) return res.status(400).json({ erro: `Limite de campanhas do mês atingido (${lim.limite}). Faça upgrade.` });
     res.json({ ok: true, ...app.Campanhas.criar(tid(req), req.body || {}, quem(req)) });
   }));
-  server.get('/crm/api/app/campanhas/:id/alvos', ...G('campanhas'), h((req, res) => res.json({ alvos: app.Campanhas.alvos(tid(req), req.params.id, req.query.status) })));
+  server.get('/crm/api/app/campanhas/:id/alvos', ...G('campanhas'), h((req, res) => res.json({ alvos: app.Campanhas.alvos(tid(req), req.params.id, req.query.status, req.query.canal) })));
   server.post('/crm/api/app/campanhas/:id/status', ...GE('campanhas', 'campanhas'), h((req, res) => res.json({ ok: true, ...app.Campanhas.mudarStatus(tid(req), req.params.id, (req.body || {}).status) })));
   server.post('/crm/api/app/campanha-alvos/:id', ...GE('campanhas', 'campanhas'), h((req, res) => res.json({ ok: true, ...app.Campanhas.marcarAlvo(tid(req), req.params.id, (req.body || {}).status, quem(req)) })));
 

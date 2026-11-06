@@ -14,7 +14,7 @@ const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { mini
 const dataBr = (iso) => iso ? `${String(iso).slice(8, 10)}/${String(iso).slice(5, 7)}/${String(iso).slice(0, 4)}` : '—';
 // Ícones SVG (sprite inline da página, crm/icones.js) no lugar dos emojis. O Growth OS ainda manda emoji no menu:
 // a tabela abaixo traduz; emoji desconhecido continua aparecendo como veio.
-const ICO_EMOJI = { '📊': 'grid', '📋': 'kanban', '👥': 'users', '📄': 'file', '⏰': 'clock', '💬': 'message', '📣': 'megaphone', '🤖': 'bot', '⚙': 'sliders', '🧭': 'compass', '📅': 'calendar', '💸': 'coins', '📈': 'trending', '⭐': 'star', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '🔒': 'lock', '💳': 'card' };
+const ICO_EMOJI = { '📊': 'grid', '📋': 'kanban', '👥': 'users', '📄': 'file', '⏰': 'clock', '💬': 'message', '📣': 'megaphone', '🤖': 'bot', '⚙': 'sliders', '🧭': 'compass', '🎯': 'target', '📅': 'calendar', '💸': 'coins', '📈': 'trending', '⭐': 'star', '🧠': 'sparkles', '✋': 'checkcircle', '🔌': 'plug', '🔒': 'lock', '💳': 'card' };
 const svgIco = (n) => `<svg class="cp-i" aria-hidden="true" focusable="false"><use href="#i-${n}"/></svg>`;
 const icoDe = (e) => { const n = ICO_EMOJI[String(e == null ? '' : e).replace(/\uFE0F/g, '')]; return n ? svgIco(n) : esc(e); };
 // Tradutor automático: qualquer emoji conhecido que uma tela desenhar (inclusive as do Growth OS) vira ícone SVG.
@@ -53,6 +53,9 @@ new MutationObserver(() => {
   _iconizarAgendado = true;
   requestAnimationFrame(() => { _iconizarAgendado = false; iconizar(document.body); });
 }).observe(document.documentElement, { childList: true, subtree: true, characterData: true });
+const CANAIS_UI = { whatsapp: 'WhatsApp', email: 'E-mail', instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', linkedin: 'LinkedIn' };
+const CANAL_ICO = { whatsapp: '💬', email: '✉️', instagram: '📸', facebook: '👤', tiktok: '🎵', linkedin: '💼' };
+const CANAL_ASSIST = ['instagram', 'facebook', 'tiktok', 'linkedin']; // sem API para abrir conversa: o CRM monta a fila, quem opera envia
 const waLink = (tel, txt) => 'https://wa.me/' + String(tel || '').replace(/\D/g, '') + (txt ? '?text=' + encodeURIComponent(txt) : '');
 
 // SEQ cresce a cada troca de tela: leitura que volta depois de o usuário já
@@ -156,8 +159,10 @@ const MENU = [
   ['kanban', 'funis', 'Comercial', '📋', 'Kanban'],
   ['contatos', 'contatos', 'Comercial', '👥', 'Contatos'],
   ['propostas', 'propostas', 'Comercial', '📄', 'Propostas'],
+  ['buscas', 'importacao', 'Comercial', '🎯', 'Busca ativa'],
   ['tarefas', 'tarefas', 'Relacionamento', '⏰', 'Tarefas'],
   ['templates', 'templates', 'Relacionamento', '💬', 'Templates'],
+  ['conversas', 'contatos', 'Relacionamento', '🧭', 'Conversas'],
   ['campanhas', 'campanhas', 'Relacionamento', '📣', 'Campanhas'],
   ['ia', 'ia', 'Inteligência', '🤖', 'Agentes de IA'],
   ['conta', '', 'Conta', '⚙️', 'Conta e plano'],
@@ -317,7 +322,7 @@ async function alternarPush() {
 }
 function navegar(v) {
   const mapa = Object.assign(
-    { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, campanhas: vCampanhas, ia: vIA, conta: vConta },
+    { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, buscas: vBuscas, campanhas: vCampanhas, conversas: vConversas, ia: vIA, conta: vConta },
     (window.GX_EXT && GX_EXT.vistas) || {}   // abas do Villela Growth OS
   );
   ABA = mapa[v] ? v : 'dash';
@@ -515,7 +520,8 @@ async function vContatos() {
         <input id="c-busca" placeholder="Buscar nome, telefone, e-mail, empresa…" style="flex:1;min-width:180px;margin:0;width:auto">
         <select id="c-tipo" style="width:auto;margin:0"><option value="">Todos os tipos</option>${cfg.tipos.map(t => `<option>${t}</option>`).join('')}</select>
         <select id="c-origem" style="width:auto;margin:0"><option value="">Todas as origens</option>${cfg.origens.map(o => `<option>${o}</option>`).join('')}</select>
-        <button class="btn peq secund" id="c-importar">⬆ Importar CSV</button>
+        <button class="btn peq secund" id="c-importar">⬆ Importar</button>
+        <button class="btn peq secund" id="c-unificar">🔗 Unificar cadastros</button>
         <a class="btn peq secund" href="/crm/api/app/contatos/exportar">⬇ Exportar</a>
       </div><div id="c-lista"><p class="sub">Carregando…</p></div>`;
     const carregar = async () => {
@@ -540,6 +546,7 @@ async function vContatos() {
     $('#c-tipo').onchange = carregar; $('#c-origem').onchange = carregar;
     $('#c-novo').onclick = () => dlgContato(cfg);
     $('#c-importar').onclick = () => dlgImportar();
+    $('#c-unificar').onclick = () => dlgUnificar();
     carregar();
   } catch (e) { erroTela(e); }
 }
@@ -548,6 +555,8 @@ function dlgContato(cfg) {
   dlg.innerHTML = `<h3>Novo contato</h3>
     <div class="hi-grid"><label>Nome <input id="n-nome"></label><label>Sobrenome <input id="n-sobre"></label></div>
     <div class="hi-grid"><label>Telefone/WhatsApp <input id="n-tel" placeholder="61 9xxxx-xxxx"></label><label>E-mail <input id="n-email" type="email"></label></div>
+    <div class="hi-grid"><label>Instagram <input id="n-ig" placeholder="@usuario ou link"></label><label>Facebook <input id="n-fb" placeholder="link do perfil"></label></div>
+    <div class="hi-grid"><label>TikTok <input id="n-tt" placeholder="@usuario"></label><label>LinkedIn <input id="n-li" placeholder="link do perfil"></label></div>
     <div class="hi-grid">
       <label>Tipo <select id="n-tipo">${cfg.tipos.map(t => `<option>${t}</option>`).join('')}</select></label>
       <label>Origem <select id="n-origem">${cfg.origens.map(o => `<option>${o}</option>`).join('')}</select></label>
@@ -562,7 +571,8 @@ function dlgContato(cfg) {
     try {
       const r = await api('POST', '/app/contatos', {
         nome: $('#n-nome').value.trim(), sobrenome: $('#n-sobre').value.trim(), telefone: $('#n-tel').value.trim(),
-        email: $('#n-email').value.trim(), tipo: $('#n-tipo').value, origem: $('#n-origem').value,
+        email: $('#n-email').value.trim(), instagram: $('#n-ig').value.trim(), facebook: $('#n-fb').value.trim(),
+        tiktok: $('#n-tt').value.trim(), linkedin: $('#n-li').value.trim(), tipo: $('#n-tipo').value, origem: $('#n-origem').value,
         produto_interesse: $('#n-prod').value.trim(), ticket_centavos: Math.round(Number($('#n-ticket').value || 0) * 100),
         primeira_mensagem: $('#n-obs').value.trim(),
         consentimento: { optIn: $('#n-optin').checked, base: 'cadastro-manual', em: new Date().toISOString() },
@@ -573,10 +583,15 @@ function dlgContato(cfg) {
 }
 function dlgImportar() {
   const dlg = document.createElement('dialog');
-  dlg.innerHTML = `<h3>Importar contatos (CSV)</h3>
-    <p class="sub" style="text-align:left">Cabeçalhos aceitos: nome, sobrenome, telefone, whatsapp, email, empresa, cargo, cidade, estado, tipo, origem, interesse, obs, tags. Separador ; ou ,. Duplicados (telefone/e-mail) são mesclados.</p>
+  dlg.innerHTML = `<h3>Importar contatos</h3>
+    <p class="sub" style="text-align:left"><b>CSV</b> — cabeçalhos aceitos: nome, sobrenome, telefone, whatsapp, email, instagram, facebook, tiktok, linkedin, empresa, cargo, cidade, estado, tipo, origem, interesse, obs, tags. Também reconhece direto a exportação do <b>Google Contatos</b> e as <b>Conexões do LinkedIn</b>. Separador ; ou ,. Duplicados (telefone, e-mail ou perfil) são mesclados.</p>
     <input type="file" id="i-arq" accept=".csv,text/csv">
-    <button class="btn" id="i-ok">Importar</button> <button class="btn secund" id="i-fechar">Cancelar</button><p id="i-msg"></p>`;
+    <button class="btn" id="i-ok">Importar CSV</button>
+    <hr style="margin:14px 0">
+    <p class="sub" style="text-align:left"><b>Perfis de uma rede</b> — arquivo de seguidores/seguindo do Instagram ("Baixar suas informações", formato JSON) ou lista de texto, um perfil por linha (@usuario, link ou "Nome;link"). Essas exportações trazem usuário e nome, <b>não</b> telefone nem e-mail.</p>
+    <label>Rede <select id="i-rede">${['instagram', 'facebook', 'tiktok', 'linkedin'].map(k => `<option value="${k}">${CANAIS_UI[k]}</option>`).join('')}</select></label>
+    <input type="file" id="i-arq2" accept=".json,.txt,.csv,text/plain,application/json">
+    <button class="btn" id="i-ok2">Importar perfis</button> <button class="btn secund" id="i-fechar">Fechar</button><p id="i-msg"></p>`;
   document.body.appendChild(dlg); dlg.showModal();
   $('#i-fechar').onclick = () => dlg.remove();
   $('#i-ok').onclick = async () => {
@@ -588,6 +603,33 @@ function dlgImportar() {
       setTimeout(() => { dlg.remove(); vContatos(); }, 1500);
     } catch (e) { $('#i-msg').textContent = e.message; }
   };
+  $('#i-ok2').onclick = async () => {
+    const f = $('#i-arq2').files[0]; if (!f) return;
+    try {
+      const r = await api('POST', '/app/contatos/importar-rede', { canal: $('#i-rede').value, texto: await f.text() });
+      $('#i-msg').textContent = `✅ ${r.criados} criados, ${r.duplicados} já existiam (mesclados), ${r.invalidos} inválidos.`;
+      setTimeout(() => { dlg.remove(); vContatos(); }, 1800);
+    } catch (e) { $('#i-msg').textContent = e.message; }
+  };
+}
+
+// ---- unificar cadastros (mesma pessoa em dois contatos) ----
+async function dlgUnificar() {
+  const { grupos } = await api('GET', '/app/contatos-duplicados');
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = `<h3>Unificar cadastros</h3>
+    <p class="sub" style="text-align:left">Contatos com o mesmo nome completo em cadastros diferentes. Ao unir, o primeiro fica e recebe canais, histórico, tarefas e oportunidades do outro. <b>Confira antes: dois homônimos são pessoas diferentes.</b></p>
+    ${grupos.map(g => `<div class="card" style="margin-bottom:8px"><b>${esc(g[0].nome)}</b>
+      ${g.map((r, i) => `<div class="lin">${i === 0 ? '⭐ ficará' : 'será unido'} · ${esc([r.telefone, r.email].filter(Boolean).join(' · ') || '—')} ${r.canais.map(k => `<span class="chip">${esc(CANAIS_UI[k.canal] || k.canal)}</span>`).join(' ')}
+        ${i > 0 ? `<button class="btn peq un-ok" data-p="${g[0].id}" data-d="${r.id}">Unir ao primeiro</button>` : ''}</div>`).join('')}</div>`).join('') || '<p class="sub">Nenhuma duplicidade encontrada.</p>'}
+    <button class="btn secund" id="un-fechar">Fechar</button><p id="un-msg" class="erro"></p>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  $('#un-fechar').onclick = () => { dlg.remove(); vContatos(); };
+  dlg.querySelectorAll('.un-ok').forEach(b => b.onclick = async () => {
+    if (!confirm('Unir estes dois cadastros? Não dá para desfazer.')) return;
+    try { await api('POST', `/app/contatos/${b.dataset.p}/mesclar`, { com: b.dataset.d }); dlg.remove(); dlgUnificar(); }
+    catch (e) { $('#un-msg').textContent = e.message; }
+  });
 }
 
 // ---- ficha do contato ----
@@ -609,6 +651,15 @@ async function abrirContato(id) {
             <button class="btn peq secund" id="f-msg">💬 Mensagem por template</button>
             <button class="btn peq secund" id="f-ia">🤖 Qualificar</button>
           </div>
+          <div class="lin"><b>Canais de contato:</b>
+            ${(c.canais || []).map(k => `<div style="margin:3px 0"><span class="chip">${CANAL_ICO[k.canal] || ''} ${esc(CANAIS_UI[k.canal] || k.canal)}</span> <a href="${esc(k.link)}" target="_blank" rel="noopener">${esc(k.identificador)}</a>${k.opt_out ? ' <span class="chip">🚫 opt-out</span>' : ''}${k.fonte ? ` <small class="sub" title="De onde veio este dado">· ${esc(k.fonte)}</small>` : ''}
+              <button class="btn peq secund cn-opt" data-id="${k.id}" data-sair="${k.opt_out ? 0 : 1}">${k.opt_out ? 'Reativar' : 'Opt-out'}</button>
+              <button class="btn peq secund cn-del" data-id="${k.id}">✕</button></div>`).join('') || '<span class="sub">Nenhum canal cadastrado.</span>'}
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+              <select id="cn-canal" style="width:auto">${Object.keys(CANAIS_UI).map(k => `<option value="${k}">${CANAIS_UI[k]}</option>`).join('')}</select>
+              <input id="cn-valor" placeholder="telefone, e-mail, @usuario ou link" style="flex:1;min-width:160px">
+              <button class="btn peq" id="cn-add">+ Canal</button></div>
+            <p id="cn-msg" class="erro"></p></div>
           ${kv('Telefone', esc(c.telefone))}${kv('E-mail', esc(c.email))}${kv('Empresa', esc(c.empresa_nome))}${kv('Cidade', esc([c.cidade, c.estado].filter(Boolean).join('/')))}
           ${kv('Interesse', esc(c.interesse))}${kv('Produto', esc(c.produto_interesse))}
           ${kv('Ticket potencial', c.ticket_centavos ? brl(c.ticket_centavos) : '')}
@@ -641,6 +692,12 @@ async function abrirContato(id) {
         </div>
       </div><div id="f-saida"></div>`;
     $('#f-voltar').onclick = () => vContatos();
+    $('#cn-add').onclick = async () => {
+      try { await api('POST', `/app/contatos/${id}/canais`, { canal: $('#cn-canal').value, identificador: $('#cn-valor').value.trim() }); abrirContato(id); }
+      catch (e) { $('#cn-msg').textContent = e.message; }
+    };
+    document.querySelectorAll('.cn-opt').forEach(b => b.onclick = async () => { try { await api('POST', `/app/contatos/${id}/canais/${b.dataset.id}/optout`, { sair: b.dataset.sair === '1' }); abrirContato(id); } catch (e) { alert(e.message); } });
+    document.querySelectorAll('.cn-del').forEach(b => b.onclick = async () => { if (!confirm('Remover este canal do contato?')) return; try { await api('DELETE', `/app/contatos/${id}/canais/${b.dataset.id}`); abrirContato(id); } catch (e) { alert(e.message); } });
     $('#f-salvar').onclick = async () => {
       try { await api('PATCH', '/app/contatos/' + id, { responsavel: $('#f-resp').value.trim(), proxima_acao: $('#f-acao').value.trim(), proxima_acao_em: $('#f-prazo').value, prioridade: $('#f-prio').value }); abrirContato(id); }
       catch (e) { alert(e.message); }
@@ -825,6 +882,108 @@ async function dlgProposta(contatoId) {
   };
 }
 
+// ---------------- BUSCA ATIVA (leads do Google Maps) ----------------
+const BUSCA_ST = { aguardando_aprovacao: '⏳ aguardando aprovação', ativa: '🟢 ativa', pausada: '⏸ pausada' };
+const reais = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+let BUSCA_POLL = null;
+async function vBuscas() {
+  carregando();
+  clearInterval(BUSCA_POLL);
+  try {
+    const d = await api('GET', '/app/buscas');
+    const rodando = d.buscas.some(b => b.rodando_desde);
+    $('#tela').innerHTML = `
+      <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn peq" id="bu-nova">+ Nova busca</button></div>
+      <p class="sub" style="text-align:left">Varreduras periódicas de empresas do Google Maps (nome, atividade, endereço). E-mail e WhatsApp quase nunca estão no Maps: o CRM lê o <b>site público</b> da empresa e marca de onde veio cada dado. Quem entra aqui <b>não deu consentimento</b> (base: legítimo interesse B2B, com opt-out por canal) e <b>nada é enviado sozinho</b> — a abordagem é por campanha, com você aprovando.</p>
+      <p class="sub" style="text-align:left">Cada varredura <b>gasta crédito</b> da fonte, por isso a busca só roda depois de você aprovar a estimativa. Teto do mês: ${d.lugares_no_mes}/${d.teto_mes} lugares usados.${d.agenda_ligada ? '' : ' <b>Agenda automática desligada no servidor</b> (só "Rodar agora").'}</p>
+      <div class="grid">${d.buscas.map(b => `<div class="card"><b>${esc(b.nome)}</b> <span class="chip">${BUSCA_ST[b.status] || esc(b.status)}</span>
+        <p class="sub" style="text-align:left;margin:6px 0">“${esc(b.termos.join(' / '))}” · ${b.lat != null ? 'raio ' + b.raio_m + ' m' : esc(b.locais.map(x => x.split(',')[0]).join(', '))} · a cada ${b.frequencia_dias} dia(s) · até ${b.max_resultados} lugares · tag <code>${esc(b.tag)}</code></p>
+        <p class="sub" style="text-align:left;margin:6px 0">Custo estimado: ~${reais(b.custo.brl_centavos)} por varredura (≈ ${reais(b.custo.por_mes_centavos)}/mês). ${b.resumo.lugares || 0} lugar(es) · ${b.resumo.contatos || 0} contato(s).
+        ${b.ultima_execucao ? `Última: ${esc(b.ultima_execucao.status)}${b.ultima_execucao.status === 'ok' ? ` — ${b.ultima_execucao.novos} novos, ${b.ultima_execucao.existentes} já conhecidos, ${b.ultima_execucao.enriquecidos} sites com contato` : ''}${b.ultima_execucao.erro ? ' · ' + esc(b.ultima_execucao.erro) : ''}.` : 'Ainda não rodou.'}
+        ${b.rodando_desde ? '<b>⏳ Rodando agora…</b>' : ''}${b.fonte_configurada ? '' : ' <b>Fonte sem credencial no servidor — nada roda.</b>'}</p>
+        ${b.status === 'aguardando_aprovacao' ? `<button class="btn peq bu-aprovar" data-id="${b.id}">✅ Aprovar custo e ativar</button>` : ''}
+        ${b.status === 'ativa' ? `<button class="btn peq bu-rodar" data-id="${b.id}" data-custo="${b.custo.brl_centavos}">▶ Rodar agora</button> <button class="btn peq secund bu-st" data-id="${b.id}" data-st="pausada">⏸ Pausar</button>` : ''}
+        ${b.status === 'pausada' ? `<button class="btn peq secund bu-st" data-id="${b.id}" data-st="ativa">▶ Retomar</button>` : ''}
+        ${b.tags_extra.length ? `<button class="btn peq secund bu-camp" data-tag="${esc(b.tags_extra[0])}">📋 Preparar campanha (rascunho)</button>` : ''}
+        <button class="btn peq secund bu-ver" data-id="${b.id}">O que entrou</button>
+        <button class="btn peq secund bu-st" data-id="${b.id}" data-st="arquivada">Arquivar</button></div>`).join('') || '<div class="card">Nenhuma busca criada.</div>'}</div>
+      <div id="bu-lugares"></div>`;
+    $('#bu-nova').onclick = () => dlgBusca(d);
+    document.querySelectorAll('.bu-aprovar').forEach(x => x.onclick = () => {
+      const b = d.buscas.find(y => y.id === x.dataset.id);
+      if (!confirm(`Aprovar esta busca?\n\nCusto estimado: ~${reais(b.custo.brl_centavos)} por varredura, a cada ${b.frequencia_dias} dia(s) (≈ ${reais(b.custo.por_mes_centavos)}/mês).\n\nA fonte é um serviço que lê o Google Maps e cobra por lugar; isso pode contrariar os termos de uso do Google Maps. Você assume esse risco e a responsabilidade LGPD pela abordagem (legítimo interesse B2B).\n\nConfirma?`)) return;
+      api('POST', `/app/buscas/${b.id}/aprovar`, { aceite: true }).then(vBuscas).catch(e => alert(e.message));
+    });
+    document.querySelectorAll('.bu-rodar').forEach(x => x.onclick = () => {
+      if (!confirm(`Rodar agora? Vai consumir até ~${reais(x.dataset.custo)} de crédito da fonte.`)) return;
+      api('POST', `/app/buscas/${x.dataset.id}/rodar`).then(vBuscas).catch(e => alert(e.message));
+    });
+    document.querySelectorAll('.bu-st').forEach(x => x.onclick = () => {
+      if (x.dataset.st === 'arquivada' && !confirm('Arquivar esta busca? Os contatos já capturados continuam no CRM.')) return;
+      api('POST', `/app/buscas/${x.dataset.id}/status`, { status: x.dataset.st }).then(vBuscas).catch(e => alert(e.message));
+    });
+    document.querySelectorAll('.bu-ver').forEach(x => x.onclick = () => verLugaresBusca(x.dataset.id));
+    document.querySelectorAll('.bu-camp').forEach(x => x.onclick = async () => {
+      if (!confirm(`Montar a campanha dos contatos com a tag "${x.dataset.tag}" (e-mail e WhatsApp)?\n\nEla nasce em RASCUNHO e NADA é enviado: a lista passa pela sua aprovação e cada envio é manual.`)) return;
+      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s).`); navegar('campanhas'); } catch (e) { alert(e.message); }
+    });
+    if (rodando) { const meu = SEQ; BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); vBuscas(); }, 8000); }
+  } catch (e) { erroTela(e); }
+}
+async function verLugaresBusca(id) {
+  const box = $('#bu-lugares'); box.innerHTML = '<p class="sub">Carregando…</p>';
+  try {
+    const [{ lugares }, { execucoes }] = await Promise.all([api('GET', `/app/buscas/${id}/lugares`), api('GET', `/app/buscas/${id}/execucoes`)]);
+    box.innerHTML = `<h3 style="margin-top:14px">O que entrou (${lugares.length})</h3>
+      <p class="sub" style="text-align:left">Varreduras: ${execucoes.slice(0, 5).map(x => `${esc((x.iniciada_em || '').slice(0, 16).replace('T', ' '))} · ${esc(x.status)} · ${x.lugares} lugares · ${x.novos} novos${x.erro ? ' · ' + esc(x.erro) : ''}`).join(' | ') || 'nenhuma'}</p>
+      ${lugares.map(l => `<div class="lin"><b>${esc(l.nome)}</b> <span class="sub">${esc(l.bairro ? l.bairro.split(',')[0] + ' · ' : '')}${esc(l.categoria)} · ${esc(l.endereco)}</span><br>
+        ${l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener noreferrer">site</a> ` : '<span class="sub">sem site</span> '}
+        ${l.canais.map(k => `<span class="chip" title="Fonte: ${esc(k.fonte)}">${CANAL_ICO[k.canal] || ''} ${esc(k.identificador)}${k.rotulo ? ' (' + esc(k.rotulo) + ')' : ''} · ${esc(k.fonte)}</span>`).join(' ') || '<span class="sub">nenhum canal ainda</span>'}
+        ${l.contato_id ? `<a href="#" class="bu-contato" data-id="${l.contato_id}">abrir contato</a>` : ''}</div>`).join('') || '<div class="card">Nada ainda — rode a busca.</div>'}`;
+    document.querySelectorAll('.bu-contato').forEach(x => x.onclick = (ev) => { ev.preventDefault(); navegar('contatos'); setTimeout(() => abrirContato(x.dataset.id), 300); });
+  } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+function dlgBusca(d) {
+  const dlg = document.createElement('dialog');
+  dlg.innerHTML = `<h3>Nova busca no Google Maps</h3>
+    <button class="btn peq secund" type="button" id="bu-preset">🎄 Preencher: confraternização de fim de ano (DF)</button>
+    <label>O que buscar (uma categoria por linha) <textarea id="bu-termo" rows="3" placeholder="ex.: clínica odontológica"></textarea></label>
+    <label>Regiões / bairros (um por linha) <textarea id="bu-local" rows="3" placeholder="ex.: Lago Sul, Brasília - DF"></textarea></label>
+    <p class="sub" id="bu-conta" style="text-align:left"></p>
+    <details><summary class="sub">ou um círculo por coordenadas</summary>
+      <div class="hi-grid"><label>Latitude <input id="bu-lat" placeholder="-15.8"></label><label>Longitude <input id="bu-lng" placeholder="-47.88"></label></div>
+      <label>Raio (metros, até 50.000) <input id="bu-raio" type="number" min="100" max="50000" value="3000"></label></details>
+    <div class="hi-grid"><label>Repetir a cada <select id="bu-freq">${d.frequencias.map(f => `<option value="${f}"${f === 7 ? ' selected' : ''}>${f} dia(s)</option>`).join('')}</select></label>
+      <label>Máx. de lugares por varredura <input id="bu-max" type="number" min="1" max="${d.max_por_busca}" value="60"></label></div>
+    <label>Nome da busca (opcional) <input id="bu-nome"></label>
+    <p class="sub" style="text-align:left">Ao criar, a busca fica <b>aguardando aprovação</b>: você verá a estimativa de custo e confirma. Nada é cobrado antes disso.</p>
+    <button class="btn" id="bu-salvar">Criar busca</button> <button class="btn secund" id="bu-fechar">Cancelar</button><p id="bu-msg" class="erro"></p>`;
+  document.body.appendChild(dlg); dlg.showModal();
+  $('#bu-fechar').onclick = () => dlg.remove();
+  let tagsPreset;
+  const linhas = (id) => $(id).value.split(/\n/).map(x => x.trim()).filter(Boolean);
+  const contar = () => {
+    const nt = Math.max(1, linhas('#bu-termo').length), nl = Math.max(1, linhas('#bu-local').length), mx = Number($('#bu-max').value) || 0;
+    $('#bu-conta').textContent = `${nt} categoria(s) × ${nl} região(ões) × até ${mx} = até ${nt * nl * mx} lugares por varredura (a estimativa em R$ aparece depois de criar).`;
+  };
+  ['#bu-termo', '#bu-local', '#bu-max'].forEach(id => $(id).oninput = contar); contar();
+  $('#bu-preset').onclick = () => {
+    $('#bu-termo').value = ['escritório', 'clínica', 'escola', 'escritório de advocacia', 'empresa de tecnologia', 'agência de marketing'].join('\n');
+    $('#bu-local').value = ['Lago Sul', 'Lago Norte', 'Asa Sul', 'Asa Norte', 'Sudoeste', 'Noroeste', 'Park Way', 'Jardim Botânico', 'Águas Claras'].map(b => b + ', Brasília - DF').join('\n');
+    $('#bu-max').value = 25; $('#bu-freq').value = '30'; $('#bu-nome').value = 'Confraternização 2026 — empresas do DF';
+    tagsPreset = ['confraternizacao-2026']; contar();
+  };
+  $('#bu-salvar').onclick = async () => {
+    try {
+      const lat = $('#bu-lat').value.trim(), lng = $('#bu-lng').value.trim();
+      const termos = linhas('#bu-termo'), locais = lat && lng ? [] : linhas('#bu-local');
+      await api('POST', '/app/buscas', { termos, locais: locais.length ? locais : undefined, local_texto: locais.length ? undefined : (linhas('#bu-local')[0] || ''), tags: tagsPreset, lat: lat || undefined, lng: lng || undefined,
+        raio_m: lat && lng ? $('#bu-raio').value : undefined, frequencia_dias: $('#bu-freq').value, max_resultados: $('#bu-max').value, nome: $('#bu-nome').value.trim() });
+      dlg.remove(); vBuscas();
+    } catch (e) { $('#bu-msg').textContent = e.message; }
+  };
+}
+
 // ---------------- CAMPANHAS ----------------
 async function vCampanhas() {
   carregando();
@@ -832,8 +991,8 @@ async function vCampanhas() {
     const { campanhas } = await api('GET', '/app/campanhas');
     $('#tela').innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn peq" id="cp-nova">+ Nova campanha</button></div>
-      <p class="sub" style="text-align:left">Campanhas semiautomáticas: você define o segmento, o CRM monta a lista com a mensagem pronta e você dispara um a um (opt-out respeitado automaticamente).</p>
-      <div class="grid">${campanhas.map(c => `<div class="card"><b>${esc(c.nome)}</b> <span class="chip">${esc(c.tipo)}</span> <span class="chip">${esc(c.status)}</span>
+      <p class="sub" style="text-align:left">Campanhas semiautomáticas: você escolhe os canais e o segmento, o CRM monta a fila com a mensagem pronta e você dispara um a um (opt-out respeitado por canal). Instagram, Facebook, TikTok e LinkedIn são <b>assistidos</b>: o CRM abre o perfil e copia a mensagem, mas quem envia é você — não existe API que permita abrir conversa com uma lista nessas redes.</p>
+      <div class="grid">${campanhas.map(c => `<div class="card"><b>${esc(c.nome)}</b> ${(c.canais && c.canais.length ? c.canais : [c.tipo]).map(k => `<span class="chip">${CANAL_ICO[k] || ''} ${esc(CANAIS_UI[k] || k)}</span>`).join(' ')} <span class="chip">${esc(c.status)}</span>
         <p class="sub" style="text-align:left;margin:6px 0">${c.alvos} alvo(s) · ${c.enviados} enviado(s) · ${c.respondidos} respondeu(ram)</p>
         <button class="btn peq secund cp-abrir" data-id="${c.id}" data-msg="${esc(c.mensagem)}">Trabalhar lista</button></div>`).join('') || '<div class="card">Nenhuma campanha.</div>'}</div>
       <div id="cp-alvos"></div>`;
@@ -841,22 +1000,42 @@ async function vCampanhas() {
     document.querySelectorAll('.cp-abrir').forEach(b => b.onclick = () => abrirCampanha(b.dataset.id, b.dataset.msg));
   } catch (e) { erroTela(e); }
 }
-function dlgCampanha() {
+async function dlgCampanha(pre = {}) {
+  const { alcance } = await api('GET', '/app/canais').catch(() => ({ alcance: {} }));
   const dlg = document.createElement('dialog');
   dlg.innerHTML = `<h3>Nova campanha</h3>
     <label>Nome <input id="ca-nome" placeholder="ex.: Reativação ex-hóspedes julho"></label>
+    <label>O que fazer <select id="ca-tipo"><option value="msg">Enviar mensagem nos canais escolhidos</option><option value="tarefa">Criar tarefa</option><option value="ligacao">Ligar</option></select></label>
+    <fieldset id="ca-canais" style="border:1px solid #d9dee2;border-radius:8px;margin:8px 0;padding:8px">
+      <legend>Canais (a ordem da lista é a prioridade)</legend>
+      ${Object.keys(CANAIS_UI).map(k => `<label style="font-weight:400;display:block"><input type="checkbox" class="ca-canal" value="${k}" style="width:auto;margin-right:6px" ${k === 'whatsapp' ? 'checked' : ''}>${CANAL_ICO[k]} ${CANAIS_UI[k]} <span class="sub" style="margin:0">· ${alcance[k] || 0} contato(s)${CANAL_ASSIST.includes(k) ? ' · assistido (você envia)' : ''}</span></label>`).join('')}
+      <label style="margin-top:6px">Quando o contato tem mais de um canal
+        <select id="ca-modo"><option value="melhor">Usar só o melhor canal (o primeiro da lista que ele tem)</option><option value="todos">Enviar em todos os canais que ele tem</option></select></label>
+    </fieldset>
     <div class="hi-grid">
-      <label>Tipo <select id="ca-tipo">${['whatsapp', 'email', 'tarefa', 'ligacao'].map(t => `<option>${t}</option>`).join('')}</select></label>
       <label>Tipo de contato <input id="ca-seg-tipo" placeholder="ex.: hospede (vazio = todos)"></label>
       <label>Origem <input id="ca-seg-origem" placeholder="ex.: indicacao"></label>
       <label>Score mínimo <input id="ca-seg-score" type="number" min="0" max="100"></label>
       <label>Dias sem interação <input id="ca-seg-dias" type="number" min="0" placeholder="ex.: 90"></label>
       <label>Cidade <input id="ca-seg-cidade"></label>
+      <label>Tag <input id="ca-seg-tag"></label>
     </div>
+    <fieldset style="border:1px solid #d9dee2;border-radius:8px;margin:8px 0;padding:8px">
+      <legend>Por conversa anterior (só quem você aprovou na tela Conversas)</legend>
+      <div class="hi-grid">
+        <label>Assunto <select id="ca-seg-assunto"><option value="">Qualquer</option>${Object.keys(ASSUNTO_UI).map(k => `<option value="${k}">${ASSUNTO_UI[k]}</option>`).join('')}</select></label>
+        <label>Temperatura <select id="ca-seg-temp"><option value="">Qualquer</option>${Object.keys(TEMP_UI).map(k => `<option value="${k}">${TEMP_UI[k]}</option>`).join('')}</select></label>
+        <label>Última conversa <select id="ca-seg-faixa">${FAIXAS_DIAS.map(([v, r]) => `<option value="${v}">${r}</option>`).join('')}</select></label>
+      </div>
+    </fieldset>
     <label>Mensagem (use {{nome}} etc.) <textarea id="ca-msg" rows="4"></textarea></label>
-    <button class="btn" id="ca-salvar">Gerar lista</button> <button class="btn secund" id="ca-fechar">Cancelar</button><p id="ca-msg2" class="erro"></p>`;
+    <button class="btn" id="ca-salvar">Gerar fila</button> <button class="btn secund" id="ca-fechar">Cancelar</button><p id="ca-msg2" class="erro"></p>`;
   document.body.appendChild(dlg); dlg.showModal();
   $('#ca-fechar').onclick = () => dlg.remove();
+  if (pre.assunto) $('#ca-seg-assunto').value = pre.assunto;
+  if (pre.qualificacao) $('#ca-seg-temp').value = pre.qualificacao;
+  if (pre.faixa) $('#ca-seg-faixa').value = pre.faixa;
+  $('#ca-tipo').onchange = () => { $('#ca-canais').style.display = $('#ca-tipo').value === 'msg' ? '' : 'none'; };
   $('#ca-salvar').onclick = async () => {
     const seg = {};
     if ($('#ca-seg-tipo').value.trim()) seg.tipo = $('#ca-seg-tipo').value.trim();
@@ -864,24 +1043,106 @@ function dlgCampanha() {
     if ($('#ca-seg-score').value) seg.score_min = $('#ca-seg-score').value;
     if ($('#ca-seg-dias').value) seg.dias_sem_interacao = $('#ca-seg-dias').value;
     if ($('#ca-seg-cidade').value.trim()) seg.cidade = $('#ca-seg-cidade').value.trim();
-    try { await api('POST', '/app/campanhas', { nome: $('#ca-nome').value.trim(), tipo: $('#ca-tipo').value, segmento: seg, mensagem: $('#ca-msg').value }); dlg.remove(); vCampanhas(); }
-    catch (e) { $('#ca-msg2').textContent = e.message; }
+    if ($('#ca-seg-tag').value.trim()) seg.tag = $('#ca-seg-tag').value.trim();
+    if ($('#ca-seg-assunto').value) seg.assunto = $('#ca-seg-assunto').value;
+    if ($('#ca-seg-temp').value) seg.conversa_qualificacao = $('#ca-seg-temp').value;
+    const fx = faixaDias($('#ca-seg-faixa').value); if (fx.min) seg.conversa_dias_min = fx.min; if (fx.max) seg.conversa_dias_max = fx.max;
+    const msg = $('#ca-tipo').value === 'msg';
+    const canais = msg ? [...document.querySelectorAll('.ca-canal:checked')].map(x => x.value) : [];
+    if (msg && !canais.length) { $('#ca-msg2').textContent = 'Marque pelo menos um canal.'; return; }
+    try {
+      const r = await api('POST', '/app/campanhas', { nome: $('#ca-nome').value.trim(), tipo: msg ? undefined : $('#ca-tipo').value, canais, modo: $('#ca-modo').value, segmento: seg, mensagem: $('#ca-msg').value });
+      alert(`Fila pronta: ${r.alvos} envio(s) para ${r.contatos != null ? r.contatos : r.alvos} contato(s).` + (r.sem_canal ? `\n${r.sem_canal} contato(s) do segmento ficaram de fora (sem o canal escolhido ou em opt-out).` : ''));
+      dlg.remove(); vCampanhas();
+    } catch (e) { $('#ca-msg2').textContent = e.message; }
   };
 }
 async function abrirCampanha(id, mensagem) {
   const { alvos } = await api('GET', `/app/campanhas/${id}/alvos`);
-  $('#cp-alvos').innerHTML = `<div class="card" style="margin-top:14px"><b>Lista da campanha</b> (${alvos.length})
+  const por = {}; alvos.forEach(a => { por[a.canal || 'legado'] = (por[a.canal || 'legado'] || 0) + 1; });
+  $('#cp-alvos').innerHTML = `<div class="card" style="margin-top:14px"><b>Fila da campanha</b> (${alvos.length})
+    <p class="sub" style="text-align:left;margin:4px 0 8px">${Object.entries(por).map(([k, n]) => `<span class="chip">${CANAL_ICO[k] || ''} ${esc(CANAIS_UI[k] || 'lista')}: ${n}</span>`).join(' ')}</p>
     ${alvos.map(a => {
       const msg = (mensagem || '').replace(/\{\{nome\}\}/g, (a.nome || '').split(' ')[0]);
-      return `<div class="lin">${esc(a.nome || a.telefone)} <span class="chip ${faixa(a.score)}">${a.score}</span> <span class="chip">${esc(a.status)}</span>
-      ${a.telefone && a.status === 'pendente' ? `<a class="btn peq" target="_blank" rel="noopener" href="${waLink(a.telefone, msg)}">💬 Enviar</a>` : ''}
+      let acao = '';
+      if (a.status === 'pendente') {
+        if (a.canal === 'whatsapp') acao = `<a class="btn peq" target="_blank" rel="noopener" href="${waLink(a.destino, msg)}">💬 Enviar</a>`;
+        else if (a.canal === 'email') acao = `<a class="btn peq" href="mailto:${esc(a.destino)}?body=${encodeURIComponent(msg)}">✉️ Escrever</a>`;
+        else if (a.assistido && a.link_base) acao = `<button class="btn peq cp-copiar" data-msg="${esc(msg)}" data-link="${esc(a.link_base)}">📋 Copiar e abrir perfil</button>`;
+        else if (!a.canal && a.telefone) acao = `<a class="btn peq" target="_blank" rel="noopener" href="${waLink(a.telefone, msg)}">💬 Enviar</a>`;
+      }
+      return `<div class="lin">${esc(a.nome || a.telefone)} <span class="chip ${faixa(a.score)}">${a.score}</span>
+      ${a.canal ? `<span class="chip">${CANAL_ICO[a.canal] || ''} ${esc(CANAIS_UI[a.canal] || a.canal)}${a.canal === 'whatsapp' || a.canal === 'email' ? '' : ' · ' + esc(a.destino)}</span>` : ''}
+      <span class="chip">${esc(a.status)}</span> ${acao}
       ${a.status === 'pendente' ? `<button class="btn peq secund cp-mark" data-id="${a.id}" data-st="enviado">✓ Enviado</button>
       <button class="btn peq secund cp-mark" data-id="${a.id}" data-st="pulado">Pular</button>` : ''}
       ${a.status === 'enviado' ? `<button class="btn peq secund cp-mark" data-id="${a.id}" data-st="respondido">💬 Respondeu</button>` : ''}</div>`;
     }).join('')}</div>`;
+  document.querySelectorAll('.cp-copiar').forEach(b => b.onclick = async () => {
+    try { await navigator.clipboard.writeText(b.dataset.msg); b.textContent = '✅ Copiada — cole na conversa'; } catch (_) { b.textContent = 'Copie a mensagem manualmente'; }
+    window.open(b.dataset.link, '_blank', 'noopener');
+  });
   document.querySelectorAll('.cp-mark').forEach(b => b.onclick = async () => {
     try { await api('POST', `/app/campanha-alvos/${b.dataset.id}`, { status: b.dataset.st }); abrirCampanha(id, mensagem); } catch (e) { alert(e.message); }
   });
+}
+
+// ---------------- CONVERSAS (leads que já conversaram com a gente) ----------------
+const ASSUNTO_UI = { hospedagem: 'Hospedagem / reserva', evento: 'Evento / confraternização', curso: 'Curso / Academy', livro: 'Livro / livraria', sistemas: 'Sistemas / SaaS', juridico: 'Jurídico', parceria: 'Parceria / fornecedor', obra: 'Obra / manutenção' };
+const TEMP_UI = { quente: '🔥 quente', morno: '🌤 morno', frio: '❄️ frio', cliente: '✅ cliente', perdido: '🚫 perdido' };
+const FAIXAS_DIAS = [['', 'Qualquer data'], ['0-7', 'Últimos 7 dias'], ['0-30', 'Últimos 30 dias'], ['31-90', 'Entre 31 e 90 dias'], ['91-180', 'Entre 91 e 180 dias'], ['181-', 'Mais de 180 dias']];
+// '31-90' → há no mínimo 31 e no máximo 90 dias; '181-' → mais de 180; '0-7' → últimos 7
+const faixaDias = (v) => { const [a, b] = String(v || '').split('-'); return { min: a && a !== '0' ? a : '', max: b || '' }; };
+let CONV_FILTRO ={ status: 'sugerido', assunto: '', canal: '', qualificacao: '', faixa: '', busca: '' };
+async function vConversas() {
+  carregando();
+  try {
+    const f = CONV_FILTRO;
+    const qs = new URLSearchParams({ status: f.status });
+    ['assunto', 'canal', 'qualificacao', 'busca'].forEach(k => { if (f[k]) qs.set(k, f[k]); });
+    const fx = faixaDias(f.faixa); if (fx.min) qs.set('dias_min', fx.min); if (fx.max) qs.set('dias_max', fx.max);
+    const [{ conversas }, { assuntos }] = await Promise.all([api('GET', '/app/conversas?' + qs), api('GET', '/app/conversas/resumo')]);
+    const aba = (id, rot) => `<button class="btn peq ${f.status === id ? '' : 'secund'} cv-aba" data-s="${id}">${rot}</button>`;
+    $('#tela').innerHTML = `
+      <p class="sub" style="text-align:left">Contatos que <b>já conversaram</b> com você (Gmail, WhatsApp e mensagens das redes), classificados por <b>assunto</b> e pela <b>razão da última conversa</b>. O texto das conversas nunca sai do seu computador: aqui só chegam o assunto, a razão e as contagens. A classificação é por palavras-chave e <b>pode errar</b> — por isso nada vira contato nem entra em campanha sem a sua aprovação.</p>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">${aba('sugerido', 'Para decidir')}${aba('lead', 'Aprovadas (viram leads)')}${aba('descartado', 'Descartadas')}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <span class="chip cv-ass" data-a="" style="cursor:pointer;${f.assunto ? '' : 'font-weight:700'}">Todos os assuntos</span>
+        ${assuntos.map(a => `<span class="chip cv-ass" data-a="${esc(a.assunto)}" style="cursor:pointer;${f.assunto === a.assunto ? 'font-weight:700' : ''}">${esc(a.rotulo)} · ${a.total}${a.sugeridas ? ` (${a.sugeridas} a decidir)` : ''}</span>`).join('') || '<span class="sub">Nenhuma conversa importada ainda.</span>'}
+      </div>
+      <div class="hi-grid" style="margin-bottom:10px">
+        <label>Temperatura <select id="cv-q"><option value="">Todas</option>${Object.keys(TEMP_UI).map(k => `<option value="${k}" ${f.qualificacao === k ? 'selected' : ''}>${TEMP_UI[k]}</option>`).join('')}</select></label>
+        <label>Canal <select id="cv-c"><option value="">Todos</option>${Object.keys(CANAIS_UI).map(k => `<option value="${k}" ${f.canal === k ? 'selected' : ''}>${CANAIS_UI[k]}</option>`).join('')}</select></label>
+        <label>Última conversa <select id="cv-d">${FAIXAS_DIAS.map(([v, r]) => `<option value="${v}" ${f.faixa === v ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+        <label>Buscar <input id="cv-b" value="${esc(f.busca)}" placeholder="nome, telefone ou e-mail"></label>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn peq secund" id="cv-aplicar">Filtrar</button>
+        <button class="btn peq" id="cv-camp">📣 Campanha com este recorte</button>
+      </div>
+      <div class="card"><b>${conversas.length} conversa(s)</b>${conversas.length >= 300 ? ' <span class="sub">(mostrando as 300 mais recentes)</span>' : ''}
+        ${conversas.map(c => `<div class="lin" style="padding:8px 0;border-bottom:1px solid #eef1f3">
+          <b>${esc(c.contato_nome || c.nome || c.identificador.replace(/^nome:/, ''))}</b>
+          <span class="chip">${CANAL_ICO[c.canal] || ''} ${esc(CANAIS_UI[c.canal] || c.canal)}</span>
+          <span class="chip">${esc(ASSUNTO_UI[c.assunto] || c.assunto)}</span> <span class="chip">${TEMP_UI[c.qualificacao] || esc(c.qualificacao)}</span>
+          <div class="sub" style="text-align:left;margin:3px 0">Última razão: <b>${esc(c.razao_rotulo || '—')}</b> · ${c.situacao === 'aguardando_nos' ? 'ele(a) falou por último — <b>aguarda a sua resposta</b>' : 'você falou por último — aguarda a resposta dele(a)'} · há ${c.dias_parado != null ? c.dias_parado + ' dia(s)' : '—'} · ${c.total} msg (${c.deles} dele/a, ${c.minhas} suas)
+          ${c.evidencias && c.evidencias.length ? ` · palavras: ${esc(c.evidencias.join(', '))}` : ''}${c.identificador.startsWith('nome:') ? ' · <i>sem perfil vinculado (o export só traz o nome)</i>' : ''}</div>
+          ${c.status === 'sugerido' ? `<button class="btn peq cv-dec" data-id="${c.id}" data-a="lead">✓ Aprovar como lead</button> <button class="btn peq secund cv-dec" data-id="${c.id}" data-a="descartar">✕ Descartar</button>` : ''}
+          ${c.status === 'lead' ? `${c.contato_id ? `<button class="btn peq secund cv-ver" data-id="${c.contato_id}">Abrir contato</button>` : ''} <button class="btn peq secund cv-dec" data-id="${c.id}" data-a="sugerir">Voltar para decidir</button>` : ''}
+          ${c.status === 'descartado' ? `<button class="btn peq secund cv-dec" data-id="${c.id}" data-a="sugerir">Reconsiderar</button>` : ''}
+        </div>`).join('') || '<p class="sub" style="text-align:left">Nada neste recorte.</p>'}</div>`;
+    document.querySelectorAll('.cv-aba').forEach(b => b.onclick = () => { CONV_FILTRO.status = b.dataset.s; vConversas(); });
+    document.querySelectorAll('.cv-ass').forEach(b => b.onclick = () => { CONV_FILTRO.assunto = b.dataset.a; vConversas(); });
+    $('#cv-aplicar').onclick = () => { CONV_FILTRO = { ...CONV_FILTRO, qualificacao: $('#cv-q').value, canal: $('#cv-c').value, faixa: $('#cv-d').value, busca: $('#cv-b').value.trim() }; vConversas(); };
+    $('#cv-camp').onclick = () => {
+      const pre = { assunto: CONV_FILTRO.assunto, qualificacao: $('#cv-q').value, faixa: $('#cv-d').value };
+      dlgCampanha(pre);
+    };
+    document.querySelectorAll('.cv-dec').forEach(b => b.onclick = async () => {
+      try { await api('POST', `/app/conversas/${b.dataset.id}/decidir`, { acao: b.dataset.a }); vConversas(); } catch (e) { alert(e.message); }
+    });
+    document.querySelectorAll('.cv-ver').forEach(b => b.onclick = () => abrirContato(b.dataset.id));
+  } catch (e) { erroTela(e); }
 }
 
 // ---------------- AGENTES (IA) ----------------

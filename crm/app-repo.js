@@ -16,6 +16,17 @@ const s = (v, max = 4000) => String(v == null ? '' : v).trim().slice(0, max);
 const cent = (v) => Math.round(Number(v || 0));
 const T = (v) => s(v, 40);
 
+const Canais = require('./canais');
+
+// perfis de rede informados no payload (campos soltos ou lista d.canais)
+function perfisDoPayload(d) {
+  const out = [];
+  const push = (canal, v) => { const ident = Canais.normalizar(canal, v); if (ident) out.push({ canal, ident }); };
+  for (const k of ['instagram', 'facebook', 'tiktok', 'linkedin']) if (d[k]) push(k, d[k]);
+  if (Array.isArray(d.canais)) for (const x of d.canais) if (x && Canais.CANAIS[x.canal]) push(x.canal, x.identificador || x.valor);
+  return out;
+}
+
 // telefone → E.164-ish (só dígitos; BR ganha 55 na frente quando faltar)
 function normTelefone(t) {
   let d = String(t == null ? '' : t).replace(/\D/g, '');
@@ -200,6 +211,17 @@ const Contatos = {
     if (q.score_min) { sql += ' AND score >= ?'; args.push(Number(q.score_min) || 0); }
     if (q.score_max) { sql += ' AND score <= ?'; args.push(Number(q.score_max) || 100); }
     if (q.empresa_id) { sql += ' AND empresa_id = ?'; args.push(T(q.empresa_id)); }
+    // segmento por CONVERSA (só as aprovadas como lead): assunto, razão, temperatura e há quantos dias foi a última conversa
+    if (q.assunto || q.razao || q.conversa_qualificacao || q.conversa_dias_min || q.conversa_dias_max) {
+      let sub = "SELECT contato_id FROM crm_conversas WHERE tenant_id = ? AND status = 'lead' AND contato_id != ''";
+      const sa = [T(tid)];
+      if (q.assunto) { sub += ' AND assunto = ?'; sa.push(s(q.assunto, 20)); }
+      if (q.razao) { sub += ' AND razao = ?'; sa.push(s(q.razao, 30)); }
+      if (q.conversa_qualificacao) { sub += ' AND qualificacao = ?'; sa.push(s(q.conversa_qualificacao, 20)); }
+      if (q.conversa_dias_min) { sub += ' AND ultima_em <= ?'; sa.push(new Date(Date.now() - (Number(q.conversa_dias_min) || 0) * 86400000).toISOString()); }
+      if (q.conversa_dias_max) { sub += ' AND ultima_em >= ?'; sa.push(new Date(Date.now() - (Number(q.conversa_dias_max) || 0) * 86400000).toISOString()); }
+      sql += ` AND id IN (${sub})`; args.push(...sa);
+    }
     if (q.dias_sem_interacao) {
       const corte = new Date(Date.now() - (Number(q.dias_sem_interacao) || 0) * 86400000).toISOString();
       sql += " AND (ultima_interacao = '' OR ultima_interacao < ?)"; args.push(corte);
@@ -220,6 +242,7 @@ const Contatos = {
     c.oportunidades = db.prepare('SELECT o.*, e.nome AS estagio_nome, f.nome AS funil_nome FROM crm_oportunidades o LEFT JOIN crm_estagios e ON e.id = o.estagio_id LEFT JOIN crm_funis f ON f.id = o.funil_id WHERE o.tenant_id = ? AND o.contato_id = ? ORDER BY o.criado_em DESC').all(T(tid), T(id));
     c.propostas = db.prepare('SELECT id, titulo, valor_centavos, status, validade, token, criado_em FROM crm_propostas WHERE tenant_id = ? AND contato_id = ? ORDER BY criado_em DESC').all(T(tid), T(id));
     c.score_faixa = faixaScore(c.score);
+    c.canais = Canais.doContato(tid, id).map(k => ({ ...k, link: Canais.link(k.canal, k.identificador) }));
     return c;
   },
   // dedupe: telefone normalizado > e-mail. Se existir, faz merge dos campos vazios e retorna {contato, existente:true}.
@@ -229,7 +252,16 @@ const Contatos = {
     let existente = null;
     if (tel) existente = db.prepare("SELECT * FROM crm_contatos WHERE tenant_id = ? AND telefone = ? AND status != 'arquivado'").get(T(tid), tel);
     if (!existente && email) existente = db.prepare("SELECT * FROM crm_contatos WHERE tenant_id = ? AND lower(email) = ? AND status != 'arquivado'").get(T(tid), email);
+    // perfil de rede social (instagram/facebook/tiktok/linkedin ou d.canais[]) também identifica a pessoa
+    const perfis = perfisDoPayload(d);
+    if (!existente) {
+      for (const p of perfis) {
+        const dono = Canais.contatoPorCanal(tid, p.canal, p.ident);
+        if (dono) { existente = db.prepare("SELECT * FROM crm_contatos WHERE tenant_id = ? AND id = ? AND status != 'arquivado'").get(T(tid), dono); if (existente) break; }
+      }
+    }
     if (existente) {
+      Canais.sincronizar(tid, { id: existente.id, telefone: tel, whatsapp: normTelefone(d.whatsapp), email }, { ...d, fonte: d.fonte_canal || d.origem || 'cadastro' });
       const merge = {};
       for (const campo of ['nome', 'sobrenome', 'email', 'cargo', 'cidade', 'estado', 'interesse', 'produto_interesse', 'primeira_mensagem', 'campanha', 'pagina_entrada']) {
         if (!existente[campo] && d[campo]) merge[campo] = d[campo];
@@ -256,6 +288,7 @@ const Contatos = {
         j.str(Array.isArray(d.tags) ? d.tags.map(t => s(t, 40)) : []), s(d.obs, 2000),
         s(d.proxima_acao, 200), s(d.proxima_acao_em, 10), j.str(d.consentimento || {}), '', agora, agora);
     Atividades.registrar(tid, { contato_id: id, tipo: 'criacao', texto: `Contato criado${origem ? ' via ' + origem : ''}${d.primeira_mensagem ? ': "' + s(d.primeira_mensagem, 200) + '"' : ''}`, autor: autor || 'sistema' });
+    Canais.sincronizar(tid, { id, telefone: tel, whatsapp: normTelefone(d.whatsapp) || tel, email }, { ...d, fonte: d.fonte_canal || origem || 'cadastro' });
     recalcularScore(tid, id);
     require('./repo').Uso.set(tid, 'contatos', Contatos.contar(tid));
     return { contato: Contatos.obter(tid, id), existente: false };
@@ -293,11 +326,63 @@ const Contatos = {
         c.primeira_mensagem, c.interesse, c.produto_interesse, c.orcamento_centavos, c.ticket_centavos, c.status,
         c.responsavel, c.prioridade, typeof c.tags === 'string' ? c.tags : j.str(c.tags), c.obs, c.proxima_acao, c.proxima_acao_em,
         c.motivo_perda, c.motivo_ganho, typeof c.consentimento === 'string' ? c.consentimento : j.str(c.consentimento), nowISO(), c.id);
+    Canais.sincronizar(tid, c, d);
     recalcularScore(tid, id);
     return Contatos.obter(tid, id);
   },
+  // junta dois cadastros da MESMA pessoa: o duplicado some, tudo dele passa para o principal
+  mesclar(tid, principalId, duplicadoId, autor) {
+    if (!principalId || !duplicadoId || principalId === duplicadoId) throw new Error('Escolha dois contatos diferentes.');
+    const p = db.prepare('SELECT * FROM crm_contatos WHERE tenant_id = ? AND id = ?').get(T(tid), T(principalId));
+    const d = db.prepare('SELECT * FROM crm_contatos WHERE tenant_id = ? AND id = ?').get(T(tid), T(duplicadoId));
+    if (!p || !d) throw new Error('Contato não encontrado.');
+    return transacao(() => {
+      const t = T(tid);
+      // campos vazios do principal recebem os do duplicado; observações se somam (preserva vínculos como {legado:id})
+      const vazios = ['nome', 'sobrenome', 'telefone', 'whatsapp', 'email', 'empresa_id', 'empresa_nome', 'cargo', 'cidade', 'estado',
+        'interesse', 'produto_interesse', 'primeira_mensagem', 'canal_entrada', 'campanha', 'responsavel'];
+      const novo = {};
+      for (const k of vazios) novo[k] = p[k] || d[k] || '';
+      novo.obs = [p.obs, d.obs].filter(Boolean).join('\n');
+      novo.tags = j.str([...new Set([...j.parse(p.tags, []), ...j.parse(d.tags, [])])]);
+      novo.score = Math.max(p.score || 0, d.score || 0);
+      novo.ultima = [p.ultima_interacao, d.ultima_interacao].sort().pop() || '';
+      // opt-out geral de qualquer um dos dois prevalece (LGPD: na dúvida, não contatar)
+      const cp = j.parse(p.consentimento, {}), cd = j.parse(d.consentimento, {});
+      const cons = (cp.optIn === false || cd.optIn === false) ? { ...cd, ...cp, optIn: false } : (Object.keys(cp).length ? cp : cd);
+      // libera os canais do duplicado antes (índice único por canal/identificador)
+      db.prepare('UPDATE crm_contato_canais SET contato_id = ? WHERE tenant_id = ? AND contato_id = ?').run(p.id, t, d.id);
+      for (const tab of ['crm_atividades', 'crm_tarefas', 'crm_campanha_alvos', 'crm_propostas', 'crm_oportunidades', 'crm_conversas']) {
+        db.prepare(`UPDATE ${tab} SET contato_id = ? WHERE tenant_id = ? AND contato_id = ?`).run(p.id, t, d.id);
+      }
+      db.prepare('UPDATE crm_contatos SET nome=?, sobrenome=?, telefone=?, whatsapp=?, email=?, empresa_id=?, empresa_nome=?, cargo=?, cidade=?, estado=?, interesse=?, produto_interesse=?, primeira_mensagem=?, canal_entrada=?, campanha=?, responsavel=?, obs=?, tags=?, score=?, ultima_interacao=?, consentimento=?, atualizado_em=? WHERE id=?')
+        .run(novo.nome, novo.sobrenome, novo.telefone, novo.whatsapp, novo.email, novo.empresa_id, novo.empresa_nome, novo.cargo, novo.cidade, novo.estado, novo.interesse, novo.produto_interesse, novo.primeira_mensagem, novo.canal_entrada, novo.campanha, novo.responsavel, novo.obs, novo.tags, novo.score, novo.ultima, j.str(cons), nowISO(), p.id);
+      db.prepare('DELETE FROM crm_contatos WHERE tenant_id = ? AND id = ?').run(t, d.id);
+      Atividades.registrar(tid, { contato_id: p.id, tipo: 'nota', texto: `Cadastro unificado: "${d.nome || d.telefone || d.email || d.id}" foi mesclado neste contato.`, autor: autor || 'sistema' });
+      require('./repo').Uso.set(tid, 'contatos', Contatos.contar(tid));
+      recalcularScore(tid, p.id);
+      return { ok: true, contato: Contatos.obter(tid, p.id) };
+    });
+  },
+  // sugestões de duplicados: mesmo nome completo (com 2+ palavras) em cadastros diferentes
+  duplicados(tid) {
+    const rows = db.prepare("SELECT id, nome, sobrenome, telefone, email FROM crm_contatos WHERE tenant_id = ? AND status = 'ativo'").all(T(tid));
+    const grupos = new Map();
+    for (const r of rows) {
+      const nome = `${r.nome} ${r.sobrenome}`.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+      if (nome.split(' ').length < 2) continue;
+      if (!grupos.has(nome)) grupos.set(nome, []);
+      grupos.get(nome).push(r);
+    }
+    return [...grupos.values()].filter(g => g.length > 1).slice(0, 100).map(g => g.map(r => ({
+      id: r.id, nome: `${r.nome} ${r.sobrenome}`.trim(), telefone: r.telefone, email: r.email,
+      canais: Canais.doContato(tid, r.id).map(k => ({ canal: k.canal, identificador: k.identificador })),
+    })));
+  },
   excluir(tid, id) { // LGPD: exclusão definitiva (contato + timeline + tarefas + alvos)
     return transacao(() => {
+      db.prepare('DELETE FROM crm_contato_canais WHERE tenant_id = ? AND contato_id = ?').run(T(tid), T(id));
+      db.prepare('DELETE FROM crm_conversas WHERE tenant_id = ? AND contato_id = ?').run(T(tid), T(id)); // LGPD
       db.prepare('DELETE FROM crm_atividades WHERE tenant_id = ? AND contato_id = ?').run(T(tid), T(id));
       db.prepare('DELETE FROM crm_tarefas WHERE tenant_id = ? AND contato_id = ?').run(T(tid), T(id));
       db.prepare('DELETE FROM crm_campanha_alvos WHERE tenant_id = ? AND contato_id = ?').run(T(tid), T(id));
@@ -319,7 +404,10 @@ const Contatos = {
   },
   // importação CSV (separador ; ou ,) com mapeamento por cabeçalho e dedupe
   importarCSV(tid, csvTexto, autor) {
-    const linhas = String(csvTexto || '').split(/\r?\n/).filter(l => l.trim());
+    let linhas = String(csvTexto || '').replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim());
+    // exportação de conexões do LinkedIn vem com linhas de aviso antes do cabeçalho
+    const ixCab = linhas.findIndex(l => /first name/i.test(l) && /last name/i.test(l));
+    if (ixCab > 0) linhas = linhas.slice(ixCab);
     if (linhas.length < 2) throw new Error('CSV vazio ou sem linhas de dados.');
     const sep = (linhas[0].match(/;/g) || []).length >= (linhas[0].match(/,/g) || []).length ? ';' : ',';
     const parseLinha = (l) => {
@@ -333,18 +421,68 @@ const Contatos = {
       campos.push(atual); return campos.map(c => c.trim());
     };
     const cab = parseLinha(linhas[0]).map(c => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''));
-    const MAPA = { nome: 'nome', sobrenome: 'sobrenome', telefone: 'telefone', celular: 'telefone', whatsapp: 'whatsapp', 'e-mail': 'email', email: 'email', empresa: 'empresa_nome', cargo: 'cargo', cidade: 'cidade', estado: 'estado', uf: 'estado', pais: 'pais', tipo: 'tipo', origem: 'origem', campanha: 'campanha', interesse: 'interesse', produto: 'produto_interesse', observacao: 'obs', obs: 'obs', tags: 'tags' };
+    const MAPA = { nome: 'nome', sobrenome: 'sobrenome', telefone: 'telefone', celular: 'telefone', whatsapp: 'whatsapp', 'e-mail': 'email', email: 'email', empresa: 'empresa_nome', cargo: 'cargo', cidade: 'cidade', estado: 'estado', uf: 'estado', pais: 'pais', tipo: 'tipo', origem: 'origem', campanha: 'campanha', interesse: 'interesse', produto: 'produto_interesse', observacao: 'obs', obs: 'obs', tags: 'tags',
+      // redes sociais
+      instagram: 'instagram', facebook: 'facebook', tiktok: 'tiktok', linkedin: 'linkedin',
+      // exportação de conexões do LinkedIn
+      'first name': 'nome', 'last name': 'sobrenome', 'email address': 'email', company: 'empresa_nome', position: 'cargo',
+      // Google Contatos (inglês e português)
+      'e-mail 1 - value': 'email', 'phone 1 - value': 'telefone', 'organization name': 'empresa_nome', 'organization title': 'cargo',
+      'e-mail 1: valor': 'email', 'telefone 1: valor': 'telefone', 'nome da organizacao': 'empresa_nome', 'cargo da organizacao': 'cargo' };
+    if (cab.includes('connected on') || cab.includes('connected_on')) MAPA.url = 'linkedin'; // coluna URL do LinkedIn = perfil
+    const fonteCanal = cab.includes('connected on') ? 'importacao-linkedin' : (cab.includes('first name') ? 'importacao-google' : 'importacao');
     let criados = 0, duplicados = 0, invalidos = 0;
     for (let i = 1; i < linhas.length; i++) {
       const vals = parseLinha(linhas[i]);
       const d = {};
-      cab.forEach((c, k) => { const alvo = MAPA[c]; if (alvo && vals[k]) d[alvo] = alvo === 'tags' ? vals[k].split('|').map(t => t.trim()).filter(Boolean) : vals[k]; });
-      if (!d.nome && !d.telefone && !d.email) { invalidos++; continue; }
-      d.origem = d.origem || 'importacao';
+      cab.forEach((c, k) => { const alvo = MAPA[c]; if (alvo && vals[k]) d[alvo] = alvo === 'tags' ? vals[k].split('|').map(t => t.trim()).filter(Boolean) : String(vals[k]).split(' ::: ')[0].trim(); });
+      if (!d.nome && !d.telefone && !d.email && !perfisDoPayload(d).length) { invalidos++; continue; }
+      d.fonte_canal = fonteCanal;
+      d.origem = d.origem || (fonteCanal === 'importacao-linkedin' ? 'outro' : 'importacao');
       const r = Contatos.criar(tid, d, autor || 'importacao');
       if (r.existente) duplicados++; else criados++;
     }
     return { criados, duplicados, invalidos, total: linhas.length - 1 };
+  },
+  // importação de PERFIS de uma rede (Instagram/Facebook/TikTok/LinkedIn):
+  //  - JSON de seguidores/seguindo do "Baixar suas informações" do Instagram (string_list_data), ou
+  //  - lista de texto, um perfil por linha: "@usuario", URL, ou "Nome;perfil".
+  // ⚠️ essas exportações trazem usuário e/ou nome — NÃO trazem telefone nem e-mail.
+  importarRedes(tid, canal, texto, autor) {
+    if (!['instagram', 'facebook', 'tiktok', 'linkedin'].includes(canal)) throw new Error('Rede inválida.');
+    const itens = [];
+    const bruto = String(texto || '').replace(/^﻿/, '').trim();
+    if (!bruto) throw new Error('Arquivo vazio.');
+    if (/^[\[{]/.test(bruto)) {
+      let json; try { json = JSON.parse(bruto); } catch (_) { throw new Error('JSON inválido.'); }
+      const varre = (o) => {
+        if (Array.isArray(o)) return o.forEach(varre);
+        if (!o || typeof o !== 'object') return;
+        if (Array.isArray(o.string_list_data)) for (const x of o.string_list_data) itens.push({ nome: o.title || '', perfil: x.value || x.href || '' });
+        else Object.values(o).forEach(varre);
+      };
+      varre(json);
+    } else {
+      for (const l of bruto.split(/\r?\n/)) {
+        const partes = l.split(/[;\t,]/).map(p => p.trim()).filter(Boolean);
+        if (!partes.length) continue;
+        const perfil = [...partes].reverse().find(p => Canais.normalizar(canal, p));
+        if (perfil) itens.push({ nome: partes.find(p => p !== perfil) || '', perfil });
+      }
+    }
+    let criados = 0, duplicados = 0, invalidos = 0;
+    const vistos = new Set();
+    for (const it of itens) {
+      const ident = Canais.normalizar(canal, it.perfil);
+      if (!ident || vistos.has(ident)) { if (!ident) invalidos++; continue; }
+      vistos.add(ident);
+      const r = Contatos.criar(tid, {
+        nome: it.nome || ident, [canal]: ident, origem: canal === 'linkedin' ? 'outro' : canal,
+        tags: ['importado-' + canal], fonte_canal: 'importacao-' + canal,
+      }, autor || 'importacao');
+      if (r.existente) duplicados++; else criados++;
+    }
+    return { criados, duplicados, invalidos, total: itens.length };
   },
 };
 function hidratarContato(c) {
@@ -690,31 +828,52 @@ const Campanhas = {
       (SELECT COUNT(*) FROM crm_campanha_alvos a WHERE a.campanha_id = c.id AND a.status = 'enviado') AS enviados,
       (SELECT COUNT(*) FROM crm_campanha_alvos a WHERE a.campanha_id = c.id AND a.status = 'respondido') AS respondidos
       FROM crm_campanhas c WHERE c.tenant_id = ? ORDER BY c.criado_em DESC LIMIT 100`).all(T(tid))
-      .map(c => ({ ...c, segmento: j.parse(c.segmento, {}) }));
+      .map(c => ({ ...c, segmento: j.parse(c.segmento, {}), canais: j.parse(c.canais, []) }));
   },
+  // Campanha multicanal. d.canais = ['whatsapp','email','instagram',...]; d.modo:
+  //   'melhor' (padrão) → 1 alvo por contato, no primeiro canal da lista que ele tem (ordem = prioridade)
+  //   'todos'           → 1 alvo por canal que o contato tem
+  // Sem d.canais = campanha antiga (tipo whatsapp|email|tarefa|ligacao), 1 alvo por contato.
   criar(tid, d, autor) {
     const nome = s(d.nome, 200);
     if (!nome) throw new Error('Informe o nome da campanha.');
     const segmento = d.segmento || {};
+    const canais = [...new Set((Array.isArray(d.canais) ? d.canais : (Canais.CANAIS_LISTA.includes(d.tipo) ? [d.tipo] : []))
+      .filter(c => Canais.CANAIS_LISTA.includes(c)))];
+    const modo = d.modo === 'todos' ? 'todos' : 'melhor';
+    const tipo = canais.length > 1 ? 'multicanal' : (canais[0] || s(d.tipo, 20) || 'whatsapp');
     const contatos = Contatos.listar(tid, { ...segmento, limite: 1000 })
-      .filter(c => (c.consentimento && c.consentimento.optIn === false) ? false : true); // respeita opt-out
+      .filter(c => (c.consentimento && c.consentimento.optIn === false) ? false : true); // respeita opt-out geral
     if (!contatos.length) throw new Error('O segmento não retornou nenhum contato.');
+    // monta a fila: (contato, canal, destino)
+    const fila = []; let semCanal = 0;
+    for (const c of contatos) {
+      if (!canais.length) { fila.push({ contato: c.id, canal: '', destino: '' }); continue; }
+      const disp = Canais.disponiveis(tid, c);
+      const meus = canais.filter(k => disp[k]);
+      if (!meus.length) { semCanal++; continue; }
+      for (const k of (modo === 'todos' ? meus : [meus[0]])) fila.push({ contato: c.id, canal: k, destino: disp[k] });
+    }
+    if (!fila.length) throw new Error(`Nenhum contato do segmento tem o(s) canal(is) escolhido(s) (${semCanal} sem canal ou em opt-out).`);
     return transacao(() => {
       const id = novoId(); const agora = nowISO();
-      db.prepare('INSERT INTO crm_campanhas (id, tenant_id, nome, tipo, segmento, template_id, mensagem, status, criado_em, atualizado_em) VALUES (?,?,?,?,?,?,?,?,?,?)')
-        .run(id, T(tid), nome, s(d.tipo, 20) || 'whatsapp', j.str(segmento), T(d.template_id || ''), s(d.mensagem, 4000), 'em_andamento', agora, agora);
-      const ins = db.prepare('INSERT INTO crm_campanha_alvos (id, tenant_id, campanha_id, contato_id, status, atualizado_em) VALUES (?,?,?,?,?,?)');
-      for (const c of contatos) ins.run(novoId(), T(tid), id, c.id, 'pendente', agora);
+      db.prepare('INSERT INTO crm_campanhas (id, tenant_id, nome, tipo, segmento, template_id, mensagem, status, canais, modo, criado_em, atualizado_em) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+        .run(id, T(tid), nome, tipo, j.str(segmento), T(d.template_id || ''), s(d.mensagem, 4000), 'em_andamento', j.str(canais), modo, agora, agora);
+      const ins = db.prepare('INSERT INTO crm_campanha_alvos (id, tenant_id, campanha_id, contato_id, status, canal, destino, atualizado_em) VALUES (?,?,?,?,?,?,?,?)');
+      const porCanal = {};
+      for (const f of fila) { ins.run(novoId(), T(tid), id, f.contato, 'pendente', f.canal, f.destino, agora); porCanal[f.canal || 'legado'] = (porCanal[f.canal || 'legado'] || 0) + 1; }
       require('./repo').Uso.registrar(tid, 'campanhas_mes', 1);
-      return { id, alvos: contatos.length };
+      return { id, alvos: fila.length, contatos: new Set(fila.map(f => f.contato)).size, sem_canal: semCanal, por_canal: porCanal };
     });
   },
-  alvos(tid, campanhaId, status = '') {
+  alvos(tid, campanhaId, status = '', canal = '') {
     let sql = `SELECT a.*, c.nome, c.telefone, c.email, c.score, c.tipo AS contato_tipo FROM crm_campanha_alvos a
       JOIN crm_contatos c ON c.id = a.contato_id WHERE a.tenant_id = ? AND a.campanha_id = ?`;
     const args = [T(tid), T(campanhaId)];
     if (status) { sql += ' AND a.status = ?'; args.push(s(status, 20)); }
-    return db.prepare(sql + ' ORDER BY c.score DESC LIMIT 1000').all(...args);
+    if (canal) { sql += ' AND a.canal = ?'; args.push(s(canal, 20)); }
+    return db.prepare(sql + ' ORDER BY a.canal, c.score DESC LIMIT 1000').all(...args)
+      .map(a => ({ ...a, assistido: !!(Canais.CANAIS[a.canal] && Canais.CANAIS[a.canal].assistido), link_base: a.canal && a.destino ? Canais.link(a.canal, a.destino) : '' }));
   },
   marcarAlvo(tid, alvoId, status, autor) {
     const ok = ['pendente', 'enviado', 'respondido', 'pulado'];
@@ -722,8 +881,8 @@ const Campanhas = {
     const a = db.prepare('SELECT a.*, c.nome AS campanha_nome FROM crm_campanha_alvos a JOIN crm_campanhas c ON c.id = a.campanha_id WHERE a.tenant_id = ? AND a.id = ?').get(T(tid), T(alvoId));
     if (!a) throw new Error('Alvo não encontrado.');
     db.prepare('UPDATE crm_campanha_alvos SET status = ?, atualizado_em = ? WHERE id = ?').run(status, nowISO(), a.id);
-    if (status === 'enviado') Atividades.registrar(tid, { contato_id: a.contato_id, tipo: 'campanha', texto: 'Campanha enviada: ' + a.campanha_nome, autor });
-    if (status === 'respondido') { Atividades.registrar(tid, { contato_id: a.contato_id, tipo: 'mensagem-recebida', canal: 'whatsapp', texto: 'Respondeu à campanha ' + a.campanha_nome, autor }); recalcularScore(tid, a.contato_id); }
+    if (status === 'enviado') Atividades.registrar(tid, { contato_id: a.contato_id, tipo: 'campanha', canal: a.canal || 'whatsapp', texto: 'Campanha enviada' + (a.canal ? ` (${a.canal})` : '') + ': ' + a.campanha_nome, autor });
+    if (status === 'respondido') { Atividades.registrar(tid, { contato_id: a.contato_id, tipo: 'mensagem-recebida', canal: a.canal || 'whatsapp', texto: 'Respondeu à campanha ' + a.campanha_nome, autor }); recalcularScore(tid, a.contato_id); }
     return { ok: true };
   },
   mudarStatus(tid, id, status) {
@@ -978,7 +1137,7 @@ function seedDemo(tid) {
 }
 
 module.exports = {
-  provisionar, seedDemo, Config, TIPOS_CONTATO, ORIGENS, VARIAVEIS, normTelefone,
+  provisionar, seedDemo, Config, TIPOS_CONTATO, ORIGENS, VARIAVEIS, normTelefone, Canais,
   calcularScore, faixaScore, recalcularScore, statsDoContato,
   Contatos, Empresas, Funis, Oportunidades, Atividades, Tarefas, Templates, Propostas, Campanhas,
   rodarAutomacoes, Agentes, ApiKeys, dashboard,

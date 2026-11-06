@@ -279,6 +279,427 @@ async function rodar() {
     assert.equal(c2.enviados, 1);
   });
 
+  // ---- multicanal: canais do contato, campanha com N canais, importação, unificação ----
+  await t('contato guarda vários canais, normaliza e dedupe por perfil', async () => {
+    const a = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Marina Souza', telefone: '61 98888-1111', email: 'Marina@X.com', instagram: 'https://instagram.com/Marina.S/', linkedin: 'https://br.linkedin.com/in/marina-souza?x=1', tiktok: '@marina.tt' }, cookies: true });
+    assert.equal(a.st, 200);
+    const f = (await req('GET', '/crm/api/app/contatos/' + a.json.contato.id, { cookies: true })).json.contato;
+    const mapa = Object.fromEntries(f.canais.map(k => [k.canal, k.identificador]));
+    assert.equal(mapa.whatsapp, '5561988881111'); assert.equal(mapa.email, 'marina@x.com');
+    assert.equal(mapa.instagram, 'marina.s'); assert.equal(mapa.linkedin, 'marina-souza'); assert.equal(mapa.tiktok, 'marina.tt');
+    // mesma pessoa chegando só pelo @instagram → mescla, não duplica; e ganha o facebook
+    const b = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Marina', instagram: '@marina.s', facebook: 'facebook.com/marina.souza' }, cookies: true });
+    assert.equal(b.json.existente, true); assert.equal(b.json.contato.id, a.json.contato.id);
+    const f2 = (await req('GET', '/crm/api/app/contatos/' + a.json.contato.id, { cookies: true })).json.contato;
+    assert.ok(f2.canais.some(k => k.canal === 'facebook' && k.identificador === 'marina.souza'));
+    // perfil de outro contato não é roubado
+    const c = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Outra Pessoa', telefone: '61955550000' }, cookies: true });
+    const r = await req('POST', `/crm/api/app/contatos/${c.json.contato.id}/canais`, { corpo: { canal: 'instagram', identificador: 'marina.s' }, cookies: true });
+    assert.equal(r.st, 400);
+    const ruim = await req('POST', `/crm/api/app/contatos/${c.json.contato.id}/canais`, { corpo: { canal: 'email', identificador: 'nao-e-email' }, cookies: true });
+    assert.equal(ruim.st, 400);
+  });
+  await t('campanha multicanal: melhor canal × todos, opt-out por canal', async () => {
+    const tidBeta = require('./db').db.prepare("SELECT id FROM tenants WHERE nome LIKE 'Pousada Beta%'").get().id; // tenant do cookie
+    saas.repo.salvarSettings(tidBeta, { limites_over: { campanhas_mes: 999 } }); // este teste cria várias campanhas
+    const mk = (nome, extra) => req('POST', '/crm/api/app/contatos', { corpo: { nome, tags: ['mc'], ...extra }, cookies: true });
+    const A = await mk('MC Alfa', { telefone: '61911110001', email: 'alfa@mc.com', instagram: 'mc_alfa' });
+    await mk('MC Beta', { email: 'beta@mc.com' });
+    await mk('MC Gama', { linkedin: 'mc-gama' });
+    await mk('MC Delta', { obs: 'sem canal nenhum' });
+    // 'melhor': ordem instagram > whatsapp > email; Delta e Gama(sem esses canais) ficam de fora
+    const m = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'MC melhor', canais: ['instagram', 'whatsapp', 'email'], modo: 'melhor', segmento: { tag: 'mc' }, mensagem: 'Oi {{nome}}' }, cookies: true });
+    assert.equal(m.st, 200); assert.equal(m.json.alvos, 2); assert.equal(m.json.sem_canal, 2);
+    assert.deepEqual(m.json.por_canal, { instagram: 1, email: 1 });
+    const al = (await req('GET', `/crm/api/app/campanhas/${m.json.id}/alvos`, { cookies: true })).json.alvos;
+    const alfa = al.find(x => x.nome === 'MC Alfa');
+    assert.equal(alfa.canal, 'instagram'); assert.equal(alfa.assistido, true); assert.ok(alfa.link_base.includes('ig.me/m/mc_alfa'));
+    // 'todos': Alfa entra em 3 canais
+    const todos = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'MC todos', canais: ['instagram', 'whatsapp', 'email', 'linkedin'], modo: 'todos', segmento: { tag: 'mc' } }, cookies: true });
+    assert.equal(todos.json.alvos, 3 + 1 + 1 /* alfa(3) beta(email) gama(linkedin) */); assert.equal(todos.json.contatos, 3);
+    // opt-out do canal instagram do Alfa: some do instagram, continua no WhatsApp
+    const fAlfa = (await req('GET', '/crm/api/app/contatos/' + A.json.contato.id, { cookies: true })).json.contato;
+    const ig = fAlfa.canais.find(k => k.canal === 'instagram');
+    assert.equal((await req('POST', `/crm/api/app/contatos/${A.json.contato.id}/canais/${ig.id}/optout`, { corpo: { sair: true }, cookies: true })).json.ok, true);
+    const m2 = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'MC pós opt-out', canais: ['instagram', 'whatsapp'], modo: 'melhor', segmento: { tag: 'mc' } }, cookies: true });
+    const al2 = (await req('GET', `/crm/api/app/campanhas/${m2.json.id}/alvos`, { cookies: true })).json.alvos;
+    assert.equal(al2.length, 1); assert.equal(al2[0].canal, 'whatsapp');
+    // marcar enviado registra a atividade no canal certo
+    await req('POST', `/crm/api/app/campanha-alvos/${al[0].id}`, { corpo: { status: 'enviado' }, cookies: true });
+    // canal inexistente na lista é ignorado; sem nenhum canal válido e tipo antigo continua funcionando
+    const velha = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'MC ligações', tipo: 'ligacao', segmento: { tag: 'mc' } }, cookies: true });
+    assert.equal(velha.st, 200); assert.equal(velha.json.alvos, 4);
+    const nada = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'MC tiktok', canais: ['tiktok'], segmento: { tag: 'mc' } }, cookies: true });
+    assert.equal(nada.st, 400);
+    saas.repo.salvarSettings(tidBeta, { limites_over: {} });
+  });
+  await t('importação: CSV do LinkedIn/Google e lista de perfis do Instagram', async () => {
+    const li = 'Notes:\n"aviso do linkedin"\n\nFirst Name,Last Name,URL,Email Address,Company,Position,Connected On\nJoão,Silva,https://www.linkedin.com/in/joao-silva,,ACME,Diretor,01 Jan 2024\n';
+    const r1 = await req('POST', '/crm/api/app/contatos/importar', { corpo: { csv: li }, cookies: true });
+    assert.equal(r1.json.criados, 1);
+    const jo = (await req('GET', '/crm/api/app/contatos?busca=Silva', { cookies: true })).json.contatos.find(x => x.nome === 'João');
+    const fj = (await req('GET', '/crm/api/app/contatos/' + jo.id, { cookies: true })).json.contato;
+    assert.ok(fj.canais.some(k => k.canal === 'linkedin' && k.identificador === 'joao-silva')); assert.equal(fj.cargo, 'Diretor');
+    const ig = JSON.stringify([{ title: '', string_list_data: [{ value: 'ana_ig', href: 'https://www.instagram.com/ana_ig' }] }, { string_list_data: [{ value: 'bia.ig' }] }]);
+    const r2 = await req('POST', '/crm/api/app/contatos/importar-rede', { corpo: { canal: 'instagram', texto: ig }, cookies: true });
+    assert.equal(r2.json.criados, 2);
+    const r3 = await req('POST', '/crm/api/app/contatos/importar-rede', { corpo: { canal: 'instagram', texto: '@ana_ig\nCarla Dias;https://instagram.com/carla.d\nlixo !!' }, cookies: true });
+    assert.equal(r3.json.criados, 1); assert.equal(r3.json.duplicados, 1);
+    assert.equal((await req('POST', '/crm/api/app/contatos/importar-rede', { corpo: { canal: 'orkut', texto: 'x' }, cookies: true })).st, 400);
+  });
+  await t('unificação: sugere duplicados e mescla levando canais e histórico', async () => {
+    const x = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Paulo', sobrenome: 'Duplicado', telefone: '61933330001' }, cookies: true });
+    const y = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Paulo', sobrenome: 'Duplicado', instagram: 'paulo.dup' }, cookies: true });
+    assert.notEqual(x.json.contato.id, y.json.contato.id);
+    const dup = (await req('GET', '/crm/api/app/contatos-duplicados', { cookies: true })).json.grupos;
+    assert.ok(dup.some(g => g.length === 2 && g.every(r => r.nome === 'Paulo Duplicado')));
+    await req('POST', `/crm/api/app/contatos/${y.json.contato.id}/atividade`, { corpo: { tipo: 'nota', texto: 'nota do duplicado' }, cookies: true });
+    const m = await req('POST', `/crm/api/app/contatos/${x.json.contato.id}/mesclar`, { corpo: { com: y.json.contato.id }, cookies: true });
+    assert.equal(m.st, 200, JSON.stringify(m.json));
+    const f = (await req('GET', '/crm/api/app/contatos/' + x.json.contato.id, { cookies: true })).json.contato;
+    assert.ok(f.canais.some(k => k.canal === 'instagram' && k.identificador === 'paulo.dup') && f.canais.some(k => k.canal === 'whatsapp'));
+    assert.ok(f.atividades.some(a => a.texto === 'nota do duplicado'));
+    assert.equal((await req('GET', '/crm/api/app/contatos/' + y.json.contato.id, { cookies: true })).st, 404);
+    assert.equal((await req('POST', `/crm/api/app/contatos/${x.json.contato.id}/mesclar`, { corpo: { com: x.json.contato.id }, cookies: true })).st, 400);
+  });
+
+  // ---- busca ativa (leads do Google Maps) ----
+  const buscasMod = require('./buscas');
+  const fontesMod = require('./busca-fontes');
+  const enriqMod = require('./busca-enriquecer');
+  let BTID = '';
+  const tidDoTenant = async () => BTID || (BTID = (await req('GET', '/crm/api/app/contatos', { cookies: true })).json.contatos[0].tenant_id);
+  const LUGARES = [
+    { place_id: 'P1', nome: 'Clínica Sorriso Lago Sul', categoria: 'Dentista', endereco: 'SHIS QL 10, Brasília', cidade: 'Brasília', estado: 'DF', telefone: '(61) 3333-1000', site: 'https://sorriso.com.br' },
+    { place_id: 'P2', nome: 'Odonto Premium', categoria: 'Dentista', endereco: 'SHIS QI 5', cidade: 'Brasília', estado: 'DF', telefone: '(61) 97000-1234', site: '' },
+    { place_id: 'P3', nome: 'Dentista Sem Contato', categoria: 'Dentista', endereco: 'CLS 200', cidade: 'Brasília', estado: 'DF', telefone: '', site: 'https://semcontato.com.br' },
+  ];
+  const provFake = (lista) => ({ async buscar() { return lista; } });
+  const paginas = {
+    'https://sorriso.com.br/': '<a href="/contato">Contato</a><footer>noreply@sorriso.com.br logo@2x.png sorriso@sorriso.com.br · <a href="https://wa.me/5561960005555">WhatsApp</a> <a href="https://instagram.com/clinica.sorriso">ig</a></footer>',
+    'https://sorriso.com.br/contato': 'Fale: contato@sorriso.com.br',
+    'https://semcontato.com.br/': '<p>Nada por aqui</p>',
+  };
+  const obterFake = async (u) => { const k = String(u).replace(/\/$/, '') + '/'; const key = paginas[u] ? u : (paginas[k] ? k : u); if (paginas[key] == null) throw new Error('404'); return { texto: paginas[key], status: 200 }; };
+  let buscaId = '';
+
+  await t('busca ativa: cria, estima custo e NÃO roda sem aprovação', async () => {
+    const r = await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'dentista', local_texto: 'Lago Sul, Brasília - DF', frequencia_dias: 7, max_resultados: 100, nome: 'Dentistas Lago Sul' }, cookies: true });
+    assert.equal(r.st, 200); buscaId = r.json.busca.id;
+    assert.equal(r.json.busca.status, 'aguardando_aprovacao');
+    assert.equal(r.json.busca.tag, 'busca:dentistas-lago-sul');
+    assert.equal(r.json.busca.custo.lugares_max, 100); assert.ok(r.json.busca.custo.brl_centavos > 0);
+    assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'x', local_texto: 'DF' }, cookies: true })).st, 400, 'termo curto');
+    assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'dentista' }, cookies: true })).st, 400, 'sem região');
+    assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'dentista', local_texto: 'DF', frequencia_dias: 2 }, cookies: true })).st, 400, 'frequência fora da lista');
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/rodar`, { cookies: true })).st, 400, 'rodar sem aprovar');
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/aprovar`, { corpo: {}, cookies: true })).st, 400, 'aprovar sem aceite');
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/status`, { corpo: { status: 'ativa' }, cookies: true })).st, 400, 'ativar sem aprovar');
+    await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), buscaId, { provedor: provFake(LUGARES) }), /sem aprovação/);
+    assert.equal(buscasMod.execucoes(await tidDoTenant(), buscaId).length, 0, 'nenhuma execução registrada');
+  });
+
+  await t('busca ativa: aprovada, fonte sem credencial não roda nem cobra', async () => {
+    const a = await req('POST', `/crm/api/app/buscas/${buscaId}/aprovar`, { corpo: { aceite: true }, cookies: true });
+    assert.equal(a.st, 200); assert.equal(a.json.busca.status, 'ativa'); assert.ok(a.json.busca.aprovada_em);
+    delete process.env.APIFY_TOKEN;
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/rodar`, { cookies: true })).st, 400, 'sem APIFY_TOKEN');
+    await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), buscaId), /credencial/);
+    assert.equal(buscasMod.execucoes(await tidDoTenant(), buscaId).length, 0);
+    // a agenda também fica quieta sem a chave geral
+    const r = await buscasMod.rodarVencidas({ provedor: provFake(LUGARES) });
+    assert.equal(r.ligada, false); assert.equal(buscasMod.execucoes(await tidDoTenant(), buscaId).length, 0);
+  });
+
+  await t('busca ativa: varredura grava empresa+contato, tag, origem, LGPD e canais com fonte', async () => {
+    const tid = await tidDoTenant();
+    const r = await buscasMod.executar(tid, buscaId, { provedor: provFake(LUGARES), obter: obterFake });
+    assert.equal(r.lugares, 3); assert.equal(r.novos, 3); assert.equal(r.existentes, 0);
+    assert.equal(r.enriquecidos, 1, 'só o site do P1 rendeu');
+    const lug = buscasMod.lugares(tid, buscaId);
+    assert.equal(lug.length, 3);
+    const p1 = lug.find(l => l.place_id === 'P1');
+    const c1 = (await req('GET', '/crm/api/app/contatos/' + p1.contato_id, { cookies: true })).json.contato;
+    assert.equal(c1.origem, 'busca-ativa'); assert.equal(c1.tipo, 'lead-b2b'); assert.equal(c1.interesse, 'Dentista');
+    assert.ok(c1.tags.includes('busca:dentistas-lago-sul'));
+    assert.equal(c1.consentimento.base, 'legitimo-interesse-b2b'); assert.equal(c1.consentimento.optIn, undefined, 'sem optIn');
+    assert.ok(c1.empresa_id);
+    const porCanal = (c, canal) => c.canais.filter(k => k.canal === canal);
+    assert.equal(porCanal(c1, 'whatsapp').length, 1, 'telefone FIXO do Maps não vira WhatsApp; só o wa.me do site');
+    assert.equal(porCanal(c1, 'whatsapp')[0].identificador, '5561960005555'); assert.equal(porCanal(c1, 'whatsapp')[0].fonte, 'site:sorriso.com.br');
+    const emails = porCanal(c1, 'email').map(k => k.identificador).sort();
+    assert.deepEqual(emails, ['contato@sorriso.com.br', 'sorriso@sorriso.com.br'], 'noreply e .png descartados; sem e-mail de RH/diretoria segue lendo a página de contato');
+    assert.ok(porCanal(c1, 'email').every(k => k.fonte === 'site:sorriso.com.br'));
+    assert.equal(porCanal(c1, 'instagram')[0].identificador, 'clinica.sorriso');
+    assert.equal(c1.email, 'sorriso@sorriso.com.br', 'campo clássico preenchido');
+    const emp = (await req('GET', '/crm/api/app/empresas', { cookies: true })).json.empresas.find(e => e.nome === 'Clínica Sorriso Lago Sul');
+    assert.ok(emp && emp.site === 'https://sorriso.com.br' && emp.segmento === 'Dentista');
+    // P2: celular do Maps entra como WhatsApp com fonte "maps"
+    const c2 = (await req('GET', '/crm/api/app/contatos/' + lug.find(l => l.place_id === 'P2').contato_id, { cookies: true })).json.contato;
+    assert.equal(porCanal(c2, 'whatsapp')[0].fonte, 'maps');
+    // P3: lead sem canal, mas capturado
+    const c3 = (await req('GET', '/crm/api/app/contatos/' + lug.find(l => l.place_id === 'P3').contato_id, { cookies: true })).json.contato;
+    assert.equal(c3.canais.length, 0);
+    // a captura NUNCA dispara mensagem
+    const ult = (await req('GET', '/crm/api/app/contatos/' + p1.contato_id, { cookies: true })).json.contato.atividades;
+    assert.ok(!ult.some(a => /mensagem-enviada/.test(a.tipo)));
+  });
+
+  await t('busca ativa: nova varredura deduplica (place_id, telefone, e-mail) e não duplica canais', async () => {
+    const tid = await tidDoTenant();
+    // contato já existente com o telefone de um lugar novo (P4) e o e-mail de outro (P5)
+    const pre = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Já Conhecido', telefone: '61955554444' }, cookies: true });
+    const pre2 = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Outro Conhecido', email: 'ja@conhecido.com.br' }, cookies: true });
+    paginas['https://p5.com.br/'] = 'ja@conhecido.com.br';
+    const lista = LUGARES.concat([
+      { place_id: 'P4', nome: 'Clínica P4', categoria: 'Dentista', endereco: 'x', telefone: '61 95555-4444', site: '' },
+      { place_id: 'P5', nome: 'Clínica P5', categoria: 'Dentista', endereco: 'y', telefone: '', site: 'https://p5.com.br' },
+    ]);
+    const antes = (await req('GET', '/crm/api/app/contatos?limite=2000', { cookies: true })).json.contatos.length;
+    const r = await buscasMod.executar(tid, buscaId, { provedor: provFake(lista), obter: obterFake });
+    assert.equal(r.lugares, 5); assert.equal(r.novos, 1, 'só P5 é criado (depois unificado); P1–P3 por place_id, P4 por telefone');
+    assert.equal(r.existentes, 4);
+    const lug = buscasMod.lugares(tid, buscaId);
+    assert.equal(lug.length, 5);
+    assert.equal(lug.find(l => l.place_id === 'P4').contato_id, pre.json.contato.id, 'P4 aproveitou o contato do telefone');
+    const f = (await req('GET', '/crm/api/app/contatos/' + pre.json.contato.id, { cookies: true })).json.contato;
+    assert.ok(f.tags.includes('busca:dentistas-lago-sul'), 'contato existente também recebe a tag');
+    assert.equal(f.canais.filter(k => k.canal === 'whatsapp').length, 1);
+    // P5 nasceu sem canais; o e-mail achado no site já era do "Outro Conhecido" → os dois foram unificados
+    assert.equal(lug.find(l => l.place_id === 'P5').contato_id, pre2.json.contato.id, 'P5 unificado pelo e-mail');
+    const depois = (await req('GET', '/crm/api/app/contatos?limite=2000', { cookies: true })).json.contatos.length;
+    assert.equal(depois, antes, 'nenhum contato a mais: P5 foi criado e mesclado no cadastro que já tinha o e-mail');
+    const exec = buscasMod.execucoes(tid, buscaId);
+    assert.equal(exec.length, 2); assert.equal(exec[0].gatilho, 'manual');
+    assert.ok(exec.every(e => e.status === 'ok' && e.custo_estimado_centavos > 0));
+  });
+
+  await t('busca ativa: editar o alvo cancela a aprovação; pausar/retomar; arquivar', async () => {
+    const p = await req('PATCH', `/crm/api/app/buscas/${buscaId}`, { corpo: { frequencia_dias: 14 }, cookies: true });
+    assert.equal(p.json.reaprovar, true); assert.equal(p.json.busca.status, 'aguardando_aprovacao'); assert.equal(p.json.busca.aprovada_em, '');
+    await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), buscaId, { provedor: provFake(LUGARES) }), /sem aprovação/);
+    assert.equal((await req('PATCH', `/crm/api/app/buscas/${buscaId}`, { corpo: { nome: 'Renomeada' }, cookies: true })).json.reaprovar, false, 'só o nome não reprova');
+    await req('POST', `/crm/api/app/buscas/${buscaId}/aprovar`, { corpo: { aceite: true }, cookies: true });
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/status`, { corpo: { status: 'pausada' }, cookies: true })).st, 200);
+    await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), buscaId, { provedor: provFake(LUGARES) }), /pausada/);
+    assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/status`, { corpo: { status: 'ativa' }, cookies: true })).st, 200);
+    const lista = await req('GET', '/crm/api/app/buscas', { cookies: true });
+    assert.equal(lista.json.buscas.length, 1); assert.ok(lista.json.fontes.some(f => f.id === 'apify')); assert.ok(lista.json.teto_mes > 0);
+    const eg = await req('GET', `/crm/api/app/buscas/${buscaId}/lugares`, { cookies: true });
+    assert.ok(eg.json.lugares.length >= 5);
+    assert.ok((await req('GET', `/crm/api/app/buscas/${buscaId}/execucoes`, { cookies: true })).json.execucoes.length >= 2);
+    // outro papel sem permissão de gerir conta não aprova
+  });
+
+  await t('busca ativa: agenda roda só vencidas, só com a chave geral, e respeita o teto mensal', async () => {
+    const tid = await tidDoTenant();
+    const { db } = require('./db');
+    db.prepare("UPDATE crm_buscas SET proxima_em = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), buscaId);
+    const n0 = buscasMod.execucoes(tid, buscaId).length;
+    assert.equal((await buscasMod.rodarVencidas({ provedor: provFake(LUGARES), obter: obterFake })).ligada, false);
+    assert.equal(buscasMod.execucoes(tid, buscaId).length, n0, 'chave geral desligada: nada roda');
+    const r = await buscasMod.rodarVencidas({ provedor: provFake(LUGARES), obter: obterFake, forcar: true });
+    assert.equal(r.rodadas.length, 1); assert.equal(buscasMod.execucoes(tid, buscaId)[0].gatilho, 'agenda');
+    const b = buscasMod.obter(tid, buscaId);
+    assert.ok(Date.parse(b.proxima_em) > Date.now() + 13 * 86400000, 'próxima varredura em 14 dias');
+    assert.equal((await buscasMod.rodarVencidas({ provedor: provFake(LUGARES), forcar: true })).rodadas.length, 0, 'não vencida de novo');
+    // teto mensal
+    const antigo = process.env.CRM_BUSCA_TETO_LUGARES_MES; process.env.CRM_BUSCA_TETO_LUGARES_MES = '1';
+    await assert.rejects(() => buscasMod.executar(tid, buscaId, { provedor: provFake(LUGARES) }), /Teto mensal/);
+    if (antigo === undefined) delete process.env.CRM_BUSCA_TETO_LUGARES_MES; else process.env.CRM_BUSCA_TETO_LUGARES_MES = antigo;
+  });
+
+  await t('busca ativa: erro da fonte vira execução com erro e a agenda adia', async () => {
+    const tid = await tidDoTenant();
+    const { db } = require('./db');
+    db.prepare("UPDATE crm_buscas SET proxima_em = ? WHERE id = ?").run(new Date(Date.now() - 1000).toISOString(), buscaId);
+    const quebrada = { async buscar() { throw new Error('Apify respondeu 402'); } };
+    const r = await buscasMod.rodarVencidas({ provedor: quebrada, forcar: true });
+    assert.match(r.rodadas[0].erro, /402/);
+    assert.equal(buscasMod.execucoes(tid, buscaId)[0].status, 'erro');
+    assert.ok(Date.parse(buscasMod.obter(tid, buscaId).proxima_em) > Date.now(), 'adiada, não tenta a cada ciclo');
+    assert.equal(buscasMod.obter(tid, buscaId).rodando_desde, '', 'trava de concorrência liberada');
+  });
+
+  await t('busca ativa: contatos capturados entram em campanha por tag, sem disparo automático', async () => {
+    saas.repo.salvarSettings(await tidDoTenant(), { limites_over: { campanhas_mes: 999 } });
+    const m = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'Dentistas — abordagem', canais: ['email', 'whatsapp'], modo: 'melhor', segmento: { tag: 'busca:dentistas-lago-sul' }, mensagem: 'Olá {{nome}}' }, cookies: true });
+    assert.equal(m.st, 200, JSON.stringify(m.json));
+    const alvos = (await req('GET', `/crm/api/app/campanhas/${m.json.campanha ? m.json.campanha.id : m.json.id}/alvos`, { cookies: true })).json.alvos;
+    assert.ok(alvos.length >= 2, 'quem tem canal entra na fila');
+    assert.ok(alvos.every(a => a.status === 'pendente'), 'tudo pendente: o envio é humano');
+    saas.repo.salvarSettings(await tidDoTenant(), { limites_over: {} });
+  });
+
+  await t('confraternização: vários bairros e categorias, tag, bairro, RH/diretoria e campanha em rascunho', async () => {
+    const tid = await tidDoTenant();
+    // custo: categorias × bairros × máx — mostrado ANTES de gastar
+    const r = await req('POST', '/crm/api/app/buscas', { corpo: { termos: ['escritório', 'clínica'], locais: ['Lago Sul, Brasília - DF', 'Asa Norte, Brasília - DF'], max_resultados: 10, frequencia_dias: 30, tags: ['Confraternização 2026'], nome: 'Confra DF' }, cookies: true });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    const b = r.json.busca;
+    assert.equal(b.custo.lugares_max, 40, '2 categorias × 2 bairros × 10'); assert.deepEqual(b.tags_extra, ['confraternizacao-2026']);
+    assert.equal(b.status, 'aguardando_aprovacao');
+    assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termos: ['ab'], locais: ['DF'] }, cookies: true })).st, 400, 'categoria curta');
+    await req('POST', `/crm/api/app/buscas/${b.id}/aprovar`, { corpo: { aceite: true }, cookies: true });
+    const chamadas = [];
+    const prov = { async buscar(q) {
+      chamadas.push({ termos: q.termos, local: q.local_texto, max: q.max_resultados });
+      const lago = q.local_texto.startsWith('Lago Sul');
+      return [{ place_id: lago ? 'C1' : 'C2', nome: lago ? 'Advocacia Lago' : 'Agência Norte', categoria: 'Empresa', endereco: 'x', cidade: 'Brasília', estado: 'DF', telefone: '', site: lago ? 'https://advlago.com.br' : '' }];
+    } };
+    paginas['https://advlago.com.br/'] = 'Fale com o RH: rh@advlago.com.br · diretoria@advlago.com.br · contato@advlago.com.br · vendas@advlago.com.br';
+    const ex = await buscasMod.executar(tid, b.id, { provedor: prov, obter: obterFake });
+    assert.equal(chamadas.length, 2, 'uma chamada por bairro'); assert.deepEqual(chamadas[0].termos, ['escritório', 'clínica']);
+    assert.equal(chamadas[0].max, 10); assert.equal(ex.lugares, 2); assert.equal(ex.novos, 2);
+    const lug = buscasMod.lugares(tid, b.id);
+    const c1 = (await req('GET', '/crm/api/app/contatos/' + lug.find(l => l.place_id === 'C1').contato_id, { cookies: true })).json.contato;
+    assert.equal(c1.tipo, 'lead-b2b'); assert.equal(c1.origem, 'busca-ativa');
+    for (const tg of ['confraternizacao-2026', 'bairro:lago-sul', 'google-maps']) assert.ok(c1.tags.includes(tg), tg);
+    assert.match(c1.obs, /Lago Sul/);
+    assert.equal(lug.find(l => l.place_id === 'C2').bairro, 'Asa Norte, Brasília - DF');
+    const em = c1.canais.filter(k => k.canal === 'email');
+    assert.equal(em[0].identificador, 'rh@advlago.com.br'); assert.equal(em[0].rotulo, 'RH');
+    assert.equal(em.find(k => k.identificador === 'diretoria@advlago.com.br').rotulo, 'Diretoria');
+    assert.equal(em.find(k => k.identificador === 'contato@advlago.com.br').rotulo, '');
+    // campanha: rascunho, sem envio, só quem tem canal; texto sem salão/banda/DJ e sem preço
+    saas.repo.salvarSettings(tid, { limites_over: { campanhas_mes: 999 } });
+    try {
+      assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'Nosso salão de festas!' }, cookies: true })).st, 400, 'salão proibido');
+      assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'Temos DJ e banda' }, cookies: true })).st, 400);
+      assert.equal((await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026', mensagem: 'A diária é R$ 900' }, cookies: true })).st, 400, 'preço só da proposta');
+      const c = await req('POST', '/crm/api/app/buscas/preparar-campanha', { corpo: { tag: 'confraternizacao-2026' }, cookies: true });
+      assert.equal(c.st, 200, JSON.stringify(c.json)); assert.equal(c.json.status, 'rascunho'); assert.equal(c.json.contatos, 1, 'só C1 tem e-mail; C2 não tem canal');
+      const camp = (await req('GET', '/crm/api/app/campanhas', { cookies: true })).json.campanhas.find(x => x.id === c.json.id);
+      assert.equal(camp.status, 'rascunho'); assert.deepEqual(camp.canais, ['email', 'whatsapp']);
+      assert.ok(!/sal[aã]o|banda|\bdj\b|R\$/i.test(camp.mensagem), 'texto padrão respeita as regras da casa');
+      const alvos = (await req('GET', `/crm/api/app/campanhas/${c.json.id}/alvos`, { cookies: true })).json.alvos;
+      assert.ok(alvos.length && alvos.every(a => a.status === 'pendente' && a.destino === 'rh@advlago.com.br'), 'o RH é o destino');
+    } finally { saas.repo.salvarSettings(tid, { limites_over: {} }); }
+  });
+
+  await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
+    const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
+    assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);
+    assert.deepEqual(x.whatsapps, ['5561999991111']); assert.deepEqual(x.redes, { facebook: 'lojinha.oficial' });
+    const interno = await enriqMod.enriquecerSite('http://169.254.169.254/latest/meta-data/');
+    assert.ok(interno.erro && !interno.emails.length, 'SSRF recusado');
+    const local = await enriqMod.enriquecerSite('http://localhost:10000/staff');
+    assert.ok(local.erro);
+    assert.ok((await enriqMod.enriquecerSite('')).vazio);
+  });
+
+  await t('fonte Apify: monta o pedido sem enriquecimento pago, usa token por header e descarta fechados', async () => {
+    const vistos = [];
+    fontesMod.trocarTransporte(async (url, init) => { vistos.push({ url, init }); return { ok: true, status: 200, json: async () => ([
+      { placeId: 'A1', title: 'Padaria A', categoryName: 'Padaria', address: 'Rua 1', city: 'Brasília', state: 'DF', phoneUnformatted: '+556133334444', website: 'https://padaria.example.br', location: { lat: -15.8, lng: -47.9 } },
+      { placeId: 'A2', title: 'Fechada', permanentlyClosed: true },
+      { title: 'Sem id' },
+    ]) }; });
+    process.env.APIFY_TOKEN = 'token-de-teste';
+    try {
+      const out = await fontesMod.fonte('apify').buscar({ termo: 'padaria', local_texto: '', lat: -15.8, lng: -47.9, raio_m: 2000, max_resultados: 30 });
+      assert.equal(out.length, 1); assert.equal(out[0].place_id, 'A1'); assert.equal(out[0].lat, -15.8);
+      const v = vistos[0]; const corpo = JSON.parse(v.init.body);
+      assert.ok(v.url.startsWith('https://api.apify.com/v2/acts/') && !/token=/.test(v.url), 'token nunca na URL');
+      assert.equal(v.init.headers.Authorization, 'Bearer token-de-teste');
+      assert.equal(corpo.scrapeContacts, false); assert.deepEqual(corpo.searchStringsArray, ['padaria']);
+      assert.equal(corpo.maxCrawledPlacesPerSearch, 30); assert.equal(corpo.customGeolocation.radiusKm, 2);
+    } finally { delete process.env.APIFY_TOKEN; fontesMod.trocarTransporte(); }
+    fontesMod.trocarTransporte(async () => ({ ok: false, status: 402, text: async () => 'limit' }));
+    process.env.APIFY_TOKEN = 'x';
+    try { await assert.rejects(() => fontesMod.fonte('apify').buscar({ termo: 'a', local_texto: 'DF', max_resultados: 5 }), /402/); }
+    finally { delete process.env.APIFY_TOKEN; fontesMod.trocarTransporte(); }
+    const e = fontesMod.estimarCusto({ max_resultados: 1000, frequencia_dias: 7 });
+    assert.equal(e.usd, 1.5); assert.ok(e.por_mes_centavos > e.brl_centavos);
+  });
+
+  // ---- conversas: classificador (assunto + razão da última conversa) ----
+  await t('classificador: assunto principal, razão da última conversa e temperatura', async () => {
+    const { classificarConversa } = require('./conversas-classificador');
+    const agora = Date.parse('2026-11-06T12:00:00Z');
+    const h = (n) => new Date(agora - n * 3600000).toISOString();
+    // conversa de orçamento de evento, ela escreveu por último, 2 dias atrás
+    const a = classificarConversa({ agora, mensagens: [
+      { t: h(24 * 40), deMim: false, texto: 'Oi! Queria saber sobre a casa para uma confraternização da empresa, somos 30 pessoas' },
+      { t: h(24 * 40 - 1), deMim: true, texto: 'Olá! A Gran Villela comporta 37 pessoas. Qual a data?' },
+      { t: h(50), deMim: false, texto: 'Dia 12 de dezembro. Quanto custa o aluguel da casa?' },
+    ] });
+    assert.equal(a.assunto, 'evento'); assert.equal(a.razao, 'orcamento'); assert.equal(a.situacao, 'aguardando_nos');
+    assert.equal(a.qualificacao, 'quente'); assert.equal(a.dias_parado, 2); assert.equal(a.total, 3);
+    assert.ok(a.evidencias.length && a.comercial);
+    // a "última conversa" é só a rajada final: o orçamento antigo não conta quando a última foi sobre pagamento
+    const b = classificarConversa({ agora, mensagens: [
+      { t: h(24 * 60), deMim: false, texto: 'Qual o valor da diária da casa?' },
+      { t: h(24 * 60 - 1), deMim: true, texto: 'R$ 2.000 a diária' },
+      { t: h(3), deMim: false, texto: 'Fiz o pix, segue o comprovante da reserva' },
+      { t: h(2), deMim: true, texto: 'Recebido, reserva confirmada!' },
+    ] });
+    assert.equal(b.assunto, 'hospedagem'); assert.equal(b.razao, 'pagamento'); assert.equal(b.qualificacao, 'cliente'); assert.equal(b.situacao, 'aguardando_eles');
+    // conversa pessoal sem assunto comercial não vira lead; propaganda também não
+    const c = classificarConversa({ agora, mensagens: [{ t: h(5), deMim: false, texto: 'Bom dia! Tudo bem com você?' }, { t: h(4), deMim: true, texto: 'Tudo ótimo, e a família?' }] });
+    assert.equal(c.comercial, false); assert.equal(c.assunto, '');
+    const d = classificarConversa({ agora, mensagens: [{ t: h(5), deMim: false, texto: 'Oferta imperdível! Use o cupom e compre agora' }, { t: h(4), deMim: false, texto: 'Promoção relâmpago, clique aqui, cupom de desconto de 20%' }] });
+    assert.equal(d.ruido, true); assert.equal(d.comercial, false);
+    // morno/frio pelo tempo; perdido pela razão
+    const e = classificarConversa({ agora, mensagens: [{ t: h(24 * 300), deMim: false, texto: 'Qual o valor da hospedagem?' }, { t: h(24 * 300 - 1), deMim: true, texto: 'R$ 900' }] });
+    assert.equal(e.qualificacao, 'frio');
+    const f = classificarConversa({ agora, mensagens: [{ t: h(30), deMim: false, texto: 'Valor da diária da casa?' }, { t: h(29), deMim: true, texto: 'R$ 900' }, { t: h(28), deMim: false, texto: 'Obrigado, mas não tenho interesse' }] });
+    assert.equal(f.qualificacao, 'perdido');
+    assert.equal(classificarConversa({ mensagens: [] }), null);
+  });
+  await t('conversas: ingestão só guarda metadado, aprovação vira lead e segmenta campanha', async () => {
+    const Conversas = require('./conversas');
+    const tidBeta = require('./db').db.prepare("SELECT id FROM tenants WHERE nome LIKE 'Pousada Beta%'").get().id;
+    const ontem = new Date(Date.now() - 86400000).toISOString();
+    const velha = new Date(Date.now() - 200 * 86400000).toISOString();
+    // contato que já existe → entra como lead direto
+    const ja = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Já Cliente', telefone: '61 97777-0001' }, cookies: true });
+    const item = (o) => ({ canal: 'whatsapp', assunto: 'evento', razao: 'orcamento', razao_rotulo: 'Pediu orçamento / preço', situacao: 'aguardando_nos', qualificacao: 'quente', confianca: 0.7, evidencias: ['festa'], total: 5, minhas: 2, deles: 3, primeira_em: velha, ultima_em: ontem, ultima_de_mim: false, ...o });
+    const r = Conversas.ingerir(tidBeta, [
+      item({ identificador: '61977770001', nome: 'Já Cliente' }),
+      item({ identificador: '61977770002', nome: 'Desconhecida Um', texto: 'SEGREDO DA CONVERSA', conteudo: 'mensagem privada' }),
+      item({ identificador: '61977770003', nome: 'Desconhecido Dois', assunto: 'curso', ultima_em: velha, qualificacao: 'frio' }),
+      item({ canal: 'instagram', identificador: '', nome: 'Pessoa Do Insta' }),       // export sem perfil → 'nome:'
+      item({ identificador: '61977770004', assunto: 'inexistente' }),                  // sem assunto válido → ignorada
+      item({ identificador: 'lixo' }),                                                 // identificador inválido → ignorada
+    ]);
+    assert.equal(r.novas, 4); assert.equal(r.ignoradas, 2); assert.equal(r.vinculadas, 1);
+    // privacidade: nenhum texto de mensagem chega ao banco
+    const bruto = JSON.stringify(require('./db').db.prepare('SELECT * FROM crm_conversas').all());
+    assert.ok(!bruto.includes('SEGREDO DA CONVERSA') && !bruto.includes('mensagem privada'));
+    // listar/resumo
+    const lst = (await req('GET', '/crm/api/app/conversas?assunto=evento', { cookies: true })).json.conversas;
+    assert.equal(lst.length, 3); assert.equal(lst.find(x => x.nome === 'Já Cliente').status, 'lead');
+    assert.equal(lst.find(x => x.nome === 'Desconhecida Um').status, 'sugerido');
+    const res = (await req('GET', '/crm/api/app/conversas/resumo', { cookies: true })).json.assuntos;
+    assert.ok(res.find(a => a.assunto === 'evento').total === 3 && res.find(a => a.assunto === 'curso').total === 1);
+    // reenvio atualiza, não duplica; decisão do Augusto é preservada
+    const um = lst.find(x => x.nome === 'Desconhecida Um');
+    const dec = await req('POST', `/crm/api/app/conversas/${um.id}/decidir`, { corpo: { acao: 'lead' }, cookies: true });
+    assert.equal(dec.st, 200); assert.ok(dec.json.contato_id);
+    const r2 = Conversas.ingerir(tidBeta, [item({ identificador: '61977770002', nome: 'Desconhecida Um', total: 9 })]);
+    assert.equal(r2.novas, 0); assert.equal(r2.atualizadas, 1);
+    const um2 = (await req('GET', '/crm/api/app/conversas?busca=Desconhecida', { cookies: true })).json.conversas[0];
+    assert.equal(um2.status, 'lead'); assert.equal(um2.total, 9);
+    const fc = (await req('GET', '/crm/api/app/contatos/' + dec.json.contato_id, { cookies: true })).json.contato;
+    assert.ok(fc.tags.includes('conversa-evento')); assert.ok(fc.canais.some(k => k.canal === 'whatsapp' && k.identificador === '5561977770002'));
+    // descartar some da lista padrão
+    const dois = (await req('GET', '/crm/api/app/conversas?busca=Dois', { cookies: true })).json.conversas[0];
+    await req('POST', `/crm/api/app/conversas/${dois.id}/decidir`, { corpo: { acao: 'descartar' }, cookies: true });
+    assert.equal((await req('GET', '/crm/api/app/conversas?busca=Dois', { cookies: true })).json.conversas.length, 0);
+    assert.equal((await req('POST', `/crm/api/app/conversas/${dois.id}/decidir`, { corpo: { acao: 'x' }, cookies: true })).st, 400);
+    // SEGMENTO de campanha por assunto + há quanto tempo foi a conversa (só quem foi aprovado como lead)
+    saas.repo.salvarSettings(await tidDoTenant(), { limites_over: { campanhas_mes: 999 } });
+    const camp = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'Evento fim de ano', canais: ['whatsapp'], segmento: { assunto: 'evento', conversa_dias_max: 30 }, mensagem: 'Oi {{nome}}' }, cookies: true });
+    assert.equal(camp.st, 200); assert.equal(camp.json.alvos, 2); // Já Cliente + Desconhecida Um (aprovados, conversa recente)
+    const velhas = await req('POST', '/crm/api/app/campanhas', { corpo: { nome: 'Reativar quem sumiu', canais: ['whatsapp'], segmento: { assunto: 'evento', conversa_dias_min: 90 } }, cookies: true });
+    assert.equal(velhas.st, 400); // nenhuma conversa de evento tem mais de 90 dias
+    saas.repo.salvarSettings(await tidDoTenant(), { limites_over: {} });
+    // LGPD: excluir o contato leva a conversa junto
+    await req('DELETE', '/crm/api/app/contatos/' + dec.json.contato_id, { cookies: true });
+    assert.equal((await req('GET', '/crm/api/app/conversas?busca=Desconhecida', { cookies: true })).json.conversas.length, 0);
+  });
+
   // ---- agentes (IA por regras, com log) ----
   await t('agente de qualificação sugere e registra log', async () => {
     // trial tem ia liberada
@@ -638,6 +1059,18 @@ async function rodar() {
     assert.ok(fila.some(m => m.texto === 'E o preço?') && !fila.some(m => m.texto === 'Tem vaga?'));
   });
 
+  await t('rota do agente: conversas classificadas localmente entram na empresa interna (sem texto, exige chave)', async () => {
+    const itens = [{ canal: 'whatsapp', identificador: '61 98888-7777', nome: 'Lead Local', assunto: 'evento', razao: 'orcamento', razao_rotulo: 'Pediu orçamento / preço', situacao: 'aguardando_nos', qualificacao: 'quente', confianca: 0.8, evidencias: ['festa'], total: 4, minhas: 2, deles: 2, primeira_em: '2026-10-01T10:00:00Z', ultima_em: '2026-11-04T10:00:00Z', texto: 'NAO PODE GRAVAR' }];
+    const sem = await req('POST', '/staff/api/vcrm/agente/conversas', { corpo: { itens }, user: 'op' });
+    assert.equal(sem.st, 403); // sem chave e sem papel de CRM
+    const ok1 = await req('POST', '/staff/api/vcrm/agente/conversas', { corpo: { itens, fonte: 'local-whatsapp' }, headers: { 'x-publish-key': 'k-teste' } });
+    assert.equal(ok1.st, 200); assert.equal(ok1.json.novas, 1);
+    const ok2 = await req('POST', '/staff/api/vcrm/agente/conversas', { corpo: { itens }, headers: { 'x-publish-key': 'k-teste' } });
+    assert.equal(ok2.json.novas, 0); assert.equal(ok2.json.atualizadas, 1); // idempotente
+    const linha = require('./db').db.prepare("SELECT * FROM crm_conversas WHERE nome = 'Lead Local'").get();
+    assert.equal(linha.status, 'sugerido'); assert.ok(!JSON.stringify(linha).includes('NAO PODE GRAVAR'));
+    assert.equal((await req('POST', '/staff/api/vcrm/agente/conversas', { corpo: { itens: 'x' }, headers: { 'x-publish-key': 'k-teste' } })).st, 400);
+  });
   await t('LGPD: exclusão definitiva remove contato + timeline', async () => {
     await req('POST', '/crm/api/login', { corpo: { email: 'bia@beta.br', senha: 'SenhaForte1' }, cookies: true });
     const r = await req('DELETE', '/crm/api/app/contatos/' + leadId, { cookies: true });

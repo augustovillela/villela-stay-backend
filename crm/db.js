@@ -28,11 +28,23 @@ const MIGRACOES = [
   { nome: '2026-11-05-trial-15-dias', sql: "UPDATE plans SET nome = replace(nome, '14 dias', '15 dias'), descricao = replace(descricao, '14 dias', '15 dias') WHERE slug = 'trial';" },
   // plano ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades (2 meses gratis); so preenche quem ainda esta sem preco anual
   { nome: '2026-11-05-plano-anual', sql: "ALTER TABLE plans ADD COLUMN preco_anual_centavos INTEGER NOT NULL DEFAULT 0; ALTER TABLE subscriptions ADD COLUMN valor_centavos INTEGER NOT NULL DEFAULT 0; UPDATE plans SET preco_anual_centavos = preco_centavos * 10 WHERE preco_centavos > 0 AND preco_anual_centavos = 0;" },
+  // CAMPANHA MULTICANAL (06/11/2026): campanha com N canais; cada alvo = (contato, canal)
+  { nome: '2026-11-06-campanha-multicanal', sql: "ALTER TABLE crm_campanhas ADD COLUMN canais TEXT DEFAULT '[]'; ALTER TABLE crm_campanhas ADD COLUMN modo TEXT DEFAULT 'melhor'; ALTER TABLE crm_campanha_alvos ADD COLUMN canal TEXT DEFAULT ''; ALTER TABLE crm_campanha_alvos ADD COLUMN destino TEXT DEFAULT '';" },
+  // canais dos contatos já existentes: telefone/whatsapp → whatsapp, e-mail → email (idempotente pelo índice único)
+  { nome: '2026-11-06-canais-backfill', sql: "INSERT OR IGNORE INTO crm_contato_canais (id, tenant_id, contato_id, canal, identificador, fonte, criado_em) SELECT lower(hex(randomblob(9))), tenant_id, id, 'whatsapp', CASE WHEN whatsapp != '' THEN whatsapp ELSE telefone END, 'legado', criado_em FROM crm_contatos WHERE whatsapp != '' OR telefone != ''; INSERT OR IGNORE INTO crm_contato_canais (id, tenant_id, contato_id, canal, identificador, fonte, criado_em) SELECT lower(hex(randomblob(9))), tenant_id, id, 'email', lower(email), 'legado', criado_em FROM crm_contatos WHERE email != '';" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
   db.exec(m.sql);
   db.prepare('INSERT INTO migrations (nome, aplicada_em) VALUES (?, ?)').run(m.nome, new Date().toISOString());
+}
+
+// colunas acrescentadas depois da 1a versao da busca ativa (06/11/2026): so altera banco que ja tinha a tabela antiga
+for (const [tab, col, ddl] of [
+  ['crm_buscas', 'termos', "TEXT DEFAULT '[]'"], ['crm_buscas', 'locais', "TEXT DEFAULT '[]'"], ['crm_buscas', 'tags_extra', "TEXT DEFAULT '[]'"],
+  ['crm_busca_lugares', 'bairro', "TEXT DEFAULT ''"],
+]) {
+  if (!db.prepare(`PRAGMA table_info(${tab})`).all().some((c) => c.name === col)) db.exec(`ALTER TABLE ${tab} ADD COLUMN ${col} ${ddl};`);
 }
 
 const nowISO = () => new Date().toISOString();

@@ -414,6 +414,54 @@ CREATE TABLE IF NOT EXISTS crm_campanha_alvos (
 );
 CREATE INDEX IF NOT EXISTS idx_crm_alvos_camp ON crm_campanha_alvos(campanha_id, status);
 
+-- ---- CANAIS DO CONTATO (multicanal: whatsapp|email|instagram|facebook|tiktok|linkedin) ----
+-- opt_out vale POR CANAL; o opt-out geral continua em crm_contatos.consentimento.
+CREATE TABLE IF NOT EXISTS crm_contato_canais (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  contato_id    TEXT NOT NULL,
+  canal         TEXT NOT NULL,
+  identificador TEXT NOT NULL,          -- normalizado (telefone E.164, e-mail minúsculo, @handle sem @, slug do LinkedIn)
+  rotulo        TEXT DEFAULT '',
+  opt_out       INTEGER DEFAULT 0,
+  fonte         TEXT DEFAULT '',        -- cadastro|manual|importacao|legado|whatsapp-business|...
+  criado_em     TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_canais_unico ON crm_contato_canais(tenant_id, canal, identificador);
+CREATE INDEX IF NOT EXISTS idx_crm_canais_contato ON crm_contato_canais(contato_id);
+
+-- ---- CONVERSAS (06/11/2026): só METADADO derivado de conversas de Gmail/WhatsApp/DMs ----
+-- ⚠️ Nunca guarda texto de mensagem: o texto é lido e classificado LOCALMENTE (stays\conversas-leads.mjs)
+-- e só assunto, razão e contagens sobem. status: sugerido (aguarda o Augusto) | lead | descartado.
+CREATE TABLE IF NOT EXISTS crm_conversas (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  canal         TEXT NOT NULL,            -- whatsapp|email|instagram|facebook|tiktok|linkedin
+  identificador TEXT NOT NULL,            -- telefone E.164, e-mail, handle/slug, ou 'nome:<nome>' quando o export não traz perfil
+  contato_id    TEXT DEFAULT '',
+  nome          TEXT DEFAULT '',
+  assunto       TEXT DEFAULT '',          -- hospedagem|evento|curso|livro|sistemas|juridico|parceria|obra
+  assuntos      TEXT DEFAULT '[]',        -- JSON top 3 [{assunto, pontos}]
+  razao         TEXT DEFAULT '',          -- orcamento|disponibilidade|fechou|pagamento|...
+  razao_rotulo  TEXT DEFAULT '',
+  situacao      TEXT DEFAULT '',          -- aguardando_nos|aguardando_eles
+  qualificacao  TEXT DEFAULT '',          -- quente|morno|frio|cliente|perdido
+  confianca     REAL DEFAULT 0,
+  evidencias    TEXT DEFAULT '[]',        -- palavras que pesaram (não é trecho da mensagem)
+  total         INTEGER DEFAULT 0,
+  minhas        INTEGER DEFAULT 0,
+  deles         INTEGER DEFAULT 0,
+  primeira_em   TEXT DEFAULT '',
+  ultima_em     TEXT DEFAULT '',
+  ultima_de_mim INTEGER DEFAULT 0,
+  status        TEXT DEFAULT 'sugerido',
+  fonte         TEXT DEFAULT '',
+  criado_em     TEXT NOT NULL,
+  atualizado_em TEXT DEFAULT ''
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_conversas_unico ON crm_conversas(tenant_id, canal, identificador);
+CREATE INDEX IF NOT EXISTS idx_crm_conversas_filtro ON crm_conversas(tenant_id, status, assunto, ultima_em);
+
 -- ---- AGENTES (IA): execuções com log e revisão humana ----
 CREATE TABLE IF NOT EXISTS crm_ia_logs (
   id         TEXT PRIMARY KEY,
@@ -449,3 +497,72 @@ CREATE TABLE IF NOT EXISTS push_subs (
   criado_em  TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_push_subs_tenant ON push_subs(tenant_id);
+
+-- ---- BUSCA ATIVA (leads do Google Maps, varreduras periódicas) ----
+-- Nada roda sem aprovada_em (o gasto com a fonte é confirmado por um humano).
+CREATE TABLE IF NOT EXISTS crm_buscas (
+  id              TEXT PRIMARY KEY,
+  tenant_id       TEXT NOT NULL,
+  nome            TEXT NOT NULL,
+  termo           TEXT NOT NULL,          -- "clínica odontológica"
+  local_texto     TEXT DEFAULT '',        -- "Lago Sul, Brasília - DF"
+  lat             REAL,
+  lng             REAL,
+  raio_m          INTEGER DEFAULT 0,      -- com lat/lng: varre num círculo
+  frequencia_dias INTEGER DEFAULT 7,
+  max_resultados  INTEGER DEFAULT 60,     -- teto de lugares por varredura (= teto de custo)
+  termos          TEXT DEFAULT '[]',      -- JSON: varias categorias numa busca (vazio = so `termo`)
+  locais          TEXT DEFAULT '[]',      -- JSON: varios bairros/regioes (vazio = so `local_texto`/circulo)
+  tags_extra      TEXT DEFAULT '[]',      -- JSON: tags adicionais gravadas nos contatos (ex.: confraternizacao-2026)
+  fonte           TEXT DEFAULT 'apify',
+  tag             TEXT DEFAULT '',        -- tag gravada nos contatos
+  status          TEXT DEFAULT 'aguardando_aprovacao', -- aguardando_aprovacao|ativa|pausada|arquivada
+  aprovada_em     TEXT DEFAULT '',
+  aprovada_por    TEXT DEFAULT '',
+  aprovada_custo_centavos INTEGER DEFAULT 0, -- estimativa mostrada na hora do OK
+  proxima_em      TEXT DEFAULT '',
+  ultima_em       TEXT DEFAULT '',
+  rodando_desde   TEXT DEFAULT '',
+  criado_em       TEXT NOT NULL,
+  atualizado_em   TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_crm_buscas_tenant ON crm_buscas(tenant_id, status);
+
+CREATE TABLE IF NOT EXISTS crm_busca_execucoes (
+  id             TEXT PRIMARY KEY,
+  tenant_id      TEXT NOT NULL,
+  busca_id       TEXT NOT NULL,
+  iniciada_em    TEXT NOT NULL,
+  concluida_em   TEXT DEFAULT '',
+  status         TEXT DEFAULT 'rodando',  -- rodando|ok|erro
+  lugares        INTEGER DEFAULT 0,       -- devolvidos pela fonte (é o que se paga)
+  novos          INTEGER DEFAULT 0,       -- contatos criados
+  existentes     INTEGER DEFAULT 0,       -- já conhecidos (place_id, telefone, e-mail ou perfil)
+  enriquecidos   INTEGER DEFAULT 0,       -- sites lidos que renderam e-mail/WhatsApp/perfil
+  canais_novos   INTEGER DEFAULT 0,
+  custo_estimado_centavos INTEGER DEFAULT 0,
+  gatilho        TEXT DEFAULT 'agenda',   -- agenda|manual
+  erro           TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_crm_busca_exec ON crm_busca_execucoes(busca_id, iniciada_em);
+
+-- um lugar do Maps = uma linha por tenant (dedupe por place_id entre buscas e varreduras)
+CREATE TABLE IF NOT EXISTS crm_busca_lugares (
+  id            TEXT PRIMARY KEY,
+  tenant_id     TEXT NOT NULL,
+  busca_id      TEXT NOT NULL,
+  place_id      TEXT NOT NULL,
+  contato_id    TEXT DEFAULT '',
+  empresa_id    TEXT DEFAULT '',
+  nome          TEXT DEFAULT '',
+  categoria     TEXT DEFAULT '',
+  endereco      TEXT DEFAULT '',
+  site          TEXT DEFAULT '',
+  bairro        TEXT DEFAULT '',        -- regiao/bairro da varredura que achou o lugar
+  enriquecido_em TEXT DEFAULT '',
+  achados       TEXT DEFAULT '{}',        -- JSON {emails, whatsapps, redes, erro}
+  visto_em      TEXT NOT NULL,
+  criado_em     TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_crm_busca_lugar_unico ON crm_busca_lugares(tenant_id, place_id);
+CREATE INDEX IF NOT EXISTS idx_crm_busca_lugar_busca ON crm_busca_lugares(busca_id, criado_em);

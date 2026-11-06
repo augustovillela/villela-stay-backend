@@ -62,6 +62,12 @@ function registrarRotasAgente(app, { requirePublishOrSession, podeCRM }) {
     if (data) appRepo.Tarefas.criar(t.id, { contato_id: c.id, titulo: s(pa.descricao, 200) || 'Follow-up', vence_em: data, origem: 'automacao', obs: MARCA_AGENTE }, autor);
   };
 
+  // conversas classificadas LOCALMENTE (stays\conversas-leads.mjs): chegam só assunto/razão/contagens, nunca texto
+  app.post('/staff/api/vcrm/agente/conversas', ...A, h((req, res) => {
+    const t = tenant();
+    res.json({ ok: true, ...require('./conversas').ingerir(t.id, (req.body || {}).itens, s((req.body || {}).fonte, 40) || 'local') });
+  }));
+
   app.get('/staff/api/vcrm/agente/resumo', ...A, h((req, res) => {
     const t = tenant(); const hoje = hojeISO();
     const um = (sql, ...a) => db.prepare(sql).get(t.id, ...a).n;
