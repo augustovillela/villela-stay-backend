@@ -985,12 +985,19 @@ async function dlgProposta(contatoId) {
 const BUSCA_ST = { aguardando_aprovacao: '⏳ aguardando aprovação', ativa: '🟢 ativa', pausada: '⏸ pausada' };
 const reais = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 let BUSCA_POLL = null;
-async function vBuscas() {
-  carregando();
+function vBuscas() { return renderBuscas(false); }
+let BUSCA_ASSINATURA = '';
+// silencioso = atualização automática enquanto uma busca roda: sem esqueleto de "carregando", sem redesenhar se nada mudou
+async function renderBuscas(silencioso) {
+  if (!silencioso) { carregando(); BUSCA_ASSINATURA = ''; }
   clearInterval(BUSCA_POLL);
   try {
     const d = await api('GET', '/app/buscas');
     const rodando = d.buscas.some(b => b.rodando_desde);
+    const assinatura = JSON.stringify([d.buscas.map(b => [b.id, b.status, b.rodando_desde, b.ultima_em, b.resumo, b.ultima_execucao && [b.ultima_execucao.id, b.ultima_execucao.status, b.ultima_execucao.lugares, b.ultima_execucao.erro]]), d.lugares_no_mes]);
+    if (silencioso && assinatura === BUSCA_ASSINATURA) { agendarPollBuscas(rodando); return; }
+    BUSCA_ASSINATURA = assinatura;
+    const abertos = silencioso && $('#bu-lugares') ? $('#bu-lugares').innerHTML : ''; // mantém "O que entrou" aberto
     $('#tela').innerHTML = `
       <div style="display:flex;gap:8px;margin-bottom:10px"><button class="btn peq" id="bu-nova">+ Nova busca</button></div>
       <p class="sub" style="text-align:left">Varreduras periódicas de empresas do Google Maps (nome, atividade, endereço). E-mail e WhatsApp quase nunca estão no Maps: o CRM lê o <b>site público</b> da empresa e marca de onde veio cada dado. Quem entra aqui <b>não deu consentimento</b> (base: legítimo interesse B2B, com opt-out por canal) e <b>nada é enviado sozinho</b> — a abordagem é por campanha, com você aprovando.</p>
@@ -1027,8 +1034,15 @@ async function vBuscas() {
       if (!confirm(`Montar a campanha dos contatos com a tag "${x.dataset.tag}" (e-mail e WhatsApp)?\n\nEla nasce em RASCUNHO e NADA é enviado: a lista passa pela sua aprovação e cada envio é manual.`)) return;
       try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s).`); navegar('campanhas'); } catch (e) { avisar(e); }
     });
-    if (rodando) { const meu = SEQ; BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); vBuscas(); }, 8000); }
-  } catch (e) { erroTela(e); }
+    if (abertos && $('#bu-lugares')) $('#bu-lugares').innerHTML = abertos;
+    agendarPollBuscas(rodando);
+  } catch (e) { if (!silencioso) erroTela(e); else agendarPollBuscas(true); }
+}
+function agendarPollBuscas(rodando) {
+  clearInterval(BUSCA_POLL);
+  if (!rodando) return;
+  const meu = SEQ;
+  BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); renderBuscas(true); }, 10000);
 }
 // roda uma busca aprovada: em créditos mostra o teto do CRM e só segue com o aceite; com token próprio/conta interna não há cobrança aqui
 async function rodarBuscaPaga(id, custoFonte) {
@@ -1411,7 +1425,7 @@ async function pontuarLeads(id) {
     if (box) box.textContent = `✨ ${r.resultado.itens.length} lead(s) pontuado(s) (só os 25 primeiros por vez). É uma sugestão: a decisão é sua. ${r.uso.cobrado}`;
   } catch (e) { if (box) box.textContent = e.message; else avisar(e); }
 }
-let CAP_POLL = null;
+let CAP_POLL = null, CAP_SIG = '';
 async function carregarBuscasArea(acompanhar) {
   clearInterval(CAP_POLL);
   const box = $('#cp-buscas-area'); if (!box) return;
@@ -1419,6 +1433,10 @@ async function carregarBuscasArea(acompanhar) {
     const d = await api('GET', '/app/buscas');
     const minhas = d.buscas.filter((b) => b.canal_alvo === CAP_AREA);
     const rodando = minhas.some((b) => b.rodando_desde);
+    // atualização automática: só redesenha se algo mudou (senão a tela pisca e fecha o "O que entrou")
+    const sig = JSON.stringify(minhas.map((b) => [b.id, b.status, b.rodando_desde, b.resumo, b.ultima_execucao && [b.ultima_execucao.id, b.ultima_execucao.status, b.ultima_execucao.lugares, b.ultima_execucao.erro]]));
+    if (acompanhar === 'auto' && box.dataset.sig === sig) { if (rodando) CAP_POLL = setInterval(() => carregarBuscasArea('auto'), 10000); return; }
+    box.dataset.sig = sig; // a caixa é nova a cada troca de área: a assinatura vive nela
     box.innerHTML = minhas.length ? `<h3 style="margin:16px 0 6px">Suas buscas de ${esc(CANAIS_UI[CAP_AREA])}</h3>` + minhas.map((b) => `<div class="card"><b>${esc(b.nome)}</b> <span class="chip">${BUSCA_ST[b.status] || esc(b.status)}</span>
       <p class="sub" style="text-align:left;margin:6px 0">${b.resumo.lugares || 0} lugar(es) · ${b.resumo.contatos || 0} contato(s) · <b>${b.resumo.aproveitaveis != null ? b.resumo.aproveitaveis : 0} com ${esc(CANAIS_UI[CAP_AREA])}</b> (aproveitáveis)${b.custo_total_cobrado_milesimos ? ' · cobrado: ' + milR(b.custo_total_cobrado_milesimos) : ''}
       ${b.ultima_execucao ? '<br>Última: ' + esc(b.ultima_execucao.status) + (b.ultima_execucao.erro ? ' — ' + esc(b.ultima_execucao.erro) : '') : ''}${b.rodando_desde ? '<br><b>⏳ Rodando agora…</b>' : ''}</p>
@@ -1429,7 +1447,7 @@ async function carregarBuscasArea(acompanhar) {
       if (!confirm('Montar a campanha dos contatos desta busca? Ela nasce em RASCUNHO e NADA é enviado: você aprova a lista e cada envio é manual (redes sociais são assistidas).')) return;
       try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: ($('#cp-msgtxt') && $('#cp-msgtxt').value.trim()) || 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { avisar(e); }
     });
-    if (rodando || acompanhar) { const meu = SEQ; CAP_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'captura') return clearInterval(CAP_POLL); carregarBuscasArea(); }, 8000); }
+    if (rodando || acompanhar) { const meu = SEQ; CAP_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'captura') return clearInterval(CAP_POLL); carregarBuscasArea('auto'); }, 10000); }
     if (!rodando && acompanhar) { clearInterval(CAP_POLL); }
   } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
