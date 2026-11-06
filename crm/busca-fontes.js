@@ -61,14 +61,18 @@ function inputApify(busca) {
   const input = {
     searchStringsArray: (Array.isArray(busca.termos) && busca.termos.length ? busca.termos : [busca.termo]),
     maxCrawledPlacesPerSearch: busca.max_resultados,
-    language: 'pt-BR', skipClosedPlaces: true,
-    scrapeContacts: false, scrapeSocialMediaProfiles: { facebooks: false, instagrams: false, youtubes: false, tiktoks: false, twitters: false },
-    maxReviews: 0, maxImages: 0,
+    // Entrada MÍNIMA de propósito: os campos de "add-on ($)" do actor (skipClosedPlaces, maxReviews, maxImages,
+    // scrapeSocialMediaProfiles…) são cobrados à parte, e scrapeSocialMediaProfiles exige scrapeContacts ligado —
+    // mandá-lo com scrapeContacts=false derrubou a corrida inteira (run FAILED, 06/11/2026). Lugar fechado a gente
+    // descarta em normalizarApify; o e-mail vem do site, por nós.
+    language: 'pt-BR', countryCode: 'br',
+    scrapeContacts: false,
   };
   if (busca.lat != null && busca.lng != null && busca.raio_m) {
     input.customGeolocation = { type: 'Point', coordinates: [busca.lng, busca.lat], radiusKm: Math.max(0.1, busca.raio_m / 1000) };
   } else if (busca.local_texto) {
-    input.locationQuery = busca.local_texto;
+    // o actor prefere formato simples ("Lago Sul, Brasília, DF"); " - DF" atrapalha o geocoder
+    input.locationQuery = String(busca.local_texto).replace(/\s+-\s+/g, ', ');
   }
   return input;
 }
