@@ -46,7 +46,7 @@ const FLAGS_SEED = [
 // ---- PLANOS (seed; preços PROVISÓRIOS, editáveis no painel) ----
 const PLANOS_SEED = [
   {
-    slug: 'trial', nome: 'Teste grátis (15 dias)', descricao: 'Avaliação completa por 15 dias, sem cartão.',
+    slug: 'trial', nome: 'Avaliação (15 dias)', descricao: 'Avaliação completa por 15 dias, sem cartão.',
     preco_centavos: 0, ordem: 0,
     limites: { contatos: 500, usuarios: 3, funis: 5, campanhas_mes: 3, ia_mes: 30, templates: 30 },
     modulos: MODULOS_KEYS, flags: { automacoes: true, ia: true, api_publica: false, whatsapp_api: false, white_label: false },

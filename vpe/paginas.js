@@ -124,7 +124,7 @@ function landing() {
   <h2>Do primeiro projeto à operação completa</h2>
   <div class="grid g3">
     ${planos.map(p => `<div class="card plano">${p.slug === 'professional' ? '<div><span class="badge">Mais escolhido</span></div>' : ''}
-      <h3>${esc(p.nome)}</h3><div class="preco">${brl(p.preco_centavos)}</div>
+      <h3>${esc(p.nome)}</h3><div class="preco">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos)}</div>
       <ul>
         <li><b>${p.limites.usuarios || 'Sob medida'}</b> usuários</li>
         <li><b>${p.limites.projetos || 'Sob medida'}</b> projetos</li>

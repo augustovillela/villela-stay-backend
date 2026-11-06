@@ -24,6 +24,8 @@ db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 
 // ---- migrações (ALTERs; roda uma vez cada) ----
 const MIGRACOES = [
+  // plano de teste com o mesmo nome em todos os sistemas (Augusto, 05/11/2026)
+  { nome: '2026-11-05-avaliacao-nome', sql: "UPDATE plans SET nome = 'Avaliação (15 dias)' WHERE slug = 'trial';" },
   // marco 3 (Stays): rastrear origem e id externo de imóveis/reservas importados.
   // Colunas adicionadas por ALTER (as tabelas app_* já existem em produção); por
   // isso NÃO ficam no CREATE do schema.sql — este é o único ponto que as cria.

@@ -71,6 +71,19 @@ function teste(nome, cond) {
   // ---------- cadastro / login ----------
   let r = await req('POST', '/vpe/api/cadastro', { body: { empresa: 'Eventos Alfa', nome: 'Ana', email: 'ana@alfa.com', senha: 'senha1234' }, jar: 'anaA' });
   teste('cadastro tenant A (trial)', r.status === 200 && r.dados.tenant.slug === 'eventos-alfa');
+  const tenantAid = r.dados.tenant;
+  // ---------- plano "Avaliação (15 dias)" (padronização 05/11/2026) ----------
+  {
+    const rp = require('./repo');
+    const tr = rp.planoPorSlug('trial'), prof = rp.planoPorSlug('professional');
+    teste('plano Avaliação (15 dias): R$ 0 e limites idênticos aos do Professional',
+      !!tr && tr.nome === 'Avaliação (15 dias)' && tr.preco_centavos === 0 && JSON.stringify(tr.limites) === JSON.stringify(prof.limites));
+    const pA = rp.planoDoTenant(tenantAid.id);
+    teste('cadastro novo começa no plano Avaliação (15 dias), em trial', !!pA && pA.slug === 'trial' && pA.subscription.status === 'trial');
+    teste('Avaliação não é plano vendável (fora da lista de assinatura)', !rp.listarPlanos().filter(p => p.preco_centavos > 0).some(p => p.slug === 'trial'));
+    const html = await (await fetch(BASE + '/vpe')).text();
+    teste('landing mostra a linha Avaliação com "15 dias grátis"', html.includes('Avaliação (15 dias)') && html.includes('15 dias grátis'));
+  }
   r = await req('POST', '/vpe/api/cadastro', { body: { empresa: 'Construtora Beta', nome: 'Bob', email: 'bob@beta.com', senha: 'senha1234' }, jar: 'bobB' });
   teste('cadastro tenant B', r.status === 200);
   r = await req('GET', '/vpe/api/me', { jar: 'anaA' });

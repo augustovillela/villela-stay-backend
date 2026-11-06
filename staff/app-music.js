@@ -110,16 +110,16 @@ async function muAssinaturas(alvo) {
     <div class="cards">
       ${muCard('Assinantes pagantes', d.ativas, 'status ativa')}
       ${muCard('Receita mensal', reais(d.receita_mensal_cents), 'soma das ativas')}
-      ${muCard('Preço atual', reais(d.plano.preco_cents), 'tolerância de ' + d.plano.carencia_dias + ' dia(s)')}
+      ${muCard('A partir de', reais(d.plano.preco_cents), 'Starter · tolerância de ' + d.plano.carencia_dias + ' dia(s)')}
       ${muCard('Cobrança', d.cobranca_ligada ? 'ligada' : 'desligada', d.cobranca_ligada ? 'Mercado Pago' : 'falta MP_ACCESS_TOKEN')}
     </div>
     <div class="aviso obs" style="padding:10px 14px;border-left:3px solid #C9A227;background:#FDF6E3;border-radius:8px;margin:10px 0">
       O Musique é <b>pago</b>: teste grátis para conta nova e, depois, assinatura — que inclui a <b>cortesia dos cursos de música da Academia</b> pelo mesmo e-mail (confirmado no Musique),
       enquanto estiver ativa. Mudar o preço vale para assinaturas <b>novas</b>: o Mercado Pago fixa o valor de cada uma.
     </div>
-    <h3>Preço e tolerância</h3>
+    <h3>Preço dos planos e tolerância</h3>
     <div class="barra">
-      <label>Preço mensal (R$) <input id="mu-preco" type="number" step="0.01" min="1" value="${(d.plano.preco_cents / 100).toFixed(2)}" style="max-width:120px"></label>
+      ${(d.planos || []).map(p => `<label>${esc(p.nome)} · ${p.vagas} pessoa(s) (R$/mês) <input class="mu-preco-plano" data-slug="${esc(p.slug)}" type="number" step="0.01" min="1" value="${(p.preco_cents / 100).toFixed(2)}" style="max-width:110px"></label>`).join('')}
       <label>Tolerância (dias) <input id="mu-car" type="number" min="0" max="60" value="${d.plano.carencia_dias}" style="max-width:80px"></label>
       <label>Teste grátis (dias) <input id="mu-teste" type="number" min="0" max="90" value="${d.plano.teste_dias}" style="max-width:80px"></label>
       <button class="btn" id="mu-plano">Salvar</button>
@@ -136,7 +136,8 @@ async function muAssinaturas(alvo) {
              : '<p class="vazio">Nenhuma assinatura ainda.</p>'}`;
   $('#mu-plano').onclick = async () => {
     try {
-      await api('PUT', '/music/assinaturas/plano', { preco_cents: Math.round(Number($('#mu-preco').value) * 100), carencia_dias: Number($('#mu-car').value), teste_dias: Number($('#mu-teste').value) });
+      const planos = {}; document.querySelectorAll('.mu-preco-plano').forEach(i => { planos[i.dataset.slug] = Math.round(Number(i.value) * 100); });
+      await api('PUT', '/music/assinaturas/plano', { planos, carencia_dias: Number($('#mu-car').value), teste_dias: Number($('#mu-teste').value) });
       muAvisar('Plano salvo. Vale para assinaturas novas.'); muAssinaturas(alvo);
     } catch (e) { muAvisar(e.message); }
   };

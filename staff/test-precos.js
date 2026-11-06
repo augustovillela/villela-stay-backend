@@ -17,7 +17,7 @@ const banco = {
   '/vpe/planos': { planos: [{ id: 'p1', slug: 'starter', nome: 'Starter', preco_centavos: 14900, ativo: 1 }] },
   '/finance/planos': { planos: [{ id: 'f1', slug: 'essencial', nome: 'Essencial', precoCents: 14900, publico: true },
     { id: 'f2', slug: 'trial', nome: 'Avaliação', precoCents: 0, publico: false }] },
-  '/music/assinaturas': { plano: { preco_cents: 25000 } },
+  '/music/assinaturas': { planos: [{ slug: 'starter', nome: 'Starter', vagas: 1, preco_cents: 3900 }, { slug: 'professional', nome: 'Professional', vagas: 3, preco_cents: 5900 }] },
   '/origena/precos': { planos: [{ id: 'o1', slug: 'familia', nome: 'Família', preco_centavos: 3990, preco_anual_centavos: 39900, ativo: true }] },
   '/closet/dashboard': { planos: [{ id: 'k1', slug: 'premium', nome: 'Premium', preco_centavos: 3900, ativo: 1 }] },
 };
@@ -34,7 +34,7 @@ async function api(metodo, caminho, corpo) {
     banco[k].planos.find(p => p.id === m[2]).preco_centavos = corpo.preco_centavos; return { ok: true };
   }
   if (caminho.startsWith('/finance/planos/')) { banco['/finance/planos'].planos.find(p => p.slug === caminho.split('/').pop()).precoCents = corpo.precoCents; return { ok: true }; }
-  if (caminho === '/music/assinaturas/plano') { banco['/music/assinaturas'].plano.preco_cents = corpo.preco_cents; return { ok: true }; }
+  if (caminho === '/music/assinaturas/plano') { for (const [k, v] of Object.entries(corpo.planos)) banco['/music/assinaturas'].planos.find(p => p.slug === k).preco_cents = v; return { ok: true }; }
   if (caminho.startsWith('/origena/planos/')) {
     const p = banco['/origena/precos'].planos[0];
     p.preco_centavos = corpo.preco_centavos; if (corpo.preco_anual_centavos != null) p.preco_anual_centavos = corpo.preco_anual_centavos; return { ok: true };
@@ -64,7 +64,8 @@ const PRC = sandbox.PRC;
   await PRC.abrir();
   for (const s of PRC.sistemas) assert.ok(PRC.cache[s.id].linhas && PRC.cache[s.id].linhas.length, 'sem planos: ' + s.id);
   assert.strictEqual(PRC.cache.finance.linhas[1].oculto, true, 'plano oculto do Finance deve aparecer marcado');
-  assert.strictEqual(PRC.cache.music.linhas[0].centavos, 25000);
+  assert.strictEqual(PRC.cache.music.linhas[0].centavos, 3900);
+  assert.strictEqual(PRC.cache.music.linhas.length, 2, 'Musique lista todos os planos');
   assert.ok(els['prc-corpo'].innerHTML.includes('Villela Finance'));
 
   // gravação em cada sistema: valor novo em reais -> o campo certo de cada rota
@@ -80,7 +81,7 @@ const PRC = sandbox.PRC;
   const eq = (a, b, m) => assert.strictEqual(JSON.stringify(a), JSON.stringify(b), m);
   const g = (re) => chamadas.filter(c => c.metodo !== 'GET' && re.test(c.caminho))[0];
   eq(g(/finance/).corpo, { precoCents: 6500 }, 'finance usa precoCents e o slug na URL');
-  eq(g(/music/).corpo, { preco_cents: 6500 }, 'music usa PUT com preco_cents');
+  eq(g(/music/).corpo, { planos: { starter: 6500 } }, 'music usa PUT com o mapa de planos');
   assert.strictEqual(g(/music/).metodo, 'PUT');
   eq(g(/origena/).corpo, { preco_centavos: 5990, preco_anual_centavos: 59900 });
   eq(g(/vcrm/).corpo, { preco_centavos: 6500 }, 'só o preço vai no PATCH');

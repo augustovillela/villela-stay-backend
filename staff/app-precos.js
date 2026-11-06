@@ -32,12 +32,10 @@ const PRC = {
         id: p.slug, nome: p.nome, slug: p.slug, ativo: p.publico !== false, centavos: p.precoCents, oculto: p.publico === false })),
       gravar: (l, c) => api('PATCH', '/finance/planos/' + l.id, { precoCents: c }) },
     { id: 'music', nome: '🎵 Musique', url: 'musique.villelastay.com.br',
-      aviso: 'Preço do plano Individual. O plano Banda (5 vagas) é calculado a partir dele, com 30% de desconto.',
-      ler: async () => {
-        const r = await api('GET', '/music/assinaturas');
-        return [{ id: 'individual', nome: 'Individual', slug: 'individual', ativo: true, centavos: r.plano.preco_cents }];
-      },
-      gravar: (l, c) => api('PUT', '/music/assinaturas/plano', { preco_cents: c }) },
+      aviso: 'Os planos do Musique diferem pelo número de pessoas (Starter 1, Professional 3, Business 5, Enterprise 10). Preço novo vale para quem assinar depois.',
+      ler: async () => (await api('GET', '/music/assinaturas')).planos.map(p => ({
+        id: p.slug, nome: p.nome + ' · ' + p.vagas + ' pessoa(s)', slug: p.slug, ativo: true, centavos: p.preco_cents })),
+      gravar: (l, c) => api('PUT', '/music/assinaturas/plano', { planos: { [l.id]: c } }) },
     { id: 'origena', nome: '🌳 Origena', url: 'origena.villelastay.com.br',
       aviso: 'Anual = preço pago uma vez por ano (hoje, 10 mensalidades). Pacotes de créditos ficam na aba 🌳 Origena → Preços.',
       ler: async () => (await api('GET', '/origena/precos')).planos.map(p => ({

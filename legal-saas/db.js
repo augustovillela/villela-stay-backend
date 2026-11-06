@@ -22,6 +22,8 @@ db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 
 // ---- migrações (ALTERs; roda uma vez cada) ----
 const MIGRACOES = [
+  // plano de teste com o mesmo nome em todos os sistemas (Augusto, 05/11/2026)
+  { nome: '2026-11-05-avaliacao-nome', sql: "UPDATE plans SET nome = 'Avaliação (15 dias)' WHERE slug = 'trial';" },
   // acrescentar no fim quando evoluir o schema
   // teste grátis padronizado em 15 dias (Augusto, 05/11/2026): corrige só o texto do plano 'trial' já gravado
   { nome: '2026-11-05-trial-15-dias', sql: "UPDATE plans SET nome = replace(nome, '14 dias', '15 dias'), descricao = replace(descricao, '14 dias', '15 dias') WHERE slug = 'trial';" },

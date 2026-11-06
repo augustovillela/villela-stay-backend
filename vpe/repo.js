@@ -23,11 +23,22 @@ const PLANOS_SEED = [
   { slug: 'business', nome: 'Business', preco_centavos: 79900, ordem: 3, descricao: 'Operação completa com API, automações e dashboards avançados.', limites: { usuarios: 60, projetos: 300, eventos_mes: 100, ia_consultas_mes: 1500, automacoes: 60, portal_cliente: true, api: true } },
   { slug: 'enterprise', nome: 'Enterprise', preco_centavos: 0, ordem: 4, descricao: 'Limites sob medida, SSO e suporte dedicado. Sob consulta.', limites: { usuarios: 0, projetos: 0, eventos_mes: 0, ia_consultas_mes: 0, automacoes: 0, portal_cliente: true, api: true } },
 ];
+const _PROF_SEED = PLANOS_SEED.find(p => p.slug === 'professional');
+// Plano de avaliação: mesma linha "Avaliação (15 dias)" dos outros sistemas, R$ 0, com os
+// MESMOS limites do Professional (o teste sempre rodou nele). Não é vendável (preço 0).
+PLANOS_SEED.unshift({ slug: 'trial', nome: 'Avaliação (15 dias)', preco_centavos: 0, ordem: 0,
+  descricao: 'Avaliação completa por 15 dias, sem cartão.', limites: { ..._PROF_SEED.limites } });
 function semearPlanos() {
   for (const p of PLANOS_SEED) {
     if (db.prepare('SELECT 1 FROM plans WHERE slug = ?').get(p.slug)) continue;
+    // A linha de avaliação copia os limites que o Professional TEM no banco (se o Augusto os editou).
+    let limites = p.limites;
+    if (p.slug === 'trial') {
+      const prof = db.prepare("SELECT limites FROM plans WHERE slug = 'professional'").get();
+      if (prof && prof.limites) limites = j.parse(prof.limites, p.limites);
+    }
     db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, limites, ativo, ordem, criado_em) VALUES (?,?,?,?,?,?,1,?,?)')
-      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, j.str(p.limites), p.ordem, nowISO());
+      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, j.str(limites), p.ordem, nowISO());
   }
 }
 const listarPlanos = (soAtivos = true) =>
@@ -114,14 +125,14 @@ function slugDisponivel(base) {
 const obterTenant = (id) => db.prepare('SELECT * FROM tenants WHERE id = ?').get(String(id));
 const tenantPorSlug = (slug) => db.prepare('SELECT * FROM tenants WHERE slug = ?').get(String(slug));
 
-function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, cortesia = false, planoSlug = 'professional', trialDias = 15 }) {
+function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, cortesia = false, planoSlug = 'trial', trialDias = 15 }) {
   const em = emailNorm(email);
   if (!s(empresa, 120)) throw new Error('Informe o nome da empresa.');
   if (!s(nome, 120)) throw new Error('Informe o seu nome.');
   if (!emailOK(em)) throw new Error('E-mail inválido.');
   if (String(senha || '').length < 8) throw new Error('A senha precisa de pelo menos 8 caracteres.');
   if (cortesia) interno = true; // cortesia herda o gate do interno (vitalício, sem billing, sem 402)
-  const plano = planoPorSlug(planoSlug);
+  const plano = planoPorSlug(planoSlug) || (planoSlug === 'trial' ? planoPorSlug('professional') : null);
   if (!plano) throw new Error('Planos não configurados.');
   return transacao(() => {
     const agora = nowISO();

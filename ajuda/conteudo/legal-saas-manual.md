@@ -118,7 +118,7 @@ Os planos vigentes estão sempre em `/juridico#planos`. Os valores de lançament
 
 | Plano | Preço | Indicado para |
 |---|---|---|
-| Trial (15 dias) | Grátis, sem cartão | Avaliação completa |
+| Avaliação (15 dias) | Grátis, sem cartão | Avaliação completa |
 | Essencial | R$ 149/mês | Advogado autônomo e bancas pequenas |
 | Profissional | R$ 349/mês | Escritório em crescimento, com IA e portal do cliente |
 | Escritório | R$ 799/mês | Banca estabelecida: tudo liberado, API e marca própria |

@@ -323,21 +323,19 @@ ${corpo}
 
 // Preço da assinatura como a landing e os termos mostram: vem da config
 // (o staff muda sem deploy), com o padrão aprovado pelo Augusto.
-function planoBanda() {
-  try {
-    const a = require('./assinatura'); const p = a.plano(); const c = a.precoBanda(p);
-    const r = (x) => 'R$ ' + (x / 100).toFixed(2).replace('.', ',');
-    return { vagas: p.banda_vagas, desconto: p.banda_desconto_pct, preco: r(c), porPessoa: r(Math.round(c / p.banda_vagas)) };
-  } catch (_) { return { vagas: 5, desconto: 30, preco: 'R$ 875,00', porPessoa: 'R$ 175,00' }; }
+const brlMusic = (x) => 'R$ ' + (x / 100).toFixed(2).replace('.', ',');
+/** Os planos pagos como a landing mostra (preço vem da config; o staff muda sem deploy). */
+function planosPagos() {
+  try { return require('./assinatura').catalogo(); } catch (_) {
+    return [{ slug: 'starter', nome: 'Starter', preco_cents: 3900, vagas: 1 }, { slug: 'professional', nome: 'Professional', preco_cents: 5900, vagas: 3 },
+      { slug: 'business', nome: 'Business', preco_cents: 6900, vagas: 5 }, { slug: 'enterprise', nome: 'Enterprise', preco_cents: 9900, vagas: 10 }];
+  }
 }
 function diasDeTeste() {
   try { return require('./assinatura').plano().teste_dias; } catch (_) { return 15; }
 }
-function precoAssinatura() {
-  let c = 25000;
-  try { c = require('./assinatura').plano().preco_cents; } catch (_) { /* padrão */ }
-  return 'R$ ' + (c / 100).toFixed(2).replace('.', ',');
-}
+/** Menor preço de assinatura (o do Starter), para o "a partir de". */
+function precoAssinatura() { return brlMusic(planosPagos()[0].preco_cents); }
 
 function registrarPaginas(app) {
   // ---- landing ----
@@ -393,26 +391,23 @@ function registrarPaginas(app) {
               <li><a href="/music/cifras-publicas">Cifras públicas</a> que os músicos abriram para todos</li></ul>
             <a class="btn claro" href="/music/ferramentas" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Abrir as ferramentas</a>
           </div>
-          <div class="plano destaque">
-            <span class="plano-nome">Individual</span>
-            <div class="plano-preco">${esc(precoAssinatura())}<small>/mês</small></div>
-            <p>${esc(String(diasDeTeste()))} dias grátis para testar, sem cartão. Depois:</p>
-            <ul><li>Acervo de cifras, transposição e dicionário de acordes</li>
-              <li>Banda, setlists, Modo Maestro e palco sem internet</li>
-              <li>Academia: trilhas, exercícios, progresso, escolas e turmas</li>
-              <li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
-              <li>Cancele quando quiser e use até o fim do mês pago</li></ul>
-            <a class="btn" href="/music/entrar#criar">Começar o teste grátis</a>
-          </div>
           <div class="plano">
-            <span class="plano-nome">Banda · ${esc(String(planoBanda().vagas))} assinaturas</span>
-            <div class="plano-preco">${esc(planoBanda().preco)}<small>/mês</small></div>
-            <p><b>${esc(String(planoBanda().desconto))}% de desconto</b> contratando as ${esc(String(planoBanda().vagas))} de uma vez (${esc(planoBanda().porPessoa)} por pessoa).</p>
-            <ul><li>Tudo do plano individual para cada integrante, com os cursos</li>
-              <li>Quem contrata escolhe quem ocupa as vagas e troca quando quiser</li>
-              <li>Uma cobrança só, no Mercado Pago</li></ul>
-            <a class="btn claro" href="/music/app#conta" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Contratar para a banda</a>
+            <span class="plano-nome">Avaliação (15 dias)</span>
+            <div class="plano-preco">R$ 0</div>
+            <p>${esc(String(diasDeTeste()))} dias grátis para testar, sem cartão, com tudo liberado.</p>
+            <a class="btn claro" href="/music/entrar#criar" style="background:transparent;color:var(--navy);border:1px solid var(--navy)">Começar o teste grátis</a>
           </div>
+          ${planosPagos().map((p) => `<div class="plano${p.slug === 'professional' ? ' destaque' : ''}">
+            <span class="plano-nome">${esc(p.nome)}</span>
+            <div class="plano-preco">${esc(brlMusic(p.preco_cents))}<small>/mês</small></div>
+            <p>${p.vagas === 1 ? '<b>1 pessoa</b>' : `<b>Até ${esc(String(p.vagas))} pessoas</b> (${esc(brlMusic(Math.round(p.preco_cents / p.vagas)))} por pessoa)`}, cada uma com tudo liberado.</p>
+            <ul><li>Acervo de cifras, transposição, banda, setlists e Modo Maestro</li>
+              <li>Academia: trilhas, exercícios, escolas e turmas</li>
+              <li><b>Todos os cursos de música da Academia Villela</b>, na conta da Academia com o seu e-mail</li>
+              ${p.vagas > 1 ? '<li>Quem contrata escolhe quem ocupa as vagas e troca quando quiser</li>' : ''}
+              <li>Cancele quando quiser e use até o fim do mês pago</li></ul>
+            <a class="btn" href="/music/app#conta">Assinar o ${esc(p.nome)}</a>
+          </div>`).join('')}
         </div>
       </div>
 

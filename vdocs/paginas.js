@@ -253,7 +253,7 @@ function landing() {
   <div class="hx-head"><div class="hx-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 15 dias grátis no nível Professional, sem cartão de crédito.</p></div>
   <div class="dx-plans">
     ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
-      <h3>${esc(p.nome)}</h3><div class="dx-preco">${brl(p.preco_centavos)}${Number(p.preco_centavos) ? ' <small>/mês</small>' : ''}</div>
+      <h3>${esc(p.nome)}</h3><div class="dx-preco">${p.slug === 'trial' ? '15 dias grátis <small>sem cartão</small>' : brl(p.preco_centavos) + (Number(p.preco_centavos) ? ' <small>/mês</small>' : '')}</div>
       <ul>${planoBullets(p)}</ul>
       <a class="btn${p.slug === 'professional' ? '' : ' btn-ghost'}" href="/vdocs/cadastro">Testar grátis</a></div>`).join('')}
   </div>
@@ -346,7 +346,7 @@ function precos() {
   <h2>Escolha o tamanho da sua operação</h2>
   <p style="color:var(--suave)">Todos os planos começam com <b>15 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
   <div style="overflow-x:auto"><table>
-    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${brl(p.preco_centavos)}</span></th>`).join('')}</tr>
+    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos)}</span></th>`).join('')}</tr>
     ${linhas.map(([rot, fn]) => `<tr><td><b>${rot}</b></td>${planos.map(p => `<td>${fn(p)}</td>`).join('')}</tr>`).join('')}
     <tr><td></td>${planos.map(() => `<td><a class="btn" style="padding:9px 16px" href="/vdocs/cadastro">Testar grátis</a></td>`).join('')}</tr>
   </table></div>

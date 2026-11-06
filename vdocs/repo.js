@@ -22,11 +22,22 @@ const PLANOS_SEED = [
   { slug: 'business', nome: 'Business', preco_centavos: 59900, ordem: 3, descricao: 'Para operações com volume e integrações via API.', limites: { usuarios: 60, armazenamento_mb: 204800, documentos: 100000, ocr_paginas_mes: 15000, ia_consultas_mes: 1500, workflows_ativos: 50, api: true, sso: false } },
   { slug: 'enterprise', nome: 'Enterprise', preco_centavos: 0, ordem: 4, descricao: 'Limites customizados, SSO e suporte dedicado. Sob consulta.', limites: { usuarios: 0, armazenamento_mb: 0, documentos: 0, ocr_paginas_mes: 0, ia_consultas_mes: 0, workflows_ativos: 0, api: true, sso: true } }, // 0 = ilimitado/negociado
 ];
+const _PROF_SEED = PLANOS_SEED.find(p => p.slug === 'professional');
+// Plano de avaliação: mesma linha "Avaliação (15 dias)" dos outros sistemas, R$ 0, com os
+// MESMOS limites do Professional (o teste sempre rodou nele). Não é vendável (preço 0).
+PLANOS_SEED.unshift({ slug: 'trial', nome: 'Avaliação (15 dias)', preco_centavos: 0, ordem: 0,
+  descricao: 'Avaliação completa por 15 dias, sem cartão.', limites: { ..._PROF_SEED.limites } });
 function semearPlanos() {
   for (const p of PLANOS_SEED) {
     if (db.prepare('SELECT 1 FROM plans WHERE slug = ?').get(p.slug)) continue;
+    // A linha de avaliação copia os limites que o Professional TEM no banco (se o Augusto os editou).
+    let limites = p.limites;
+    if (p.slug === 'trial') {
+      const prof = db.prepare("SELECT limites FROM plans WHERE slug = 'professional'").get();
+      if (prof && prof.limites) limites = j.parse(prof.limites, p.limites);
+    }
     db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, limites, ativo, ordem, criado_em) VALUES (?,?,?,?,?,?,1,?,?)')
-      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, j.str(p.limites), p.ordem, nowISO());
+      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, j.str(limites), p.ordem, nowISO());
   }
 }
 const listarPlanos = (soAtivos = true) =>
@@ -126,7 +137,7 @@ function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_
   }
   const plano = ehCortesia
     ? (planoPorSlug('enterprise') || planoPorSlug('business') || planoPorSlug('professional'))
-    : planoPorSlug('professional'); // trial roda no Professional
+    : (planoPorSlug('trial') || planoPorSlug('professional')); // trial: plano "Avaliação (15 dias)" (limites do Professional)
   if (!plano) throw new Error('Planos não configurados.');
   return transacao(() => {
     const agora = nowISO();

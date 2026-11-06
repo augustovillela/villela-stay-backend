@@ -617,7 +617,7 @@ const SISTEMAS = [
     ]
   },
   // ------------------------------------------------------------- MUSIQUE
-  // Lançado em 28/09/2026 (ordem do Augusto). PAGO: R$ 250/mês com 14 dias
+  // Lançado em 28/09/2026 (ordem do Augusto). PAGO: planos a partir de R$ 39/mês com 15 dias
   // de teste grátis sem cartão; a assinatura inclui a cortesia dos cursos de
   // música da Academia Villela. Nada é de graça depois do teste, por ora.
   {
@@ -680,16 +680,16 @@ const SISTEMAS = [
       'Está no ar e em uso: é onde o fundador do grupo guarda e toca o próprio repertório, com as cifras transpostas e o dicionário de acordes montado a partir delas.',
       'It is live and in use: it is where the group’s founder keeps and plays an entire repertoire, with transposed charts and the chord dictionary built from them.',
       'Está en el aire y en uso: es donde el fundador del grupo guarda y toca su propio repertorio, con los cifrados transpuestos y el diccionario de acordes armado a partir de ellos.'),
-    preco: { valor: 250, modelo: 'assinatura' },
+    preco: { valor: 39, modelo: 'assinatura' },
     faq: [
       [T('Como funciona o teste e o que a assinatura inclui?', 'How does the trial work and what does the subscription include?', '¿Cómo funciona la prueba y qué incluye la suscripción?'),
-       T('São 15 dias grátis, sem cartão, com tudo liberado. Depois, o Musique custa R$ 250 por mês e inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail enquanto a assinatura estiver ativa.',
-         'You get 14 free days, no card, with everything unlocked. After that, Musique costs R$250 a month and includes every music course at Villela Academy, delivered to the Academy account with the same email while the subscription is active.',
-         'Son 15 días gratis, sin tarjeta, con todo liberado. Después, Musique cuesta R$ 250 al mes e incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo mientras la suscripción esté activa.')],
+       T('São 15 dias grátis, sem cartão, com tudo liberado. Depois, o Musique custa a partir de R$ 39 por mês e inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail enquanto a assinatura estiver ativa.',
+         'You get 15 free days, no card, with everything unlocked. After that, Musique costs from R$39 a month and includes every music course at Villela Academy, delivered to the Academy account with the same email while the subscription is active.',
+         'Son 15 días gratis, sin tarjeta, con todo liberado. Después, Musique cuesta desde R$ 39 al mes e incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo mientras la suscripción esté activa.')],
       [T('Tem plano para banda?', 'Is there a plan for bands?', '¿Hay plan para bandas?'),
-       T('Tem. Contratando 5 assinaturas de uma vez, a banda tem 30% de desconto: R$ 875 por mês (R$ 175 por pessoa). Quem contrata escolhe quem ocupa as vagas e troca quando quiser.',
-         'Yes. Buying 5 subscriptions at once gives the band a 30% discount: R$875 a month (R$175 per person). Whoever buys chooses who takes the seats and can swap them anytime.',
-         'Sí. Contratando 5 suscripciones a la vez, la banda tiene 30% de descuento: R$ 875 al mes (R$ 175 por persona). Quien contrata elige quién ocupa los lugares y los cambia cuando quiera.')],
+       T('Tem. Os planos se diferenciam pelo número de pessoas: Starter (1 pessoa) R$ 39, Professional (até 3) R$ 59, Business (até 5) R$ 69 e Enterprise (até 10) R$ 99 por mês. Quem contrata escolhe quem ocupa as vagas e troca quando quiser.',
+         'Yes. Plans differ by number of people: Starter (1 person) R$39, Professional (up to 3) R$59, Business (up to 5) R$69 and Enterprise (up to 10) R$99 a month. Whoever buys chooses who takes the seats and can swap them anytime.',
+         'Sí. Los planes se diferencian por número de personas: Starter (1 persona) R$ 39, Professional (hasta 3) R$ 59, Business (hasta 5) R$ 69 y Enterprise (hasta 10) R$ 99 al mes. Quien contrata elige quién ocupa los lugares y los cambia cuando quiera.')],
       [T('As cifras que eu importo ficam públicas?', 'Do the charts I import become public?', '¿Los cifrados que importo quedan públicos?'),
        T('Não. Cifra de música de outro autor fica no seu acervo e circula só nas bandas fechadas de que você participa. O Musique não publica nem distribui obra de terceiro.',
          'No. A chart of someone else’s song stays in your library and circulates only within the closed bands you belong to. Musique does not publish or distribute third-party work.',

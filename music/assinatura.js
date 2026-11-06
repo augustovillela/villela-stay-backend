@@ -1,7 +1,7 @@
 // =====================================================================
 // Musique — ASSINATURA (28/09/2026, desenho aprovado pelo Augusto).
 //
-//   • R$ 250,00/mês, preapproval MENSAL hospedado no Mercado Pago (o cartão
+//   • Planos Starter/Professional/Business/Enterprise (R$ 39 a 99/mês), preapproval MENSAL hospedado no Mercado Pago (o cartão
 //     nunca passa por aqui). Preço editável no staff, sem deploy: o Augusto
 //     já avisou que vai rever o valor.
 //   • O app continua TODO grátis. A assinatura dá CORTESIA dos cursos de
@@ -29,14 +29,32 @@ const contas = require('./contas');
 const webhookMP = require('../nucleo/webhook-mp');
 const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
 
-// O Musique é PAGO (Augusto, 28/09/2026): R$ 250/mês, com teste grátis de
+// O Musique é PAGO (Augusto, 28/09/2026; planos novos em 05/11/2026), com teste grátis de
 // 15 dias para conta nova — e para as contas que já existiam no lançamento
 // da cobrança, contados a partir dele. Nada de graça depois do teste.
-// PLANO BANDA (Augusto, 28/09/2026): 5 assinaturas contratadas de uma vez
-// saem com 30% de desconto — 5 × R$ 250 × 0,7 = R$ 875/mês.
-const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 15, nome: 'Musique — assinatura mensal',
-  banda_vagas: 5, banda_desconto_pct: 30 };
-const precoBanda = (p = plano()) => Math.round(p.preco_cents * p.banda_vagas * (1 - p.banda_desconto_pct / 100));
+// PLANOS (Augusto, 05/11/2026): mesmos nomes dos outros sistemas — Avaliação, Starter,
+// Professional, Business e Enterprise — e preços de música (mais baixos que nas outras áreas).
+// O que muda de um plano para outro é o NÚMERO DE PESSOAS: a titular distribui as vagas
+// (mecanismo da antiga "banda"). Todos têm tudo liberado e a cortesia dos cursos da Academia.
+// O preço de cada plano mora na config (`precos_planos`) e o staff muda sem deploy.
+const PLANOS_PADRAO = [
+  { slug: 'starter', nome: 'Starter', preco_cents: 3900, vagas: 1 },
+  { slug: 'professional', nome: 'Professional', preco_cents: 5900, vagas: 3 },
+  { slug: 'business', nome: 'Business', preco_cents: 6900, vagas: 5 },
+  { slug: 'enterprise', nome: 'Enterprise', preco_cents: 9900, vagas: 10 },
+];
+const PLANO_PADRAO = { carencia_dias: 5, teste_dias: 15, nome: 'Musique — assinatura mensal' };
+const NOME_AVALIACAO = 'Avaliação (15 dias)';
+/** Os 4 planos pagos com o preço vigente (config `precos_planos` sobre o padrão). */
+function catalogo(cfg = repo.Config.get('assinatura', {}) || {}) {
+  const ov = cfg.precos_planos || {};
+  return PLANOS_PADRAO.map((x) => ({ ...x, preco_cents: Number.isInteger(ov[x.slug]) ? ov[x.slug] : x.preco_cents }));
+}
+/** Aceita o slug novo e os nomes antigos (individual → starter, banda → business). */
+function planoPorSlug(slug) {
+  const k = { individual: 'starter', banda: 'business' }[slug] || slug;
+  return catalogo().find((x) => x.slug === k) || null;
+}
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
 const novoId = () => crypto.randomBytes(9).toString('base64url');
 
@@ -46,7 +64,7 @@ function contatoDaConta(contaId) {
 }
 const camposDaAssinatura = (a) => [
   ['Assinante', contatoDaConta(a.conta_id)],
-  ['Plano', a.plano === 'banda' ? `banda (${a.vagas} vagas)` : 'individual'],
+  ['Plano', (a.plano_slug || (a.plano === 'banda' ? 'banda' : 'starter')) + (a.vagas > 1 ? ` (${a.vagas} vagas)` : '')],
   ['Valor', reais(a.preco_cents) + '/mês'],
   ['Preapproval MP', a.preapproval_id],
 ];
@@ -163,7 +181,11 @@ function acessoDaConta(contaId) {
 
 class ErroAssinatura extends Error { constructor(m, status = 400) { super(m); this.status = status; } }
 
-const plano = () => ({ ...PLANO_PADRAO, ...(repo.Config.get('assinatura', {}) || {}) });
+const plano = () => {
+  const cfg = repo.Config.get('assinatura', {}) || {};
+  // preco_cents = preço do Starter (compatibilidade com quem lê o plano de entrada)
+  return { ...PLANO_PADRAO, ...cfg, preco_cents: catalogo(cfg)[0].preco_cents };
+};
 const cobrancaLigada = () => !!(_mp && (process.env.MP_ACCESS_TOKEN || _mp.__mock));
 
 function evento(a, tipo, detalhe = '') {
@@ -232,8 +254,9 @@ async function sincronizar(contaId) {
 const sincronizarSemErro = (contaId) => sincronizar(contaId).catch((e) => ({ resultado: 'erro', erro: e.message }));
 
 // ------------------------------------------------------------------ assinar
-async function assinar(contaId, { plano: tipo = 'individual' } = {}) {
-  if (!['individual', 'banda'].includes(tipo)) throw new ErroAssinatura('Plano inválido.');
+async function assinar(contaId, { plano: pedido = 'starter' } = {}) {
+  const escolhido = planoPorSlug(pedido);
+  if (!escolhido) throw new ErroAssinatura('Plano inválido.');
   const c = contas.Contas.porId(contaId);
   if (!c) throw new ErroAssinatura('Conta não encontrada.', 404);
   if (!c.email_verificado) throw new ErroAssinatura('Confirme o seu e-mail antes de assinar: é por ele que os cursos chegam na Academia.');
@@ -241,16 +264,17 @@ async function assinar(contaId, { plano: tipo = 'individual' } = {}) {
   if (atual && (atual.status === 'ativa' || atual.status === 'cortesia')) throw new ErroAssinatura('Você já tem assinatura ativa.');
   if (!cobrancaLigada()) throw new ErroAssinatura('O pagamento online ainda não está ligado. Tente de novo mais tarde.', 503);
   const p = plano();
-  const banda = tipo === 'banda';
-  const valor = banda ? precoBanda(p) : p.preco_cents;
-  const vagas = banda ? p.banda_vagas : 1;
+  const vagas = escolhido.vagas;
+  const banda = vagas > 1;                 // mais de uma pessoa: usa o mecanismo de vagas
+  const tipo = banda ? 'banda' : 'individual';
+  const valor = escolhido.preco_cents;
   if (banda && assinaturaBandaDoTitular(contaId) && assinaturaBandaDoTitular(contaId).status !== 'pendente') throw new ErroAssinatura('Você já tem um plano banda.');
   // Pendente anterior sem pagamento: reaproveita a linha, com link novo.
   const id = atual && atual.status === 'pendente' ? atual.id : novoId();
   const pre = await _mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: banda ? `Musique — plano banda (${vagas} assinaturas)` : p.nome,
+      reason: banda ? `Musique — ${escolhido.nome} (${vagas} assinaturas)` : `Musique — ${escolhido.nome}`,
       external_reference: `musique:${contaId}:${id}`,
       payer_email: c.email,
       back_url: `${_baseSite}/music/app#conta`,
@@ -260,16 +284,16 @@ async function assinar(contaId, { plano: tipo = 'individual' } = {}) {
     }),
   });
   const link = s(pre.init_point || pre.sandbox_init_point, 1000);
-  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: valor, plano: tipo, vagas });
+  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: valor, plano: tipo, plano_slug: escolhido.slug, vagas });
   else {
-    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, plano, vagas, preco_cents, preapproval_id, link, criado_em, atualizado_em)
-      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?, ?, ?)`).run(id, contaId, tipo, vagas, valor, String(pre.id), link, nowISO(), nowISO());
+    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, plano, plano_slug, vagas, preco_cents, preapproval_id, link, criado_em, atualizado_em)
+      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, contaId, tipo, escolhido.slug, vagas, valor, String(pre.id), link, nowISO(), nowISO());
   }
   // A titular ocupa a primeira vaga do plano banda.
   if (banda && !db.prepare("SELECT 1 FROM assinatura_vagas WHERE assinatura_id = ? AND conta_id = ? AND removida_em = ''").get(id, contaId)) {
     db.prepare('INSERT INTO assinatura_vagas (assinatura_id, conta_id, adicionada_em) VALUES (?, ?, ?)').run(id, contaId, nowISO());
   }
-  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: valor, plano: tipo });
+  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: valor, plano: escolhido.slug });
   return { link, assinatura_id: id };
 }
 
@@ -439,7 +463,8 @@ function estadoDaConta(contaId) {
   const uso = acessoDaConta(contaId);
   return {
     plano: { nome: p.nome, preco_cents: p.preco_cents, carencia_dias: p.carencia_dias, teste_dias: p.teste_dias,
-      banda: { vagas: p.banda_vagas, desconto_pct: p.banda_desconto_pct, preco_cents: precoBanda(p) } },
+      avaliacao: { nome: NOME_AVALIACAO, preco_cents: 0, dias: p.teste_dias },
+      planos: catalogo() },
     banda: (() => {
       const t = assinaturaBandaDoTitular(contaId);
       if (t) return { papel: 'titular', assinatura_id: t.id, status: t.status, vagas: t.vagas, ocupadas: vagasDe(t.id) };
@@ -450,7 +475,7 @@ function estadoDaConta(contaId) {
     uso,
     cobranca_ligada: cobrancaLigada(),
     email_verificado: !!(c && c.email_verificado),
-    assinatura: a ? { status: a.status, origem: a.origem, plano: a.plano, vagas: a.vagas, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
+    assinatura: a ? { status: a.status, origem: a.origem, plano: a.plano, plano_slug: a.plano_slug || '', vagas: a.vagas, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
       inadimplente_desde: a.inadimplente_desde, link: a.status === 'pendente' ? a.link : '' } : null,
     acesso: temAcesso(a),
     cortesia_academia: reg && !reg.revogada_em ? { email: reg.email, cursos: reg.cursos, desde: reg.concedida_em } : null,
@@ -467,17 +492,27 @@ function resumoStaff() {
     FROM assinaturas_music a LEFT JOIN contas_music c ON c.id = a.conta_id LEFT JOIN cortesia_academia ca ON ca.conta_id = a.conta_id
     WHERE a.status <> 'cancelada' OR a.atualizado_em > ? ORDER BY a.atualizado_em DESC LIMIT 300`)
     .all(new Date(Date.now() - 60 * 864e5).toISOString());
-  return { plano: p, cobranca_ligada: cobrancaLigada(), por_status: porStatus, ativas: ativas.n, receita_mensal_cents: ativas.c, assinaturas: lista,
+  return { plano: p, planos: catalogo(), cobranca_ligada: cobrancaLigada(), por_status: porStatus, ativas: ativas.n, receita_mensal_cents: ativas.c, assinaturas: lista,
     eventos: db.prepare('SELECT * FROM assinatura_eventos ORDER BY id DESC LIMIT 50').all() };
 }
 
-function definirPlano({ preco_cents, carencia_dias, teste_dias }) {
+function definirPlano({ preco_cents, planos, carencia_dias, teste_dias }) {
   const atual = repo.Config.get('assinatura', {}) || {};
   const novo = { ...atual };
-  if (preco_cents !== undefined) {
-    const v = Math.round(Number(preco_cents));
+  const preco = (x) => {
+    const v = Math.round(Number(x));
     if (!(v >= 100 && v <= 10000000)) throw new ErroAssinatura('Preço inválido.');
-    novo.preco_cents = v;
+    return v;
+  };
+  // Preço por plano: { starter: 3900, professional: 5900, ... } (centavos). `preco_cents` sozinho = Starter.
+  const pedidos = { ...(planos || {}) };
+  if (preco_cents !== undefined) pedidos.starter = preco_cents;
+  if (Object.keys(pedidos).length) {
+    novo.precos_planos = { ...(novo.precos_planos || {}) };
+    for (const [slug, v] of Object.entries(pedidos)) {
+      if (!PLANOS_PADRAO.some((x) => x.slug === slug)) throw new ErroAssinatura('Plano inválido: ' + slug);
+      novo.precos_planos[slug] = preco(v);
+    }
   }
   if (carencia_dias !== undefined) {
     const d = Math.round(Number(carencia_dias));
@@ -494,7 +529,7 @@ function definirPlano({ preco_cents, carencia_dias, teste_dias }) {
 }
 
 module.exports = {
-  configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, precoBanda, adicionarVaga, removerVaga, vagasDe, bandaDaConta, sincronizar, assinar, cancelar, processarWebhook,
+  configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, catalogo, planoPorSlug, NOME_AVALIACAO, adicionarVaga, removerVaga, vagasDe, bandaDaConta, sincronizar, assinar, cancelar, processarWebhook,
   concederCortesia, encerrarCortesia, garantirDono, ciclo, estadoDaConta, resumoStaff, definirPlano, ErroAssinatura,
   _conferirWebhook: webhookMP.conferir,
 };

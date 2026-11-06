@@ -10,7 +10,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
   const { db } = require('./db');
   const hook = (corpo, headers) => req('POST', '/music/api/pagamentos/mp', { corpo, headers });
 
-  secao('Assinatura · R$ 250,00/mês e cortesia dos cursos da Academia');
+  secao('Assinatura · planos Starter a Enterprise e cortesia dos cursos da Academia');
 
   await t('a conta do DONO é cortesia vitalícia e recebe os cursos sem cobrança', async () => {
     const dono = db.prepare("SELECT id, email FROM contas_music WHERE origem = 'dono'").get();
@@ -30,15 +30,17 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
   });
 
   let assinId = '', preId = '';
-  await t('assinar cria preapproval MENSAL de R$ 250,00 com notification_url NO CORPO e devolve o link do MP', async () => {
+  await t('assinar o Starter cria preapproval MENSAL de R$ 39,00 com notification_url NO CORPO e devolve o link do MP', async () => {
     const st = await req('GET', '/music/api/assinatura', { como: 'ana' });
-    assert.equal(st.json.plano.preco_cents, 25000);
+    assert.equal(st.json.plano.preco_cents, 3900);
+    assert.deepEqual(st.json.plano.planos.map((p) => [p.slug, p.preco_cents, p.vagas]), [['starter', 3900, 1], ['professional', 5900, 3], ['business', 6900, 5], ['enterprise', 9900, 10]]);
+    assert.equal(st.json.plano.avaliacao.nome, 'Avaliação (15 dias)');
     assert.equal(st.json.acesso, false);
     const r = await req('POST', '/music/api/assinatura/assinar', { como: 'ana' });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     assert.match(r.json.link, /^https:\/\/mp\.teste\//);
     const b = MP.criados[0];
-    assert.equal(b.auto_recurring.transaction_amount, 250);
+    assert.equal(b.auto_recurring.transaction_amount, 39);
     assert.equal(b.auto_recurring.frequency_type, 'months');
     assert.equal(b.auto_recurring.currency_id, 'BRL');
     assert.match(b.notification_url, /\/music\/api\/pagamentos\/mp$/, 'sem isto o MP nunca avisa a assinatura (o painel não cobre preapproval)');
@@ -66,7 +68,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
   });
 
   await t('mensalidade chega como subscription_authorized_payment (não como payment) e é idempotente', async () => {
-    MP.aut.ap1 = { id: 'ap1', preapproval_id: preId, status: 'processed', transaction_amount: 250, payment: { id: 'pg1', status: 'approved' } };
+    MP.aut.ap1 = { id: 'ap1', preapproval_id: preId, status: 'processed', transaction_amount: 39, payment: { id: 'pg1', status: 'approved' } };
     const r = await hook({ type: 'subscription_authorized_payment', data: { id: 'ap1' } });
     assert.equal(r.json.resultado, 'registrado');
     await hook({ type: 'subscription_authorized_payment', data: { id: 'ap1' } });
@@ -160,18 +162,18 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     const f = (await req('GET', '/music/ferramentas', { cru: true })).texto;
     assert.ok(!f.includes('/music/entrar?voltar=/music/ferramentas'), 'ferramentas voltaram a ser públicas');
     const land = (await req('GET', '/music', { cru: true })).texto;
-    assert.ok(land.includes('Grátis, sem conta') && land.includes('R$ 875,00') && land.includes('/music/cifras-publicas'));
+    assert.ok(land.includes('Grátis, sem conta') && land.includes('R$ 69,00') && land.includes('Business') && land.includes('/music/cifras-publicas'));
     for (const u of ['/music', '/music/app', '/music/entrar', '/music/ferramentas', '/music/cifras-publicas']) {
       assert.ok((await req('GET', u, { cru: true })).texto.includes('rel=\"icon\"'), u + ' sem ícone na aba do navegador');
     }
   });
 
-  await t('PLANO BANDA: 5 assinaturas com 30% (R$ 875), a titular distribui as vagas e cada vaga vale como assinatura', async () => {
-    const r = await req('POST', '/music/api/assinatura/assinar', { como: 'prof', corpo: { plano: 'banda' } });
+  await t('PLANO BUSINESS: 5 pessoas por R$ 69, a titular distribui as vagas e cada vaga vale como assinatura', async () => {
+    const r = await req('POST', '/music/api/assinatura/assinar', { como: 'prof', corpo: { plano: 'business' } });
     assert.equal(r.status, 200, JSON.stringify(r.json));
     const b = MP.criados[MP.criados.length - 1];
-    assert.equal(b.auto_recurring.transaction_amount, 875, '5 × 250 × 0,7');
-    assert.match(b.reason, /plano banda \(5 assinaturas\)/);
+    assert.equal(b.auto_recurring.transaction_amount, 69, 'preço do plano Business');
+    assert.match(b.reason, /Business \(5 assinaturas\)/);
     const pre = MP.ultimoId;
     let st = (await req('GET', '/music/api/assinatura', { como: 'prof' })).json;
     assert.equal(st.banda.papel, 'titular'); assert.equal(st.banda.ocupadas.length, 1, 'a titular ocupa a primeira vaga');
@@ -226,7 +228,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal((await req('PUT', '/staff/api/music/assinaturas/plano', { staff: 'op', corpo: { preco_cents: 19900 } })).status, 403);
     const p = await req('PUT', '/staff/api/music/assinaturas/plano', { corpo: { preco_cents: 19900, carencia_dias: 7 } });
     assert.equal(p.json.plano.preco_cents, 19900);
-    await req('PUT', '/staff/api/music/assinaturas/plano', { corpo: { preco_cents: 25000, carencia_dias: 5 } });
+    await req('PUT', '/staff/api/music/assinaturas/plano', { corpo: { planos: { starter: 3900 }, carencia_dias: 5 } });
     assert.equal((await req('POST', '/staff/api/music/assinaturas/cortesia', { corpo: { email: 'naoexiste@t' } })).status, 400);
     const c = await req('POST', '/staff/api/music/assinaturas/cortesia', { corpo: { email: 'bruno@t', motivo: 'professor parceiro' } });
     assert.equal(c.status, 200, JSON.stringify(c.json));
@@ -246,7 +248,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.ok(js.includes('Cursos vinculados à Villela Academy'));
     new Function('window', 'document', js);
     const land = (await req('GET', '/music', { cru: true })).texto;
-    assert.ok(land.includes('id="planos"') && land.includes('R$ 250,00'), 'a landing mostra os planos com o preço da config');
+    assert.ok(land.includes('id="planos"') && land.includes('R$ 39,00'), 'a landing mostra os planos com o preço da config');
     assert.ok(!/Escolas e turmas, e a reprodução/.test(land), 'escolas já existem: não podem constar como "ainda não está aqui"');
     const termos = (await req('GET', '/music/termos', { cru: true })).texto;
     assert.ok(termos.includes('art. 49') && termos.includes('MINUTA'), 'termos da assinatura com arrependimento, carimbados MINUTA');

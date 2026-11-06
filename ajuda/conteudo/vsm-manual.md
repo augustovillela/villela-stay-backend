@@ -156,7 +156,7 @@ lançamento publicados são:
 
 | Plano | Preço | Indicado para |
 |---|---|---|
-| Trial (15 dias) | Grátis, sem cartão | Avaliação completa por 15 dias |
+| Avaliação (15 dias) | Grátis, sem cartão | Avaliação completa por 15 dias |
 | Starter | R$ 99/mês | Anfitrião com poucos imóveis começando a profissionalizar |
 | Pro | R$ 249/mês | Operação em crescimento (inclui IA, precificação e contratos) |
 | Business | R$ 599/mês | Gestora estabelecida (tudo liberado, API e marca própria) |

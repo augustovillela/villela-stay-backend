@@ -29,7 +29,7 @@ const MODULOS = [
 const LIMITES = ['entidades', 'usuarios', 'contas_bancarias', 'lancamentos_mes', 'transacoes_mes'];
 
 const PLANOS_SEMENTE = [
-  { slug: 'trial', nome: 'Avaliação', precoCents: 0, ordem: 0, publico: false,
+  { slug: 'trial', nome: 'Avaliação (15 dias)', precoCents: 0, ordem: 0,
     modulos: ['razao', 'bancos', 'pagar', 'receber', 'fechamento', 'centros'],
     limites: { entidades: 1, usuarios: 2, contas_bancarias: 2, lancamentos_mes: 300, transacoes_mes: 500 },
     flags: {} },
@@ -70,7 +70,7 @@ function semear() {
 function resolver(tenant) {
   if (!tenant) throw new ErroDePlano('Conta não encontrada.');
   const plano = tenant.plano_id ? repo.planoPorId(tenant.plano_id) : repo.planoPorSlug('trial');
-  const base = plano || { modulos: '[]', limites: '{}', flags: '{}', slug: 'trial', nome: 'Avaliação' };
+  const base = plano || { modulos: '[]', limites: '{}', flags: '{}', slug: 'trial', nome: 'Avaliação (15 dias)' };
   const overrides = j.parse(tenant.overrides, {}) || {};
 
   const modulos = new Set(j.parse(base.modulos, []) || []);

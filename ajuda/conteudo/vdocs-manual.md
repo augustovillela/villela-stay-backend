@@ -23,7 +23,7 @@ Cada empresa tem seus dados totalmente isolados das demais. O acesso é 100% pel
 
 1. Acesse a página inicial do Villela Docs e clique em **Teste grátis**.
 2. Informe o nome da empresa, seu nome, e-mail e uma senha (mínimo 8 caracteres).
-3. Pronto: sua empresa entra automaticamente no **período de teste de 15 dias**, no nível do plano Professional, **sem cartão de crédito**.
+3. Pronto: sua empresa entra automaticamente no **período de teste de 15 dias**, no plano **Avaliação (15 dias)**, que libera os mesmos limites do Professional, **sem cartão de crédito**.
 
 Ao final do teste, escolha um plano para continuar. Se preferir, peça uma demonstração pelo formulário da página inicial antes de decidir.
 
@@ -113,7 +113,7 @@ Na tela **🔌 Integrações**:
 
 ## Planos e pagamento
 
-Todos os planos começam com **15 dias grátis** no nível Professional, sem cartão de crédito.
+Todos os planos começam com **15 dias grátis**, no plano **Avaliação (15 dias)** (R$ 0,00, sem cartão de crédito), que libera os mesmos limites do Professional. A Avaliação não é um plano para assinar: ao final, escolha Starter, Professional, Business ou Enterprise.
 
 | | Starter | Professional | Business | Enterprise |
 |---|---|---|---|---|

@@ -296,7 +296,7 @@ const JS = `
   function reais(c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); }
   function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
   function assinar(plano) {
-    api('POST', '/assinatura/assinar', { plano: plano || 'individual' }).then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
+    api('POST', '/assinatura/assinar', { plano: plano || 'starter' }).then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
   }
   function cartaoAssinatura(st, onde) {
     var box = el('div', { class: onde === 'conta' ? 'cartao-conta' : 'card assin-card' });
@@ -305,7 +305,7 @@ const JS = `
     if (a && a.status === 'cortesia') {
       box.innerHTML = titulo + '<p class="sub"><b>Cortesia' + (a.origem === 'dono' ? ' vitalícia' : '') + '.</b> Os cursos de música da Academia estão incluídos, sem cobrança.</p>';
     } else if (a && a.status === 'ativa') {
-      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b>' + (a.plano === 'banda' ? ' · <b>plano banda (' + a.vagas + ' assinaturas)</b>' : '') +
+      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b>' + (a.plano_slug ? ' · <b>' + esc(a.plano_slug.charAt(0).toUpperCase() + a.plano_slug.slice(1)) + '</b>' : '') + (a.vagas > 1 ? ' · <b>até ' + a.vagas + ' pessoas</b>' : '') +
         ' desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
         (a.ultimo_pagamento_em ? ' · último pagamento em ' + dataBR(a.ultimo_pagamento_em) : '') + '.</p>';
       if (onde === 'conta') box.appendChild(el('button', { class: 'btn peq sec', txt: 'Cancelar a assinatura', onclick: function () {
@@ -316,7 +316,7 @@ const JS = `
       box.innerHTML = titulo + '<p class="sub"><b>\u{26A0}\u{FE0F} Pagamento não confirmado.</b> ' + (st.acesso
         ? 'Os cursos continuam liberados por ' + st.plano.carencia_dias + ' dias enquanto o Mercado Pago tenta de novo. Confira o cartão cadastrado lá.'
         : 'O prazo de tolerância acabou e os cursos saíram da sua conta da Academia. Assine de novo para voltar.') + '</p>';
-      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: function () { assinar(a.plano); } }));
+      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: function () { assinar(a.plano_slug || (a.plano === 'banda' ? 'business' : 'starter')); } }));
     } else if (a && a.status === 'pendente') {
       box.innerHTML = titulo + '<p class="sub"><b>\u{23F3} Aguardando o pagamento no Mercado Pago.</b> Assim que ele confirmar, os cursos chegam na sua conta da Academia.</p>';
       if (a.link) box.appendChild(el('a', { class: 'btn peq', href: a.link, txt: 'Continuar o pagamento' }));
@@ -326,16 +326,17 @@ const JS = `
         (u.motivo === 'teste' ? '<p class="alerta" style="margin:0 0 10px">\u{1F381} Teste grátis: faltam <b>' + u.teste.dias_restantes + ' dia(s)</b>.</p>' : '') +
         (u.motivo === 'pago_ate' ? '<p class="alerta" style="margin:0 0 10px">Assinatura cancelada: você usa até <b>' + dataBR(u.ate) + '</b>.</p>' : '') +
         (!u.acesso ? '<p class="alerta ruim" style="margin:0 0 10px"><b>O seu teste grátis terminou.</b> Assine para continuar usando o Musique. Os seus dados continuam guardados.</p>' : '') +
-        '<p class="sub">O Musique custa <b>' + preco + '/mês</b> e inclui <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser: você usa até o fim do mês pago.</p>';
+        '<p class="sub">O Musique custa <b>a partir de ' + preco + '/mês</b> e inclui <b>todos os cursos de música da Academia Villela</b>, que chegam na conta da Academia com o seu e-mail. Cancele quando quiser: você usa até o fim do mês pago.</p>';
       if (!st.email_verificado) box.appendChild(el('p', { class: 'peq', txt: 'Para assinar, confirme primeiro o seu e-mail: é por ele que os cursos chegam na Academia.' }));
       else if (!st.cobranca_ligada) box.appendChild(el('p', { class: 'peq', txt: 'O pagamento online está temporariamente indisponível.' }));
       else {
-        var pb = st.plano.banda;
-        box.appendChild(el('div', { class: 'linha', style: 'display:flex;gap:10px;flex-wrap:wrap' }, [
-          el('button', { class: 'btn', txt: 'Assinar: ' + preco + '/mês', onclick: function () { assinar('individual'); } }),
-          el('button', { class: 'btn sec', txt: '\u{1F465} Plano banda: ' + pb.vagas + ' assinaturas por ' + reais(pb.preco_cents) + '/mês (' + pb.desconto_pct + '% off)',
-            onclick: function () { assinar('banda'); } })]));
-        box.appendChild(el('p', { class: 'peq', txt: 'No plano banda, você paga as ' + pb.vagas + ' assinaturas de uma vez e escolhe quem ocupa as outras ' + (pb.vagas - 1) + ' vagas pelo e-mail da conta Musique de cada um.' }));
+        var linhaPlanos = el('div', { class: 'linha', style: 'display:flex;gap:10px;flex-wrap:wrap' }, (st.plano.planos || []).map(function (p, i) {
+          return el('button', { class: i === 1 ? 'btn' : 'btn sec',
+            txt: p.nome + ': ' + reais(p.preco_cents) + '/mês' + (p.vagas > 1 ? ' (até ' + p.vagas + ' pessoas)' : ' (1 pessoa)'),
+            onclick: function () { assinar(p.slug); } });
+        }));
+        box.appendChild(linhaPlanos);
+        box.appendChild(el('p', { class: 'peq', txt: 'Nos planos com mais de uma pessoa, você paga tudo numa cobrança só e escolhe quem ocupa as outras vagas pelo e-mail da conta Musique de cada um.' }));
       }
     }
     if (st.banda && onde === 'conta') box.appendChild(painelBanda(st));
@@ -528,7 +529,7 @@ const JS = `
       var u = st.uso || {};
       if (u.motivo !== 'teste' || $('#faixa-teste')) return;
       var f = el('div', { class: 'alerta', id: 'faixa-teste', html:
-        '\u{1F381} <b>Teste grátis:</b> faltam ' + u.teste.dias_restantes + ' dia(s). Depois, o Musique custa ' + reais(st.plano.preco_cents) +
+        '\u{1F381} <b>Teste grátis:</b> faltam ' + u.teste.dias_restantes + ' dia(s). Depois, o Musique custa a partir de ' + reais(st.plano.preco_cents) +
         '/mês, com os cursos de música da Academia incluídos. <button class="btn peq" id="fx-assinar">Assinar</button>' });
       var m = $('#menu'); m.parentNode.insertBefore(f, m);
       $('#fx-assinar').onclick = function () { ir('conta'); };
