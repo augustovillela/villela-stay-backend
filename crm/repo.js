@@ -299,7 +299,9 @@ function dentroLimite(tenantId, metrica, incremento = 1) {
   if (!e) return { ok: false, limite: 0, usado: 0 };
   const limite = Number(e.limites[metrica] || 0);
   const usado = Uso.atual(tenantId, metrica);
-  if (limite === 0) return { ok: true, limite: 0, usado };
+  // 0 = ilimitado (convenção do CRM) e NEGATIVO = ilimitado (convenção do Growth OS, que grava -1 no plano
+  // Enterprise). Sem o `< 0`, "usado + 1 <= -1" nunca fecha e o dono de uma conta -1 não cria nem 1 contato.
+  if (limite <= 0) return { ok: true, limite: 0, usado };
   return { ok: (usado + incremento) <= limite, limite, usado };
 }
 function flag(tenantId, chave) {

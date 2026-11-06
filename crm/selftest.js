@@ -1370,6 +1370,18 @@ async function rodar() {
     assert.equal(r.st, 400); assert.ok(/limite/i.test(r.json.erro));
     saas.repo.salvarSettings(tid, { limites_over: {} });
   });
+  await t('limite negativo (-1, convenção do Growth OS) e 0 valem ilimitado; positivo continua bloqueando', async () => {
+    // regressão de 06/11/2026: conta Enterprise com contatos = -1 não conseguia salvar nem 1 contato (a busca ativa parava)
+    const { dentroLimite } = saas.repo;
+    saas.repo.salvarSettings(tid, { limites_over: { contatos: -1 } });
+    assert.equal(dentroLimite(tid, 'contatos').ok, true);
+    assert.equal((await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'Sem Teto', telefone: '61811110001' }, cookies: true })).st, 200);
+    saas.repo.salvarSettings(tid, { limites_over: { contatos: 0 } });
+    assert.equal(dentroLimite(tid, 'contatos').ok, true);
+    saas.repo.salvarSettings(tid, { limites_over: { contatos: 1 } });
+    assert.equal(dentroLimite(tid, 'contatos').ok, false); // já há mais de 1 contato
+    saas.repo.salvarSettings(tid, { limites_over: {} });
+  });
   await t('IA bloqueada quando flag desligada (professional sem override)', async () => {
     saas.repo.salvarSettings(tid, { flags_over: {}, modulos_extra: [] });
     const { json } = await req('GET', '/crm/api/app/contatos', { cookies: true });
