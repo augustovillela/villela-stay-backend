@@ -433,6 +433,9 @@ async function rodar() {
     assert.equal(r.json.busca.custo.lugares_max, 100); assert.ok(r.json.busca.custo.brl_centavos > 0);
     assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'x', local_texto: 'DF' }, cookies: true })).st, 400, 'termo curto');
     assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'dentista' }, cookies: true })).st, 400, 'sem região');
+    const lista1 = await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'clínica', local_texto: 'Asa Sul, Asa Norte, Águas Claras, Sudoeste, Noroeste.' }, cookies: true });
+    assert.equal(lista1.st, 400); assert.match(lista1.json.erro, /UMA região por linha/, 'lista de bairros numa linha só é recusada');
+    assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'clínica', locais: ['Asa Sul, Brasília - DF', 'Lago Sul, Brasília, DF'], max_resultados: 5 }, cookies: true })).st, 200, 'regiões com cidade/UF passam');
     assert.equal((await req('POST', '/crm/api/app/buscas', { corpo: { termo: 'dentista', local_texto: 'DF', frequencia_dias: 2 }, cookies: true })).st, 400, 'frequência fora da lista');
     assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/rodar`, { cookies: true })).st, 400, 'rodar sem aprovar');
     assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/aprovar`, { corpo: {}, cookies: true })).st, 400, 'aprovar sem aceite');
@@ -526,7 +529,7 @@ async function rodar() {
     await assert.rejects(async () => buscasMod.executar(await tidDoTenant(), buscaId, { provedor: provFake(LUGARES) }), /pausada/);
     assert.equal((await req('POST', `/crm/api/app/buscas/${buscaId}/status`, { corpo: { status: 'ativa' }, cookies: true })).st, 200);
     const lista = await req('GET', '/crm/api/app/buscas', { cookies: true });
-    assert.equal(lista.json.buscas.length, 1); assert.ok(lista.json.fontes.some(f => f.id === 'apify')); assert.ok(lista.json.teto_mes > 0);
+    assert.ok(lista.json.buscas.length >= 1 && lista.json.buscas.some(x => x.id === buscaId)); assert.ok(lista.json.fontes.some(f => f.id === 'apify')); assert.ok(lista.json.teto_mes > 0);
     const eg = await req('GET', `/crm/api/app/buscas/${buscaId}/lugares`, { cookies: true });
     assert.ok(eg.json.lugares.length >= 5);
     assert.ok((await req('GET', `/crm/api/app/buscas/${buscaId}/execucoes`, { cookies: true })).json.execucoes.length >= 2);

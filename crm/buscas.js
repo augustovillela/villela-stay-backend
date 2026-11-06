@@ -62,6 +62,13 @@ function validar(d, atual = {}) {
   const lat = d.lat != null && d.lat !== '' ? Number(d.lat) : (atual.lat != null ? atual.lat : null);
   const lng = d.lng != null && d.lng !== '' ? Number(d.lng) : (atual.lng != null ? atual.lng : null);
   const raio = Math.max(0, Math.min(50000, parseInt(d.raio_m != null ? d.raio_m : atual.raio_m, 10) || 0));
+  // "Asa Sul, Asa Norte, Águas Claras" numa linha só vira UMA região que não existe (o Apify falha com LOCATION NOT FOUND)
+  for (const l of (locais.length ? locais : [local])) {
+    const partes = String(l).split(',').map((x) => x.trim()).filter(Boolean);
+    if (partes.length >= 3 && !/^(df|go|sp|rj|mg|ba|pr|sc|rs|distrito federal|brasil|brazil)\.?$/i.test(partes[partes.length - 1])) {
+      throw new Error('Parece uma lista de bairros numa linha só ("' + s(l, 60) + '…"). Coloque UMA região por linha, cada uma com cidade e UF — ex.: "Asa Sul, Brasília - DF".');
+    }
+  }
   const comCirculo = lat != null && lng != null && !locais.length;
   if (comCirculo && (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180)) throw new Error('Latitude/longitude inválidas.');
   if (comCirculo && !raio) throw new Error('Informe o raio (em metros) junto das coordenadas.');

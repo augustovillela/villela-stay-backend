@@ -1012,7 +1012,8 @@ function dlgBusca(d) {
   dlg.innerHTML = `<h3>Nova busca no Google Maps</h3>
     <button class="btn peq secund" type="button" id="bu-preset">🎄 Preencher: confraternização de fim de ano (DF)</button>
     <label>O que buscar (uma categoria por linha) <textarea id="bu-termo" rows="3" placeholder="ex.: clínica odontológica"></textarea></label>
-    <label>Regiões / bairros (um por linha) <textarea id="bu-local" rows="3" placeholder="ex.: Lago Sul, Brasília - DF"></textarea></label>
+    <label>Regiões / bairros — <b>um por linha</b> <textarea id="bu-local" rows="4" placeholder="Asa Sul&#10;Asa Norte&#10;Águas Claras"></textarea></label>
+    <label>Cidade e UF (completa as linhas que não têm vírgula) <input id="bu-cidade" value="Brasília - DF"></label>
     <p class="sub" id="bu-conta" style="text-align:left"></p>
     <details><summary class="sub">ou um círculo por coordenadas</summary>
       <div class="hi-grid"><label>Latitude <input id="bu-lat" placeholder="-15.8"></label><label>Longitude <input id="bu-lng" placeholder="-47.88"></label></div>
@@ -1026,8 +1027,10 @@ function dlgBusca(d) {
   $('#bu-fechar').onclick = () => dlg.remove();
   let tagsPreset;
   const linhas = (id) => $(id).value.split(/\n/).map(x => x.trim()).filter(Boolean);
+  // "Asa Sul" vira "Asa Sul, Brasília - DF"; linha que já tem vírgula fica como está
+  const regioes = () => linhas('#bu-local').map(x => (x.includes(',') || !$('#bu-cidade').value.trim()) ? x : `${x}, ${$('#bu-cidade').value.trim()}`);
   const contar = () => {
-    const nt = Math.max(1, linhas('#bu-termo').length), nl = Math.max(1, linhas('#bu-local').length), mx = Number($('#bu-max').value) || 0;
+    const nt = Math.max(1, linhas('#bu-termo').length), nl = Math.max(1, regioes().length), mx = Number($('#bu-max').value) || 0;
     $('#bu-conta').textContent = `${nt} categoria(s) × ${nl} região(ões) × até ${mx} = até ${nt * nl * mx} lugares por varredura (a estimativa em R$ aparece depois de criar).`;
   };
   ['#bu-termo', '#bu-local', '#bu-max'].forEach(id => $(id).oninput = contar); contar();
@@ -1040,8 +1043,8 @@ function dlgBusca(d) {
   $('#bu-salvar').onclick = async () => {
     try {
       const lat = $('#bu-lat').value.trim(), lng = $('#bu-lng').value.trim();
-      const termos = linhas('#bu-termo'), locais = lat && lng ? [] : linhas('#bu-local');
-      await api('POST', '/app/buscas', { termos, locais: locais.length ? locais : undefined, local_texto: locais.length ? undefined : (linhas('#bu-local')[0] || ''), tags: tagsPreset, lat: lat || undefined, lng: lng || undefined,
+      const termos = linhas('#bu-termo'), locais = lat && lng ? [] : regioes();
+      await api('POST', '/app/buscas', { termos, locais: locais.length ? locais : undefined, local_texto: locais.length ? undefined : (regioes()[0] || ''), tags: tagsPreset, lat: lat || undefined, lng: lng || undefined,
         raio_m: lat && lng ? $('#bu-raio').value : undefined, frequencia_dias: $('#bu-freq').value, max_resultados: $('#bu-max').value, nome: $('#bu-nome').value.trim() });
       dlg.remove(); vBuscas();
     } catch (e) { $('#bu-msg').textContent = e.message; }
