@@ -14,7 +14,7 @@ A conta fica bloqueada até você escolher um plano — seus documentos e dados 
 
 ### Quanto custa?
 
-Starter R$ 99/mês, Professional R$ 249/mês, Business R$ 599/mês e Enterprise sob consulta (limites sob medida, SSO e suporte dedicado). Os planos variam em usuários, armazenamento, documentos, consultas de IA e workflows — veja a comparação completa na página de planos.
+Starter R$ 99/mês (ou R$ 990/ano), Professional R$ 249/mês (ou R$ 2.490/ano), Business R$ 599/mês (ou R$ 5.990/ano) e Enterprise sob consulta. O plano anual custa 10 mensalidades (2 meses grátis) e é cobrado uma vez por ano no Mercado Pago; você escolhe mensal ou anual na hora de assinar (limites sob medida, SSO e suporte dedicado). Os planos variam em usuários, armazenamento, documentos, consultas de IA e workflows — veja a comparação completa na página de planos.
 
 ### Como funciona o pagamento? Posso cancelar quando quiser?
 

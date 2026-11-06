@@ -18,11 +18,12 @@ function camposDoCliente(tenantId, planId, { risco = false } = {}) {
     const dono = db.prepare(`SELECT u.nome, u.email FROM tenant_users tu JOIN users u ON u.id = tu.user_id
       WHERE tu.tenant_id = ? AND tu.papel = 'dono' ORDER BY tu.criado_em LIMIT 1`).get(String(tenantId)) || {};
     const id = planId || (repo.planoDoTenant(tenantId) || {}).id;
-    const plano = id ? db.prepare('SELECT nome, preco_centavos FROM plans WHERE id = ?').get(id) : null;
+    const plano = id ? db.prepare('SELECT nome, preco_centavos, preco_anual_centavos FROM plans WHERE id = ?').get(id) : null;
+    const anual = !!(id && db.prepare("SELECT 1 FROM subscriptions WHERE tenant_id = ? AND plan_id = ? AND ciclo = 'anual' AND status IN ('pendente','ativa') LIMIT 1").get(String(tenantId), String(id)));
     return [
       ['Cliente', t.nome],
       ['Responsável', pessoa(dono.nome, dono.email || t.email_contato, t.telefone)],
-      [risco ? 'Plano em risco' : 'Plano', plano ? plano.nome + (plano.preco_centavos ? ` (${reais(plano.preco_centavos)}/mês)` : '') : ''],
+      [risco ? 'Plano em risco' : 'Plano', plano ? plano.nome + (plano.preco_centavos ? (anual && plano.preco_anual_centavos ? ` (${reais(plano.preco_anual_centavos)}/ano)` : ` (${reais(plano.preco_centavos)}/mês)`) : '') : ''],
     ];
   } catch (_) { return [['Cliente', tenantId]]; }
 }

@@ -34,6 +34,10 @@ const MIGRACOES = [
   // (interno=1 p/ herdar "vitalício, sem billing, sem 402") do workspace
   // interno REAL da Villela (cortesia=0). Permite listar e revogar cortesias.
   { nome: 'cortesia-tenants', sql: 'ALTER TABLE tenants ADD COLUMN cortesia INTEGER DEFAULT 0' },
+  // Plano ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades (2 meses gratis), preco editavel por plano.
+  // O preenchimento so vale para plano pago que ainda esta sem anual (nao sobrescreve o que o Augusto ja pos).
+  { nome: 'plans-preco-anual', sql: "ALTER TABLE plans ADD COLUMN preco_anual_centavos INTEGER NOT NULL DEFAULT 0; UPDATE plans SET preco_anual_centavos = preco_centavos * 10 WHERE preco_centavos > 0 AND preco_anual_centavos = 0;" },
+  { nome: 'subscriptions-ciclo', sql: "ALTER TABLE subscriptions ADD COLUMN ciclo TEXT DEFAULT 'mensal'; ALTER TABLE subscriptions ADD COLUMN valor_centavos INTEGER DEFAULT 0;" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

@@ -400,6 +400,7 @@ function registrarPaginas(app) {
           ${planosPagos().map((p) => `<div class="plano${p.slug === 'professional' ? ' destaque' : ''}">
             <span class="plano-nome">${esc(p.nome)}</span>
             <div class="plano-preco">${esc(brlMusic(p.preco_cents))}<small>/mês</small></div>
+            ${p.preco_anual_cents ? `<p class="sub">ou ${esc(brlMusic(p.preco_anual_cents))}/ano (2 meses grátis)</p>` : ''}
             <p>${p.vagas === 1 ? '<b>1 pessoa</b>' : `<b>Até ${esc(String(p.vagas))} pessoas</b> (${esc(brlMusic(Math.round(p.preco_cents / p.vagas)))} por pessoa)`}, cada uma com tudo liberado.</p>
             <ul><li>Acervo de cifras, transposição, banda, setlists e Modo Maestro</li>
               <li>Academia: trilhas, exercícios, escolas e turmas</li>

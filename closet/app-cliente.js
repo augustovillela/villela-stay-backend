@@ -835,9 +835,11 @@ async function telaConta() {
     + (plano.premium_ate ? ' · válido até ' + dia(plano.premium_ate) : '') + '</p>'
     + (EU.plano === 'premium'
       ? '<button class="btn linha peq" onclick="cancelarPremium()">Cancelar assinatura</button>'
-      : '<div class="aviso"><b>Premium — ' + brl0((plano.planos.find((p) => p.slug === 'premium') || {}).preco_centavos) + '/mês.</b><br>'
+      : '<div class="aviso"><b>Premium — ' + brl0((plano.planos.find((p) => p.slug === 'premium') || {}).preco_centavos) + '/mês.</b>'
+        + (((plano.planos.find((p) => p.slug === 'premium') || {}).preco_anual_centavos > 0) ? ' <b>Ou ' + brl0((plano.planos.find((p) => p.slug === 'premium') || {}).preco_anual_centavos) + '/ano</b> (2 meses grátis).' : '') + '<br>'
         + 'Peças ilimitadas · destaque na vitrine · vídeo · analytics · IA de preço e descrição.</div>'
-        + '<button class="btn" onclick="assinarPremium()">Assinar Premium</button>')
+        + '<button class="btn" onclick="assinarPremium(\'mensal\')">Assinar mensal</button>'
+        + (((plano.planos.find((p) => p.slug === 'premium') || {}).preco_anual_centavos > 0) ? ' <button class="btn linha" onclick="assinarPremium(\'anual\')">Assinar anual (2 meses grátis)</button>' : ''))
     + '<p id="pl-msg" style="margin-top:12px"></p></div>'
 
     + '<div class="painel"><h3>Segurança</h3>'
@@ -908,8 +910,8 @@ async function trocarSenha() {
   try { await api('POST', '/me/senha', { atual: el('s-atual').value, nova: el('s-nova').value }); el('s-msg').textContent = 'Senha trocada!'; }
   catch (e) { el('s-msg').className = 'erro'; el('s-msg').textContent = e.message; }
 }
-async function assinarPremium() {
-  try { const r = await api('POST', '/plano/assinar'); location.href = r.link; }
+async function assinarPremium(ciclo) {
+  try { const r = await api('POST', '/plano/assinar', { ciclo: ciclo || 'mensal' }); location.href = r.link; }
   catch (e) { el('pl-msg').className = 'erro'; el('pl-msg').textContent = e.message; }
 }
 async function cancelarPremium() {

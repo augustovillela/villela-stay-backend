@@ -61,13 +61,21 @@ const GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2
 // Lockup da marca: negativo (símbolo dourado) sobre fundo escuro; símbolo-v sobre fundo claro.
 const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAND}/${neg ? 'logo-negativo.svg' : 'simbolo-v.svg'}" alt="Villela Stay Manager"><span><span class="m1">Villela</span> <span class="m2">Stay Manager</span></span></span>`;
 
+// plano ANUAL (10 mensalidades): "ou R$ X/ano (2 meses grátis)" quando o plano tem preço anual
+function anualTxt(p) {
+  if (!p.preco_anual_centavos || !p.preco_centavos) return '';
+  const meses = Math.round((p.preco_anual_centavos / p.preco_centavos) * 10) / 10;
+  const nota = p.preco_anual_centavos === p.preco_centavos * 10 ? ' (2 meses grátis)' : (meses < 12 ? ` (equivale a ${meses} mensalidades)` : '');
+  return `<p class="sub" style="text-align:left;margin:4px 0 0">ou ${brl(p.preco_anual_centavos)}/ano${nota}</p>`;
+}
+
 function landingHTML() {
   const planos = repo.Planos.listar();
   const cardPlano = (p) => {
     const dest = p.slug === 'pro';
     const preco = p.preco_centavos ? `${brl(p.preco_centavos)}<small>/mês</small>` : (p.slug === 'trial' ? 'Grátis' : 'Sob consulta');
     const itens = p.slug === 'trial'
-      ? ['Todos os módulos por 14 dias', `${p.limites.imoveis} imóveis`, `${p.limites.usuarios} usuários`, 'Sem cartão']
+      ? ['Todos os módulos por 15 dias', `${p.limites.imoveis} imóveis`, `${p.limites.usuarios} usuários`, 'Sem cartão']
       : [`${p.limites.imoveis || '∞'} imóveis`, `${p.limites.usuarios || 'ilimitados'} usuários`,
          `${p.limites.reservas_mes || 'ilimitadas'} reservas/mês`,
          `${p.modulos.length} módulos${p.flags.ia_direta ? ' · IA' : ''}${p.flags.api_publica ? ' · API' : ''}${p.flags.white_label ? ' · marca própria' : ''}`];
@@ -75,7 +83,7 @@ function landingHTML() {
       ? `<a class="btn g" href="#contato">Falar com vendas</a>`
       : `<a class="btn" href="/gestao/assinar?plano=${p.slug}">${p.slug === 'trial' ? 'Testar grátis' : 'Assinar'}</a>`;
     return `<div class="plano ${dest ? 'dest' : ''}">${dest ? '<span class="badge">Mais popular</span>' : ''}
-      <h3>${esc(p.nome)}</h3><div class="preco">${preco}</div><p class="sub" style="text-align:left;margin:8px 0 0">${esc(p.descricao)}</p>
+      <h3>${esc(p.nome)}</h3><div class="preco">${preco}</div>${anualTxt(p)}<p class="sub" style="text-align:left;margin:8px 0 0">${esc(p.descricao)}</p>
       <ul>${itens.map(i => `<li>✓ ${esc(i)}</li>`).join('')}</ul>${cta}</div>`;
   };
   const feats = [
@@ -160,7 +168,7 @@ function shell(corpo, script) {
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
   const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
-  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
+  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>${anualTxt(p)}
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-esc" placeholder="Nome da operação / empresa *" required>
       <input id="s-nome" placeholder="Seu nome (responsável) *" required>

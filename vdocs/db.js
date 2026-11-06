@@ -45,6 +45,10 @@ const MIGRACOES = [
   { nome: '006-entradas-log-grupo', sql: "ALTER TABLE entradas_log ADD COLUMN grupo TEXT DEFAULT ''" },
   // De quem é a IA da empresa: plataforma ou chave própria (cifrada). Fora de tenant_settings DE PROPÓSITO.
   { nome: '007-tenant-ia', sql: "CREATE TABLE IF NOT EXISTS tenant_ia (tenant_id TEXT PRIMARY KEY, fonte TEXT NOT NULL DEFAULT 'plataforma', chave_cifrada TEXT DEFAULT '', chave_final TEXT DEFAULT '', validada_em TEXT DEFAULT '', atualizado_em TEXT DEFAULT '', atualizado_por TEXT DEFAULT '')" },
+  // Plano ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades (2 meses gratis), preco editavel por plano.
+  // O preenchimento so vale para plano pago que ainda esta sem anual (nao sobrescreve o que o Augusto ja pos).
+  { nome: '008-plans-preco-anual', sql: "ALTER TABLE plans ADD COLUMN preco_anual_centavos INTEGER NOT NULL DEFAULT 0; UPDATE plans SET preco_anual_centavos = preco_centavos * 10 WHERE preco_centavos > 0 AND preco_anual_centavos = 0;" },
+  { nome: '009-subscriptions-ciclo', sql: "ALTER TABLE subscriptions ADD COLUMN ciclo TEXT DEFAULT 'mensal'; ALTER TABLE subscriptions ADD COLUMN valor_centavos INTEGER DEFAULT 0;" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

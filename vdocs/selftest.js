@@ -656,11 +656,13 @@ function teste(nome, cond) {
 
   // mock do Mercado Pago
   const chamadasMP = [];
+  const corposPre = []; // corpo de cada POST /preapproval (confere ciclo/valor)
   const preapprovals = {}; // id -> objeto
   const mockMp = async (pathname, opts) => {
     chamadasMP.push({ pathname, method: (opts || {}).method || 'GET' });
     if (pathname === '/preapproval' && opts && opts.method === 'POST') {
       const body = JSON.parse(opts.body);
+      corposPre.push(body);
       const id = 'pre_' + (Object.keys(preapprovals).length + 1);
       preapprovals[id] = { id, status: 'pending', external_reference: body.external_reference, init_point: 'https://mp.test/autorizar/' + id };
       return preapprovals[id];
@@ -726,6 +728,49 @@ function teste(nome, cond) {
   // reativa p/ os testes seguintes (leads etc.)
   r = await req('PATCH', '/staff/api/vdocs/tenants/' + tenantB.id, { body: { status: 'ativa', plano_slug: 'starter' }, staff: 'adm' });
   teste('staff reativa tenant B manualmente', r.status === 200);
+
+  // ---- PLANO ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades, cobranca unica por ano ----
+  r = await req('GET', '/staff/api/vdocs/planos', { staff: 'adm' });
+  const pagos = r.dados.planos.filter(p => p.preco_centavos > 0);
+  teste('anual: GET /staff/api/vdocs/planos devolve preco_anual_centavos e a semente é 10 × o mensal',
+    r.status === 200 && pagos.length >= 3 && pagos.every(p => p.preco_anual_centavos === p.preco_centavos * 10)
+    && r.dados.planos.filter(p => p.preco_centavos === 0).every(p => p.preco_anual_centavos === 0));
+  const stA = r.dados.planos.find(p => p.slug === 'starter');
+  r = await req('PATCH', '/staff/api/vdocs/planos/' + stA.id, { body: { preco_anual_centavos: 35000 }, staff: 'adm' });
+  teste('anual: PATCH muda só o anual e mantém o mensal', r.status === 200 && r.dados.plano.preco_anual_centavos === 35000 && r.dados.plano.preco_centavos === stA.preco_centavos);
+  r = await req('PATCH', '/staff/api/vdocs/planos/' + stA.id, { body: { nome: 'Starter' }, staff: 'adm' });
+  teste('anual: PATCH sem o campo mantém o anual', r.status === 200 && r.dados.plano.preco_anual_centavos === 35000);
+  r = await req('PATCH', '/staff/api/vdocs/planos/' + stA.id, { body: { preco_anual_centavos: 0 }, staff: 'adm' });
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter', ciclo: 'anual' }, jar: 'bobB' });
+  teste('anual: plano sem preço anual rejeita o ciclo anual com erro claro', r.status === 400 && /preço anual/i.test(r.dados.erro));
+  await req('PATCH', '/staff/api/vdocs/planos/' + stA.id, { body: { preco_anual_centavos: 35000 }, staff: 'adm' });
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter', ciclo: 'quinzenal' }, jar: 'bobB' });
+  teste('anual: ciclo desconhecido é rejeitado', r.status === 400 && /ciclo/i.test(r.dados.erro));
+  r = await req('GET', '/staff/api/vdocs/receita', { staff: 'ceo' });
+  const mrrAntes = r.dados.mrr_centavos;
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter', ciclo: 'anual' }, jar: 'bobB' });
+  const corpoAnual = corposPre[corposPre.length - 1];
+  teste('anual: assinar cria preapproval de 12 meses com o valor anual (cobrança única por ano)',
+    r.status === 200 && r.dados.ciclo === 'anual' && corpoAnual.auto_recurring.frequency === 12
+    && corpoAnual.auto_recurring.frequency_type === 'months' && corpoAnual.auto_recurring.transaction_amount === 350 && /anual/.test(corpoAnual.reason));
+  const preAnual = r.dados.preapproval_id;
+  r = await req('POST', '/vdocs/api/billing/assinar', { body: { plano_slug: 'starter' }, jar: 'bobB' });
+  const corpoMensal = corposPre[corposPre.length - 1];
+  teste('anual: sem ciclo continua mensal (frequency 1, valor do mensal)', r.status === 200 && corpoMensal.auto_recurring.frequency === 1 && corpoMensal.auto_recurring.transaction_amount === stA.preco_centavos / 100);
+  preapprovals[preAnual].status = 'authorized';
+  await req('POST', '/vdocs/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: preAnual } } });
+  r = await req('GET', '/vdocs/api/billing', { jar: 'bobB' });
+  teste('anual: estado do tenant mostra ciclo anual e o valor cobrado', r.dados.plano.ciclo === 'anual' && r.dados.plano.valor_cobrado_centavos === 35000 && r.dados.plano.preco_anual_centavos === 35000);
+  r = await req('GET', '/staff/api/vdocs/receita', { staff: 'ceo' });
+  teste('anual: MRR conta o anual dividido por 12', r.dados.mrr_centavos === mrrAntes - stA.preco_centavos + Math.round(35000 / 12));
+  {
+    const pg = await (await fetch(BASE + '/vdocs/precos')).text();
+    const lp = await (await fetch(BASE + '/vdocs')).text();
+    teste('anual: landing e tabela de preços mostram "ou R$ X/ano (2 meses grátis)" nos planos pagos', /ou[^<]*\/ano/.test(pg) && pg.includes('2 meses grátis') && lp.includes('2 meses grátis') && /\/ano/.test(lp));
+  }
+  teste('anual: lista de assinaturas do staff traz o ciclo', r.dados.assinaturas.some(a => a.ciclo === 'anual' && a.valor_centavos === 35000));
+  r = await req('PATCH', '/staff/api/vdocs/tenants/' + tenantB.id, { body: { status: 'ativa', plano_slug: 'starter' }, staff: 'adm' });
+  teste('anual: staff devolve o tenant B ao Starter mensal para os testes seguintes', r.status === 200);
   billing.configurar({ mpFetch: null });
 
   // ================== FASE 9: API pública + webhooks de saída ==================

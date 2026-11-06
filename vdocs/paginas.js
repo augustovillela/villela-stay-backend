@@ -254,6 +254,7 @@ function landing() {
   <div class="dx-plans">
     ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
       <h3>${esc(p.nome)}</h3><div class="dx-preco">${p.slug === 'trial' ? '15 dias grátis <small>sem cartão</small>' : brl(p.preco_centavos) + (Number(p.preco_centavos) ? ' <small>/mês</small>' : '')}</div>
+      ${Number(p.preco_anual_centavos) > 0 ? `<div class="dx-anual" style="font-size:13px;color:var(--suave);margin:-4px 0 10px">ou <b>${brl(p.preco_anual_centavos)}/ano</b> (2 meses grátis)</div>` : ''}
       <ul>${planoBullets(p)}</ul>
       <a class="btn${p.slug === 'professional' ? '' : ' btn-ghost'}" href="/vdocs/cadastro">Testar grátis</a></div>`).join('')}
   </div>
@@ -346,7 +347,7 @@ function precos() {
   <h2>Escolha o tamanho da sua operação</h2>
   <p style="color:var(--suave)">Todos os planos começam com <b>15 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
   <div style="overflow-x:auto"><table>
-    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos)}</span></th>`).join('')}</tr>
+    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos) + (Number(p.preco_centavos) ? '/mês' : '')}${Number(p.preco_anual_centavos) > 0 ? '<br>ou ' + brl(p.preco_anual_centavos) + '/ano <small>(2 meses grátis)</small>' : ''}</span></th>`).join('')}</tr>
     ${linhas.map(([rot, fn]) => `<tr><td><b>${rot}</b></td>${planos.map(p => `<td>${fn(p)}</td>`).join('')}</tr>`).join('')}
     <tr><td></td>${planos.map(() => `<td><a class="btn" style="padding:9px 16px" href="/vdocs/cadastro">Testar grátis</a></td>`).join('')}</tr>
   </table></div>
@@ -1407,17 +1408,18 @@ async function vBilling(){
   const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
   const atual=b.plano||{};
   $('pl-billing').innerHTML='<div class="card"><b>💳 Assinatura</b>'+
-   (atual.recorrencia_mp?'<p>Cobrança recorrente ATIVA no Mercado Pago ('+esc(atual.nome)+', '+brl(atual.preco_centavos)+'/mês). <button class="btn btn-ghost peq" onclick="cancelarAssinatura()">Cancelar assinatura</button></p>'
+   (atual.recorrencia_mp?'<p>Cobrança recorrente ATIVA no Mercado Pago ('+esc(atual.nome)+', '+(atual.ciclo==='anual'?brl(atual.valor_cobrado_centavos||atual.preco_anual_centavos)+'/ano':brl(atual.preco_centavos)+'/mês')+'). <button class="btn btn-ghost peq" onclick="cancelarAssinatura()">Cancelar assinatura</button></p>'
     :atual.status==='trial'?'<p>Você está no período de teste. Assine para continuar depois do trial:</p>':'<p>Escolha um plano para assinar:</p>')+
    (!atual.recorrencia_mp?(b.online_disponivel
-     ?'<div style="display:flex;gap:8px;flex-wrap:wrap">'+b.planos.map(p=>'<button class="btn '+(p.slug===atual.slug?'':'btn-ghost ')+'peq" onclick="assinarPlano(\\''+p.slug+'\\')">'+esc(p.nome)+' — '+brl(p.preco_centavos)+'/mês</button>').join('')+'</div><p class="sub" style="font-size:12px">Você será levado ao Mercado Pago para autorizar a cobrança mensal. Cancele quando quiser.</p>'
+     ?'<p style="margin:6px 0"><label>Cobrança <select id="pl-ciclo"><option value="mensal">Mensal</option><option value="anual">Anual (2 meses grátis)</option></select></label></p><div style="display:flex;gap:8px;flex-wrap:wrap">'+b.planos.map(p=>'<button class="btn '+(p.slug===atual.slug?'':'btn-ghost ')+'peq" onclick="assinarPlano(\\''+p.slug+'\\')">'+esc(p.nome)+' — '+brl(p.preco_centavos)+'/mês'+(p.preco_anual_centavos?' ou '+brl(p.preco_anual_centavos)+'/ano':'')+'</button>').join('')+'</div><p class="sub" style="font-size:12px">Você será levado ao Mercado Pago para autorizar a cobrança (mensal ou anual, conforme a sua escolha). Cancele quando quiser.</p>'
      :'<div class="aviso">Pagamento online em configuração — fale com a Villela Docs pelo formulário da <a href="/vdocs#demo" target="_blank">página inicial</a> para ativar seu plano.</div>'):'')+
    (b.pagamentos.length?'<b>Pagamentos</b><table><tr><th>Quando</th><th>Valor</th><th>Status</th></tr>'+b.pagamentos.map(p=>'<tr><td>'+dt(p.criado_em)+'</td><td>'+brl(p.valor_centavos)+'</td><td>'+esc(p.status)+'</td></tr>').join('')+'</table>':'')+
    '</div>';
 }
 async function assinarPlano(slug){
-  if(!confirm('Assinar o plano '+slug+'? Você será redirecionado ao Mercado Pago para autorizar a cobrança mensal.'))return;
-  try{const r=await api('POST','/billing/assinar',{plano_slug:slug});location.href=r.link;}catch(e){alert(e.message);}
+  const ciclo=($('pl-ciclo')||{}).value==='anual'?'anual':'mensal';
+  if(!confirm('Assinar o plano '+slug+' ('+ciclo+')? Você será redirecionado ao Mercado Pago para autorizar a cobrança '+(ciclo==='anual'?'anual (uma vez por ano)':'mensal')+'.'))return;
+  try{const r=await api('POST','/billing/assinar',{plano_slug:slug,ciclo:ciclo});location.href=r.link;}catch(e){alert(e.message);}
 }
 async function cancelarAssinatura(){
   if(!confirm('Cancelar a assinatura? Sua conta perderá o acesso pago.'))return;

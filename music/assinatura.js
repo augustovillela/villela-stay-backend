@@ -48,7 +48,12 @@ const NOME_AVALIACAO = 'Avaliação (15 dias)';
 /** Os 4 planos pagos com o preço vigente (config `precos_planos` sobre o padrão). */
 function catalogo(cfg = repo.Config.get('assinatura', {}) || {}) {
   const ov = cfg.precos_planos || {};
-  return PLANOS_PADRAO.map((x) => ({ ...x, preco_cents: Number.isInteger(ov[x.slug]) ? ov[x.slug] : x.preco_cents }));
+  const ova = cfg.precos_anual || {};
+  return PLANOS_PADRAO.map((x) => {
+    const preco_cents = Number.isInteger(ov[x.slug]) ? ov[x.slug] : x.preco_cents;
+    // Anual (Augusto, 05/11/2026): 10 mensalidades, salvo preço anual definido à mão.
+    return { ...x, preco_cents, preco_anual_cents: Number.isInteger(ova[x.slug]) ? ova[x.slug] : preco_cents * 10 };
+  });
 }
 /** Aceita o slug novo e os nomes antigos (individual → starter, banda → business). */
 function planoPorSlug(slug) {
@@ -65,7 +70,7 @@ function contatoDaConta(contaId) {
 const camposDaAssinatura = (a) => [
   ['Assinante', contatoDaConta(a.conta_id)],
   ['Plano', (a.plano_slug || (a.plano === 'banda' ? 'banda' : 'starter')) + (a.vagas > 1 ? ` (${a.vagas} vagas)` : '')],
-  ['Valor', reais(a.preco_cents) + '/mês'],
+  ['Valor', reais(a.preco_cents) + (a.ciclo === 'anual' ? '/ano' : '/mês')],
   ['Preapproval MP', a.preapproval_id],
 ];
 
@@ -103,7 +108,7 @@ function teste(c) {
 /** Até quando uma assinatura CANCELADA ainda vale (fim do mês já pago). */
 function pagoAteDe(a) {
   if (!a || a.status !== 'cancelada' || !a.ultimo_pagamento_em) return null;
-  const fim = Date.parse(a.ultimo_pagamento_em) + 30 * 864e5;
+  const fim = Date.parse(a.ultimo_pagamento_em) + (a.ciclo === 'anual' ? 365 : 30) * 864e5;
   return fim > Date.now() ? new Date(fim).toISOString() : null;
 }
 /** Quem cancelou continua até o fim do mês que já pagou. */
@@ -254,7 +259,8 @@ async function sincronizar(contaId) {
 const sincronizarSemErro = (contaId) => sincronizar(contaId).catch((e) => ({ resultado: 'erro', erro: e.message }));
 
 // ------------------------------------------------------------------ assinar
-async function assinar(contaId, { plano: pedido = 'starter' } = {}) {
+async function assinar(contaId, { plano: pedido = 'starter', ciclo: cicloPedido = 'mensal' } = {}) {
+  if (!['mensal', 'anual'].includes(cicloPedido)) throw new ErroAssinatura('Ciclo inválido: use mensal ou anual.');
   const escolhido = planoPorSlug(pedido);
   if (!escolhido) throw new ErroAssinatura('Plano inválido.');
   const c = contas.Contas.porId(contaId);
@@ -267,33 +273,35 @@ async function assinar(contaId, { plano: pedido = 'starter' } = {}) {
   const vagas = escolhido.vagas;
   const banda = vagas > 1;                 // mais de uma pessoa: usa o mecanismo de vagas
   const tipo = banda ? 'banda' : 'individual';
-  const valor = escolhido.preco_cents;
+  const anual = cicloPedido === 'anual';
+  const valor = anual ? escolhido.preco_anual_cents : escolhido.preco_cents;
+  if (!(valor > 0)) throw new ErroAssinatura('Este plano não tem preço anual.');
   if (banda && assinaturaBandaDoTitular(contaId) && assinaturaBandaDoTitular(contaId).status !== 'pendente') throw new ErroAssinatura('Você já tem um plano banda.');
   // Pendente anterior sem pagamento: reaproveita a linha, com link novo.
   const id = atual && atual.status === 'pendente' ? atual.id : novoId();
   const pre = await _mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: banda ? `Musique — ${escolhido.nome} (${vagas} assinaturas)` : `Musique — ${escolhido.nome}`,
+      reason: (banda ? `Musique — ${escolhido.nome} (${vagas} assinaturas)` : `Musique — ${escolhido.nome}`) + (anual ? ' — anual' : ''),
       external_reference: `musique:${contaId}:${id}`,
       payer_email: c.email,
       back_url: `${_baseSite}/music/app#conta`,
       notification_url: `${_baseApi}/music/api/pagamentos/mp`,   // NO CORPO — o painel do MP não cobre assinatura
-      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
+      auto_recurring: { frequency: anual ? 12 : 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
       status: 'pending',
     }),
   });
   const link = s(pre.init_point || pre.sandbox_init_point, 1000);
-  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: valor, plano: tipo, plano_slug: escolhido.slug, vagas });
+  if (atual && atual.status === 'pendente') atualizar(id, { preapproval_id: String(pre.id), link, preco_cents: valor, plano: tipo, plano_slug: escolhido.slug, ciclo: cicloPedido, vagas });
   else {
-    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, plano, plano_slug, vagas, preco_cents, preapproval_id, link, criado_em, atualizado_em)
-      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, contaId, tipo, escolhido.slug, vagas, valor, String(pre.id), link, nowISO(), nowISO());
+    db.prepare(`INSERT INTO assinaturas_music (id, conta_id, status, origem, plano, plano_slug, ciclo, vagas, preco_cents, preapproval_id, link, criado_em, atualizado_em)
+      VALUES (?, ?, 'pendente', 'mp', ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, contaId, tipo, escolhido.slug, cicloPedido, vagas, valor, String(pre.id), link, nowISO(), nowISO());
   }
   // A titular ocupa a primeira vaga do plano banda.
   if (banda && !db.prepare("SELECT 1 FROM assinatura_vagas WHERE assinatura_id = ? AND conta_id = ? AND removida_em = ''").get(id, contaId)) {
     db.prepare('INSERT INTO assinatura_vagas (assinatura_id, conta_id, adicionada_em) VALUES (?, ?, ?)').run(id, contaId, nowISO());
   }
-  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: valor, plano: escolhido.slug });
+  evento(porId(id), 'assinatura.iniciada', { preapproval: String(pre.id), preco_cents: valor, plano: escolhido.slug, ciclo: cicloPedido });
   return { link, assinatura_id: id };
 }
 
@@ -475,7 +483,7 @@ function estadoDaConta(contaId) {
     uso,
     cobranca_ligada: cobrancaLigada(),
     email_verificado: !!(c && c.email_verificado),
-    assinatura: a ? { status: a.status, origem: a.origem, plano: a.plano, plano_slug: a.plano_slug || '', vagas: a.vagas, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
+    assinatura: a ? { status: a.status, origem: a.origem, plano: a.plano, plano_slug: a.plano_slug || '', ciclo: a.ciclo || 'mensal', vagas: a.vagas, desde: a.criado_em, preco_cents: a.preco_cents, ultimo_pagamento_em: a.ultimo_pagamento_em,
       inadimplente_desde: a.inadimplente_desde, link: a.status === 'pendente' ? a.link : '' } : null,
     acesso: temAcesso(a),
     cortesia_academia: reg && !reg.revogada_em ? { email: reg.email, cursos: reg.cursos, desde: reg.concedida_em } : null,
@@ -496,7 +504,7 @@ function resumoStaff() {
     eventos: db.prepare('SELECT * FROM assinatura_eventos ORDER BY id DESC LIMIT 50').all() };
 }
 
-function definirPlano({ preco_cents, planos, carencia_dias, teste_dias }) {
+function definirPlano({ preco_cents, planos, planos_anual, carencia_dias, teste_dias }) {
   const atual = repo.Config.get('assinatura', {}) || {};
   const novo = { ...atual };
   const preco = (x) => {
@@ -507,6 +515,13 @@ function definirPlano({ preco_cents, planos, carencia_dias, teste_dias }) {
   // Preço por plano: { starter: 3900, professional: 5900, ... } (centavos). `preco_cents` sozinho = Starter.
   const pedidos = { ...(planos || {}) };
   if (preco_cents !== undefined) pedidos.starter = preco_cents;
+  if (planos_anual && Object.keys(planos_anual).length) {
+    novo.precos_anual = { ...(novo.precos_anual || {}) };
+    for (const [slug, v] of Object.entries(planos_anual)) {
+      if (!PLANOS_PADRAO.some((x) => x.slug === slug)) throw new ErroAssinatura('Plano inválido: ' + slug);
+      novo.precos_anual[slug] = preco(v);
+    }
+  }
   if (Object.keys(pedidos).length) {
     novo.precos_planos = { ...(novo.precos_planos || {}) };
     for (const [slug, v] of Object.entries(pedidos)) {
@@ -530,6 +545,6 @@ function definirPlano({ preco_cents, planos, carencia_dias, teste_dias }) {
 
 module.exports = {
   configurar, plano, cobrancaLigada, vigente, temAcesso, acessoDaConta, teste, catalogo, planoPorSlug, NOME_AVALIACAO, adicionarVaga, removerVaga, vagasDe, bandaDaConta, sincronizar, assinar, cancelar, processarWebhook,
-  concederCortesia, encerrarCortesia, garantirDono, ciclo, estadoDaConta, resumoStaff, definirPlano, ErroAssinatura,
+  concederCortesia, encerrarCortesia, garantirDono, ciclo, pagoAteDe, estadoDaConta, resumoStaff, definirPlano, ErroAssinatura,
   _conferirWebhook: webhookMP.conferir,
 };

@@ -437,6 +437,7 @@ CREATE TABLE IF NOT EXISTS plans (
   nome           TEXT NOT NULL,
   descricao      TEXT NOT NULL DEFAULT '',
   preco_centavos INTEGER NOT NULL DEFAULT 0,
+  preco_anual_centavos INTEGER NOT NULL DEFAULT 0,   -- 0 = plano sem anual
   comissao_pct   REAL NOT NULL DEFAULT 20,
   limites        TEXT NOT NULL DEFAULT '{}',       -- JSON {pecas, fotos_por_peca, videos, destaques_mes}
   flags          TEXT NOT NULL DEFAULT '{}',       -- JSON {ia, analytics, agenda_auto, video, destaque, sem_fundo}
@@ -454,6 +455,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   fim                TEXT NOT NULL DEFAULT '',
   proximo_venc       TEXT NOT NULL DEFAULT '',
   mp_preapproval_id  TEXT NOT NULL DEFAULT '',
+  ciclo              TEXT NOT NULL DEFAULT 'mensal',   -- mensal|anual
   criado_em          TEXT NOT NULL,
   atualizado_em      TEXT NOT NULL DEFAULT ''
 );

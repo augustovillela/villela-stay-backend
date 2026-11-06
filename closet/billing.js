@@ -154,36 +154,53 @@ function estadoAssinatura(userId) {
   const sub = db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status IN ('pendente','ativa','inadimplente') ORDER BY criado_em DESC LIMIT 1").get(s(userId, 40));
   return {
     plano: u.plano, premium_ate: u.premium_ate, entitlements: u.entitlements,
-    assinatura: sub ? { status: sub.status, proximo_venc: sub.proximo_venc, recorrencia: !!sub.mp_preapproval_id } : null,
+    assinatura: sub ? { status: sub.status, ciclo: sub.ciclo || 'mensal', proximo_venc: sub.proximo_venc, recorrencia: !!sub.mp_preapproval_id } : null,
     planos: Planos.listar(),
     mp_ativo: ativo(),
     faturas: db.prepare('SELECT valor_centavos, competencia, vencimento, status, pago_em FROM invoices WHERE user_id = ? ORDER BY criado_em DESC LIMIT 12').all(s(userId, 40)),
   };
 }
 
-async function assinarPremium(userId, baseUrl) {
+/** Valor de UM período do Premium no ciclo. Anual sem preço anual cadastrado é erro (nunca cai no mensal). */
+function valorDoCiclo(plano, ciclo) {
+  if (!plano) return 0;
+  if (ciclo === 'anual') return plano.preco_anual_centavos > 0 ? plano.preco_anual_centavos : 0;
+  return plano.preco_centavos;
+}
+/** Ciclo da assinatura vigente (ou da mais recente) do usuário: decide 30 ou 365 dias e o valor da fatura. */
+function cicloDoUsuario(userId) {
+  const sub = db.prepare("SELECT ciclo FROM subscriptions WHERE user_id = ? AND status IN ('ativa','pendente','inadimplente') ORDER BY criado_em DESC LIMIT 1").get(s(userId, 40));
+  return sub && sub.ciclo === 'anual' ? 'anual' : 'mensal';
+}
+
+async function assinarPremium(userId, baseUrl, ciclo = 'mensal') {
   const u = Users.obter(userId);
   if (!u) throw new Error('Usuário não encontrado.');
   const plano = Planos.porSlug('premium');
   if (!plano || !plano.preco_centavos) throw new Error('Plano Premium indisponível.');
+  // Mensal (padrão) ou anual: no anual a cobrança é ÚNICA por ano (preapproval a cada 12 meses).
+  if (!['mensal', 'anual'].includes(ciclo)) throw new Error('Ciclo inválido: use mensal ou anual.');
+  const anual = ciclo === 'anual';
+  const valor = valorDoCiclo(plano, ciclo);
+  if (anual && !(valor > 0)) throw new Error('O Premium não tem preço anual.');
   const atual = db.prepare("SELECT * FROM subscriptions WHERE user_id = ? AND status = 'ativa'").get(u.id);
   if (atual) throw new Error('Você já tem uma assinatura ativa.');
   if (!ativo()) throw new Error('Pagamento online indisponível no momento — fale com o suporte para ativar o Premium.');
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: 'Closet Club — Premium',
+      reason: anual ? 'Closet Club — Premium (anual)' : 'Closet Club — Premium',
       external_reference: `closet-premium:${u.id}`,
       payer_email: u.email,
       back_url: `${String(baseUrl || '').replace(/\/+$/, '')}/closet/app`,
-      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((plano.preco_centavos / 100).toFixed(2)), currency_id: 'BRL' },
+      auto_recurring: { frequency: anual ? 12 : 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
       status: 'pending',
     }),
   });
-  db.prepare('INSERT INTO subscriptions (id, user_id, plan_id, status, inicio, criado_em, mp_preapproval_id) VALUES (?,?,?,?,?,?,?)')
-    .run(novoId(), u.id, plano.id, 'pendente', nowISO(), nowISO(), String(pre.id));
-  evento(u.id, 'premium.iniciado', String(pre.id), {});
-  return { link: pre.init_point || pre.sandbox_init_point, preapproval_id: pre.id };
+  db.prepare('INSERT INTO subscriptions (id, user_id, plan_id, status, inicio, criado_em, mp_preapproval_id, ciclo) VALUES (?,?,?,?,?,?,?,?)')
+    .run(novoId(), u.id, plano.id, 'pendente', nowISO(), nowISO(), String(pre.id), ciclo);
+  evento(u.id, 'premium.iniciado', String(pre.id), { ciclo });
+  return { link: pre.init_point || pre.sandbox_init_point, preapproval_id: pre.id, ciclo };
 }
 
 async function cancelarPremium(userId) {
@@ -199,18 +216,21 @@ async function cancelarPremium(userId) {
   return { ok: true, vale_ate: (db.prepare('SELECT premium_ate FROM users WHERE id = ?').get(s(userId, 40)) || {}).premium_ate || '' };
 }
 
-function ativarPremium(userId, { dias = 30, origem = 'mercadopago' } = {}) {
+function ativarPremium(userId, { dias, origem = 'mercadopago', ciclo = 'mensal' } = {}) {
+  // anual vale 365 dias e a fatura sai pelo valor anual; mensal segue 30 dias.
+  if (dias == null) dias = ciclo === 'anual' ? 365 : 30;
   const u = db.prepare('SELECT * FROM users WHERE id = ?').get(s(userId, 40));
   if (!u) return;
   const base = u.premium_ate && u.premium_ate > nowISO() ? Date.parse(u.premium_ate) : Date.now();
   const ate = new Date(base + Math.max(1, n(dias, 30)) * 86400000).toISOString();
   db.prepare("UPDATE users SET plano='premium', premium_ate=?, atualizado_em=? WHERE id=?").run(ate, nowISO(), u.id);
   const plano = Planos.porSlug('premium');
+  const valorPago = plano ? (valorDoCiclo(plano, ciclo) || plano.preco_centavos) : (ciclo === 'anual' ? 39000 : 3900);
   db.prepare('INSERT INTO invoices (id, user_id, valor_centavos, competencia, vencimento, status, criado_em, pago_em) VALUES (?,?,?,?,?,?,?,?)')
-    .run(novoId(), u.id, plano ? plano.preco_centavos : 3900, new Date().toISOString().slice(0, 7), new Date().toISOString().slice(0, 10), 'paga', nowISO(), nowISO());
-  lancar('assinatura', plano ? plano.preco_centavos : 3900, { userId: u.id, descricao: 'Premium mensal — ' + origem });
+    .run(novoId(), u.id, valorPago, new Date().toISOString().slice(0, 7), new Date().toISOString().slice(0, 10), 'paga', nowISO(), nowISO());
+  lancar('assinatura', valorPago, { userId: u.id, descricao: 'Premium ' + (ciclo === 'anual' ? 'anual' : 'mensal') + ' — ' + origem });
   repo.Notificacoes.criar(u.id, { titulo: '⭐ Premium ativo', texto: 'Destaque, fotos ilimitadas, vídeo, analytics e IA liberados.', url: '/closet/app#plano' });
-  evento(u.id, 'premium.ativo', origem, { ate });
+  evento(u.id, 'premium.ativo', origem, { ate, ciclo });
   return ate;
 }
 
@@ -220,10 +240,13 @@ function aplicarPreapproval(userId, preapprovalId, statusMP) {
   const agora = nowISO();
   if (statusMP === 'authorized') {
     if (sub.status === 'ativa') return; // webhook reenviado
+    const ciclo = sub.ciclo === 'anual' ? 'anual' : 'mensal';
+    const dias = ciclo === 'anual' ? 365 : 30;
     db.prepare("UPDATE subscriptions SET status='ativa', proximo_venc=?, atualizado_em=? WHERE id=?")
-      .run(new Date(Date.now() + 30 * 86400000).toISOString(), agora, sub.id);
-    ativarPremium(sub.user_id, { dias: 30 });
-    _notificar(avisos.novoPremium(sub.user_id, (Planos.porSlug('premium') || {}).preco_centavos || 3900));
+      .run(new Date(Date.now() + dias * 86400000).toISOString(), agora, sub.id);
+    ativarPremium(sub.user_id, { ciclo });
+    const premium = Planos.porSlug('premium') || {};
+    _notificar(avisos.novoPremium(sub.user_id, valorDoCiclo(premium, ciclo) || premium.preco_centavos || 3900, ciclo));
   } else if (statusMP === 'paused' || statusMP === 'cancelled') {
     db.prepare('UPDATE subscriptions SET status=?, atualizado_em=? WHERE id=?').run(statusMP === 'paused' ? 'inadimplente' : 'cancelada', agora, sub.id);
   }
@@ -250,7 +273,7 @@ async function processarWebhook(body = {}, query = {}) {
       } else if (ref.startsWith('closet-premium:') && pay.status === 'approved') {
         const userId = ref.split(':')[1];
         if (!db.prepare('SELECT 1 FROM invoices WHERE mp_payment_id = ?').get(String(pay.id))) {
-          ativarPremium(userId, { dias: 30 });
+          ativarPremium(userId, { ciclo: cicloDoUsuario(userId) });
           // carimba o pagamento na fatura recém-criada (idempotência do webhook do MP)
           db.prepare(`UPDATE invoices SET mp_payment_id = ? WHERE id = (
               SELECT id FROM invoices WHERE user_id = ? AND mp_payment_id = '' ORDER BY criado_em DESC LIMIT 1)`)

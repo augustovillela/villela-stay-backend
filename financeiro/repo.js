@@ -155,6 +155,10 @@ const planoPorId = (id) => db.prepare('SELECT * FROM plans WHERE id = ?').get(id
 const atualizarPrecoPlano = (id, precoCents) =>
   db.prepare('UPDATE plans SET preco_cents = ?, atualizado_em = ? WHERE id = ?').run(precoCents, nowISO(), id);
 
+// Preço ANUAL: idem — nunca entra no upsert da semente, para o que o Augusto editou não voltar.
+const atualizarPrecoAnualPlano = (id, precoAnualCents) =>
+  db.prepare('UPDATE plans SET preco_anual_cents = ?, atualizado_em = ? WHERE id = ?').run(precoAnualCents, nowISO(), id);
+
 const upsertPlano = (d) => {
   const existente = planoPorSlug(d.slug);
   if (existente) {
@@ -164,8 +168,8 @@ const upsertPlano = (d) => {
     return planoPorId(existente.id);
   }
   const id = novoId();
-  db.prepare(`INSERT INTO plans (id, slug, nome, preco_cents, periodo, modulos, limites, flags, ordem, publico, criado_em)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)`).run(id, d.slug, d.nome, d.precoCents || 0, d.periodo || 'mensal',
+  db.prepare(`INSERT INTO plans (id, slug, nome, preco_cents, preco_anual_cents, periodo, modulos, limites, flags, ordem, publico, criado_em)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`).run(id, d.slug, d.nome, d.precoCents || 0, d.precoAnualCents || 0, d.periodo || 'mensal',
     j.str(d.modulos || []), j.str(d.limites || {}), j.str(d.flags || {}), d.ordem || 0,
     d.publico === false ? 0 : 1, nowISO());
   return planoPorId(id);
@@ -613,19 +617,26 @@ const baixarAtivo = (id, { data, motivo }) => exec(
 
 const criarAssinatura = (d) => {
   const id = novoId();
-  exec(`INSERT INTO subscriptions (id, tenant_id, plano_id, status, externo_ref, inicio, criado_em)
-        VALUES (:id, :tenant, :plano, :status, :ref, :inicio, :agora)`,
-    { id, plano: d.planoId, status: d.status || 'ativa', ref: d.externoRef || '', inicio: d.inicio || nowISO(), agora: nowISO() });
+  exec(`INSERT INTO subscriptions (id, tenant_id, plano_id, status, externo_ref, ciclo, inicio, criado_em)
+        VALUES (:id, :tenant, :plano, :status, :ref, :ciclo, :inicio, :agora)`,
+    { id, plano: d.planoId, status: d.status || 'ativa', ref: d.externoRef || '', ciclo: d.ciclo === 'anual' ? 'anual' : 'mensal', inicio: d.inicio || nowISO(), agora: nowISO() });
   return assinatura(id);
 };
 const assinatura = (id) => um('SELECT * FROM subscriptions WHERE tenant_id = :tenant AND id = :id', { id });
 const assinaturaVigente = () => um(
   `SELECT * FROM subscriptions WHERE tenant_id = :tenant
      AND status IN ('pendente','ativa','inadimplente') ORDER BY criado_em DESC LIMIT 1`, {});
+/** Plataforma: ciclo (mensal|anual) da assinatura mais recente não cancelada de cada conta. */
+const ciclosVigentes = () => {
+  const m = new Map();
+  for (const r of db.prepare(`SELECT tenant_id, ciclo FROM subscriptions
+      WHERE status IN ('pendente','ativa','inadimplente') ORDER BY criado_em ASC`).all()) m.set(r.tenant_id, r.ciclo);
+  return m;
+};
 const listarAssinaturas = (limite = 24) => q(
   'SELECT * FROM subscriptions WHERE tenant_id = :tenant ORDER BY criado_em DESC LIMIT :limite', { limite });
 const atualizarAssinatura = (id, campos) => {
-  const permitidos = ['status', 'plano_id', 'externo_ref', 'fim'];
+  const permitidos = ['status', 'plano_id', 'externo_ref', 'fim', 'ciclo'];
   const sets = Object.keys(campos).filter(k => permitidos.includes(k));
   if (!sets.length) return assinatura(id);
   const bind = { id, agora: nowISO() };
@@ -1218,7 +1229,7 @@ const registrarInstrumentoMercado = (d) => {
 module.exports = {
   q, um, exec, qPlataforma, umPlataforma, execPlataforma, verificarSql,
   criarTenant, tenantPorId, tenantPorSlug, listarTenants, atualizarTenant,
-  listarPlanos, planoPorSlug, planoPorId, upsertPlano, atualizarPrecoPlano,
+  listarPlanos, planoPorSlug, planoPorId, upsertPlano, atualizarPrecoPlano, atualizarPrecoAnualPlano, ciclosVigentes,
   criarUsuario, usuarioPorId, usuarioPorEmail, listarUsuarios, trocarSenhaDoUsuario, trocarEmailDoUsuario,
   criarEntidade, entidadePorId, listarEntidades,
   criarConta, contaPorId, contaPorCodigo, listarContas,

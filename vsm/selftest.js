@@ -24,10 +24,11 @@ const alertaAugusto = async (m) => { alertas.push(m); };
 
 // MP mock
 const mpChamadas = [];
+const mpCorpos = []; // corpos dos POST /preapproval (plano anual: frequency e valor)
 let _payResp = {}; // resposta de /v1/payments/* controlada por teste (idempotência)
 const mpFetch = async (path, opts) => {
   mpChamadas.push(path);
-  if (path === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE999', init_point: 'https://mp/PRE999', status: 'pending', external_reference: 'vsm' };
+  if (path === '/preapproval' && opts && opts.method === 'POST') mpCorpos.push(JSON.parse(opts.body)); if (path === '/preapproval' && opts && opts.method === 'POST') return { id: 'PRE999', init_point: 'https://mp/PRE999', status: 'pending', external_reference: 'vsm' };
   if (path.startsWith('/preapproval/')) return { id: 'PRE999', status: 'authorized' };
   if (path.startsWith('/v1/payments/')) return _payResp;
   return {};
@@ -62,6 +63,13 @@ async function rodar() {
   const srv = app.listen(0); BASE = 'http://127.0.0.1:' + srv.address().port;
   console.log('Villela Stay Manager — selftest\n');
 
+  await t('plano anual: semente = 10x o mensal nos planos pagos; trial e sem preco ficam 0', async () => {
+    const planos = saas.repo.Planos.listar({ incluirInativos: true });
+    const pagos = planos.filter(p => p.preco_centavos > 0);
+    assert.ok(pagos.length >= 3, 'esperava >= 3 planos pagos');
+    for (const p of pagos) assert.equal(p.preco_anual_centavos, p.preco_centavos * 10, p.slug + ': anual deve ser 10x o mensal');
+    for (const p of planos.filter(p => p.preco_centavos === 0)) assert.equal(p.preco_anual_centavos, 0, p.slug + ': sem preco mensal => sem anual');
+  });
   await t('landing pública renderiza com planos', async () => {
     const r = await req('GET', '/gestao');
     assert.ok(r.texto.includes('Villela Stay Manager') && r.texto.includes('Pro') && r.texto.includes('Testar 15 dias'));
@@ -349,6 +357,79 @@ async function rodar() {
     const delta = (await req('GET', '/staff/api/vsm/tenants')).json.tenants.find(x => x.email_contato === 'delta@t.br');
     await req('POST', `/staff/api/vsm/tenants/${delta.id}/status`, { corpo: { status: 'suspensa' } });
     assert.equal((await req('GET', '/gestao/api/app/imoveis', { cookies: true })).st, 403);
+  });
+
+  // ---- PLANO ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades; cobranca unica por ano ----
+  await t('plano anual: PATCH do preco anual (admin) so mexe nele e rejeita valor invalido', async () => {
+    const { planos } = (await req('GET', '/staff/api/vsm/planos')).json;
+    const pl = planos.find(p => p.slug === 'pro');
+    assert.equal(pl.preco_anual_centavos, pl.preco_centavos * 10, 'GET devolve preco_anual_centavos');
+    const antes = pl.preco_centavos;
+    const r = await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { preco_anual_centavos: 123400 } });
+    assert.equal(r.json.plano.preco_anual_centavos, 123400);
+    assert.equal(r.json.plano.preco_centavos, antes, 'o mensal nao muda');
+    const r2 = await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { nome: pl.nome } });
+    assert.equal(r2.json.plano.preco_anual_centavos, 123400, 'omitido = mantem');
+    const ruim = await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { preco_anual_centavos: -5 } });
+    assert.equal(ruim.st, 400);
+    assert.equal(saas.repo.Planos.porSlug('pro').preco_anual_centavos, 123400);
+    await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { preco_anual_centavos: antes * 10 } });
+  });
+  await t('plano anual: assinar anual cria preapproval de 12 meses com o valor anual e guarda o ciclo', async () => {
+    const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Anual Um', email: 'anual1@t.br', plano: 'trial' } });
+    const tid2 = nova.json.tenant.id;
+    const pl = saas.repo.Planos.porSlug('pro');
+    mpCorpos.length = 0;
+    const r = await require('./billing').assinar(tid2, 'pro', 'anual1@t.br', 'https://base.teste', '1.1.1.1', 'anual');
+    assert.ok(r.link);
+    const b = mpCorpos[mpCorpos.length - 1];
+    assert.equal(b.auto_recurring.frequency, 12);
+    assert.equal(b.auto_recurring.frequency_type, 'months');
+    assert.equal(b.auto_recurring.transaction_amount, pl.preco_anual_centavos / 100);
+    assert.match(b.reason, /anual/);
+    const sub = require('./db').db.prepare("SELECT * FROM subscriptions WHERE tenant_id = ? ORDER BY criado_em DESC").get(tid2);
+    assert.equal(sub.ciclo, 'anual'); assert.equal(sub.valor_centavos, pl.preco_anual_centavos);
+    // mensal continua igual: 1 mes e o valor mensal
+    const nova2 = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Mensal Um', email: 'mensal1@t.br', plano: 'trial' } });
+    await require('./billing').assinar(nova2.json.tenant.id, 'pro', 'mensal1@t.br', 'https://base.teste', '1.1.1.1');
+    const bm = mpCorpos[mpCorpos.length - 1];
+    assert.equal(bm.auto_recurring.frequency, 1); assert.equal(bm.auto_recurring.transaction_amount, pl.preco_centavos / 100);
+    assert.equal(require('./db').db.prepare('SELECT ciclo FROM subscriptions WHERE tenant_id = ?').get(nova2.json.tenant.id).ciclo, 'mensal');
+    // pelo endpoint do assinante: ciclo invalido nao passa
+    await assert.rejects(() => require('./billing').assinar(nova2.json.tenant.id, 'pro', 'x@t.br', 'https://base.teste', '1.1.1.1', 'trimestral'), /Ciclo inválido/);
+  });
+  await t('plano anual: ciclo anual e rejeitado quando o plano nao tem preco anual', async () => {
+    const pl = saas.repo.Planos.porSlug('starter');
+    const antes = pl.preco_anual_centavos;
+    await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { preco_anual_centavos: 0 } });
+    const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Sem Anual', email: 'semanual@t.br', plano: 'trial' } });
+    const nSubs = require('./db').db.prepare('SELECT COUNT(*) c FROM subscriptions WHERE tenant_id = ?').get(nova.json.tenant.id).c;
+    await assert.rejects(() => require('./billing').assinar(nova.json.tenant.id, 'starter', 'semanual@t.br', 'https://base.teste', '1.1.1.1', 'anual'), /não tem preço anual/);
+    assert.equal(require('./db').db.prepare('SELECT COUNT(*) c FROM subscriptions WHERE tenant_id = ?').get(nova.json.tenant.id).c, nSubs, 'rejeitado: nenhuma assinatura nova foi criada');
+    await req('PATCH', '/staff/api/vsm/planos/' + pl.id, { corpo: { preco_anual_centavos: antes } });
+  });
+  await t('plano anual: MRR conta o anual dividido por 12; ativacao anual vence em 365 dias e a fatura e a anual', async () => {
+    const nova = await req('POST', '/staff/api/vsm/tenants', { corpo: { nome: 'Anual Mrr', email: 'anualmrr@t.br', plano: 'trial' } });
+    const tid3 = nova.json.tenant.id;
+    const dbx = require('./db').db;
+    const billing = require('./billing');
+    await billing.assinar(tid3, 'pro', 'anualmrr@t.br', 'https://base.teste', '1.1.1.1', 'anual');
+    dbx.prepare("UPDATE subscriptions SET valor_centavos = 1200000 WHERE tenant_id = ? AND ciclo = 'anual'").run(tid3);
+    const mrr0 = saas.repo.Dashboard.plataforma().mrr_centavos;
+    const preId = dbx.prepare("SELECT mp_preapproval_id p FROM subscriptions WHERE tenant_id = ? AND ciclo = 'anual'").get(tid3).p;
+    billing.aplicarPreapproval(tid3, preId, 'authorized');
+    const sub = dbx.prepare("SELECT * FROM subscriptions WHERE tenant_id = ? AND ciclo = 'anual'").get(tid3);
+    assert.equal(sub.status, 'ativa');
+    const dias = (Date.parse(sub.proximo_venc) - Date.now()) / 86400000;
+    assert.ok(dias > 360 && dias < 366, 'vencimento anual ~365 dias, veio ' + dias);
+    const fat = dbx.prepare("SELECT valor_centavos FROM invoices WHERE tenant_id = ? ORDER BY criado_em DESC").get(tid3);
+    assert.equal(fat.valor_centavos, 1200000, 'a fatura e o valor anual cobrado');
+    const mrr1 = saas.repo.Dashboard.plataforma().mrr_centavos;
+    assert.equal(mrr1 - mrr0, 100000, 'MRR sobe 1/12 do anual (1.200.000 / 12)');
+    // trocar de plano numa assinatura anual compara os precos ANUAIS
+    const r = billing.trocarPlano(tid3, 'starter', 'teste');
+    assert.equal(r.tipo, 'downgrade');
+    assert.equal(r.exige_reassinar, true, 'assinatura anual ativa no MP: trocar de plano exige reassinar');
   });
 
   await t('ciclo de vida: trial vencido → inadimplente', async () => {

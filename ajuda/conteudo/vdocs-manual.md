@@ -118,6 +118,7 @@ Todos os planos começam com **15 dias grátis**, no plano **Avaliação (15 dia
 | | Starter | Professional | Business | Enterprise |
 |---|---|---|---|---|
 | Preço mensal | R$ 99 | R$ 249 | R$ 599 | Sob consulta |
+| Preço anual (10 mensalidades) | R$ 990 | R$ 2.490 | R$ 5.990 | Sob consulta |
 | Usuários | 5 | 20 | 60 | Sob medida |
 | Armazenamento | 10 GB | 50 GB | 200 GB | Sob medida |
 | Documentos | 2.000 | 20.000 | 100.000 | Sob medida |

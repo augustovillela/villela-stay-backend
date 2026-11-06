@@ -125,6 +125,7 @@ function landing() {
   <div class="grid g3">
     ${planos.map(p => `<div class="card plano">${p.slug === 'professional' ? '<div><span class="badge">Mais escolhido</span></div>' : ''}
       <h3>${esc(p.nome)}</h3><div class="preco">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos)}</div>
+      ${Number(p.preco_anual_centavos) > 0 ? `<div style="font-size:13px;color:var(--suave);margin:-4px 0 10px">ou <b>R$ ${(Number(p.preco_anual_centavos) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}/ano</b> (2 meses grátis)</div>` : ''}
       <ul>
         <li><b>${p.limites.usuarios || 'Sob medida'}</b> usuários</li>
         <li><b>${p.limites.projetos || 'Sob medida'}</b> projetos</li>
@@ -1172,12 +1173,12 @@ async function vPlano(){
       const b=await api('GET','/billing');
       if(b.interno){billingHtml='<div class="aviso">🏠 Workspace interno — sem cobrança.</div>';}
       else{
-        const planos=(b.planos||[]).map(p=>'<div class="card" style="width:200px"><b>'+esc(p.nome)+'</b><div style="font-size:20px;font-weight:800;color:var(--verde2)">R$ '+(p.preco_centavos/100).toLocaleString('pt-BR')+'<span style="font-size:12px;font-weight:400">/mês</span></div>'+(P.administrar_cobranca&&b.online_disponivel?'<button class="btn peq" style="margin-top:8px" onclick="assinarPlano(\\''+p.slug+'\\')">Assinar</button>':'')+'</div>').join('');
+        const planos=(b.planos||[]).map(p=>'<div class="card" style="width:200px"><b>'+esc(p.nome)+'</b><div style="font-size:20px;font-weight:800;color:var(--verde2)">R$ '+(p.preco_centavos/100).toLocaleString('pt-BR')+'<span style="font-size:12px;font-weight:400">/mês</span></div>'+(p.preco_anual_centavos?'<div style="font-size:12px;color:var(--suave)">ou R$ '+(p.preco_anual_centavos/100).toLocaleString('pt-BR')+'/ano (2 meses grátis)</div>':'')+(P.administrar_cobranca&&b.online_disponivel?'<button class="btn peq" style="margin-top:8px" onclick="assinarPlano(\\''+p.slug+'\\')">Assinar</button>':'')+'</div>').join('');
         const recorrente=b.plano&&b.plano.recorrencia_mp;
         billingHtml='<div class="card" style="margin-top:12px"><b>Assinatura</b>'+
          (b.online_disponivel?'':'<div class="aviso">Pagamento online indisponível no momento — fale com a Villela.</div>')+
-         '<p class="sub">Plano atual: <b>'+esc(b.plano?b.plano.nome:'—')+'</b> · status '+esc(b.plano?b.plano.status:'—')+(recorrente?' · recorrência Mercado Pago ativa':'')+'</p>'+
-         (P.administrar_cobranca?'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+planos+'</div>'+(recorrente?'<button class="btn btn-ghost peq" style="margin-top:10px" onclick="cancelarAssin()">Cancelar assinatura</button>':''):'')+
+         '<p class="sub">Plano atual: <b>'+esc(b.plano?b.plano.nome:'—')+'</b> · status '+esc(b.plano?b.plano.status:'—')+(recorrente?' · recorrência Mercado Pago ativa ('+(b.plano.ciclo==='anual'?'anual':'mensal')+')':'')+'</p>'+
+         (P.administrar_cobranca?(b.online_disponivel&&!recorrente?'<p style="margin:8px 0 0"><label>Cobrança <select id="pl-ciclo"><option value="mensal">Mensal</option><option value="anual">Anual (2 meses grátis)</option></select></label></p>':'')+'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">'+planos+'</div>'+(recorrente?'<button class="btn btn-ghost peq" style="margin-top:10px" onclick="cancelarAssin()">Cancelar assinatura</button>':''):'')+
          (b.pagamentos&&b.pagamentos.length?'<table style="margin-top:12px"><tr><th>Data</th><th>Valor</th><th>Status</th></tr>'+b.pagamentos.map(pg=>'<tr><td>'+dt(pg.criado_em)+'</td><td>'+brl(pg.valor_centavos)+'</td><td>'+esc(pg.status)+'</td></tr>').join('')+'</table>':'')+'</div>';
       }
     }catch(e){billingHtml='<div class="erro">'+esc(e.message)+'</div>';}
@@ -1190,8 +1191,9 @@ async function vPlano(){
    linha('Chamadas de API','api_chamadas',0)+'</table></div>'+billingHtml;
 }
 async function assinarPlano(slug){
-  if(!confirm('Assinar o plano '+slug+'? Você será levado ao Mercado Pago para autorizar a cobrança mensal.'))return;
-  try{const d=await api('POST','/billing/assinar',{plano_slug:slug});if(d.link)location.href=d.link;else alert('Assinatura iniciada.');}
+  const ciclo=($('pl-ciclo')||{}).value==='anual'?'anual':'mensal';
+  if(!confirm('Assinar o plano '+slug+' ('+ciclo+')? Você será levado ao Mercado Pago para autorizar a cobrança '+(ciclo==='anual'?'anual (uma vez por ano)':'mensal')+'.'))return;
+  try{const d=await api('POST','/billing/assinar',{plano_slug:slug,ciclo:ciclo});if(d.link)location.href=d.link;else alert('Assinatura iniciada.');}
   catch(e){alert(e.message);}
 }
 async function cancelarAssin(){if(!confirm('Cancelar a assinatura? Sua conta pode ser suspensa ao fim do período pago.'))return;try{await api('POST','/billing/cancelar');vPlano();}catch(e){alert(e.message);}}

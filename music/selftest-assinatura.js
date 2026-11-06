@@ -126,6 +126,31 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal(CORTESIA.revogadas.length, antes + 1, 'fim do mês pago: a cortesia sai da Academia');
   });
 
+  await t('PLANO ANUAL: anual = 10 mensalidades, preapproval de 12 meses, ciclo guardado e período pago de 365 dias', async () => {
+    const cat = assinatura.catalogo();
+    assert.deepEqual(cat.map((p) => [p.slug, p.preco_anual_cents]), [['starter', 39000], ['professional', 59000], ['business', 69000], ['enterprise', 99000]]);
+    const ruim = await req('POST', '/music/api/assinatura/assinar', { como: 'ana', corpo: { plano: 'starter', ciclo: 'quinzenal' } });
+    assert.equal(ruim.status, 400); assert.match(ruim.json.erro, /Ciclo inválido/);
+    const r = await req('POST', '/music/api/assinatura/assinar', { como: 'ana', corpo: { plano: 'starter', ciclo: 'anual' } });
+    assert.equal(r.status, 200, JSON.stringify(r.json));
+    const b = MP.criados[MP.criados.length - 1];
+    assert.equal(b.auto_recurring.frequency, 12); assert.equal(b.auto_recurring.frequency_type, 'months');
+    assert.equal(b.auto_recurring.transaction_amount, 390, 'preço anual do Starter');
+    assert.match(b.reason, /anual/);
+    const st = (await req('GET', '/music/api/assinatura', { como: 'ana' })).json;
+    assert.equal(st.assinatura.ciclo, 'anual'); assert.equal(st.assinatura.preco_cents, 39000);
+    // preço anual editável por plano
+    await req('PUT', '/staff/api/music/assinaturas/plano', { corpo: { planos_anual: { starter: 35000 } } });
+    assert.equal(assinatura.catalogo()[0].preco_anual_cents, 35000);
+    await req('PUT', '/staff/api/music/assinaturas/plano', { corpo: { planos_anual: { starter: 39000 } } });
+    // cancelada com pagamento anual: vale 365 dias
+    const id = r.json.assinatura_id;
+    db.prepare("UPDATE assinaturas_music SET status = 'cancelada', ultimo_pagamento_em = ? WHERE id = ?").run(new Date(Date.now() - 200 * 864e5).toISOString(), id);
+    const linha = db.prepare('SELECT * FROM assinaturas_music WHERE id = ?').get(id);
+    assert.ok(assinatura.pagoAteDe(linha), 'anual pago há 200 dias ainda vale');
+    assert.equal(assinatura.pagoAteDe({ ...linha, ciclo: 'mensal' }), null, 'a mesma data, se fosse mensal, já venceu');
+  });
+
   await t('MUSIQUE PAGO: teste grátis de 15 dias; depois, 402 em tudo — menos conta, assinar e levar os próprios dados', async () => {
     const r = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Teste Pago', email: 'testepago@t', senha: 'senha-boa-123', aceite_termos: true } });
     const ck = { Cookie: (r.setCookie || []).find((x) => x.startsWith(contas.COOKIE + '=')).split(';')[0] };

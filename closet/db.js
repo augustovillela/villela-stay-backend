@@ -51,6 +51,13 @@ garantirColuna('bookings', 'prazo_devolucao', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('bookings', 'zona_entrega_id', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('partners', 'slug', "TEXT NOT NULL DEFAULT ''");
 garantirColuna('partners', 'logo_url', "TEXT NOT NULL DEFAULT ''");
+// Plano ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades (2 meses grátis), editável.
+// O preenchimento roda SÓ quando a coluna acaba de nascer: depois disso o valor é do Augusto
+// (inclusive 0 = "sem anual") e nenhuma reinicialização o desfaz.
+if (garantirColuna('plans', 'preco_anual_centavos', 'INTEGER NOT NULL DEFAULT 0')) {
+  db.exec('UPDATE plans SET preco_anual_centavos = preco_centavos * 10 WHERE preco_centavos > 0 AND preco_anual_centavos = 0');
+}
+garantirColuna('subscriptions', 'ciclo', "TEXT NOT NULL DEFAULT 'mensal'");
 
 const nowISO = () => new Date().toISOString();
 const hojeISO = () => new Date().toISOString().slice(0, 10);

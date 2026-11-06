@@ -135,6 +135,7 @@ Todos os planos começam com **15 dias grátis**, no plano **Avaliação (15 dia
 | | Starter | Professional | Business | Enterprise |
 |---|---|---|---|---|
 | Preço mensal | R$ 149 | R$ 349 | R$ 799 | Sob consulta |
+| Preço anual (10 mensalidades) | R$ 1.490 | R$ 3.490 | R$ 7.990 | Sob consulta |
 | Usuários | 5 | 20 | 60 | Sob medida |
 | Projetos | 15 | 60 | 300 | Sob medida |
 | Eventos/mês | 5 | 25 | 100 | Sob medida |

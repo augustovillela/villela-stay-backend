@@ -98,7 +98,7 @@ O dashboard comercial mostra a visão do momento; os planos superiores incluem *
 
 ## Planos e pagamento
 
-O teste gratuito de 15 dias dá acesso a todos os módulos, sem cartão. Os planos pagos são mensais:
+O teste gratuito de 15 dias dá acesso a todos os módulos, sem cartão. Os planos pagos podem ser mensais ou anuais:
 
 | Plano | Indicado para | Referência |
 |---|---|---|
@@ -106,6 +106,8 @@ O teste gratuito de 15 dias dá acesso a todos os módulos, sem cartão. Os plan
 | Professional | Time comercial: múltiplos funis, automações, propostas, campanhas e scoring | R$ 189/mês |
 | Business | Operação completa: agentes de IA, integrações, API pública e WhatsApp API | R$ 449/mês |
 | Enterprise | White label, integrações customizadas, SLA e agentes personalizados | Sob consulta |
+
+**Plano anual:** em todos os planos pagos você pode escolher pagar **por ano**, numa cobrança única no Mercado Pago, por **10 mensalidades** (2 meses grátis). A escolha mensal ou anual é feita ao assinar, na aba **Conta** (ou **Plano**) do painel; o valor anual de cada plano aparece ao lado do mensal.
 
 Os limites de contatos, usuários, funis, campanhas e execuções de IA variam por plano — **consulte a página de planos** para os valores e limites vigentes.
 

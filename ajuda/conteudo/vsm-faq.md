@@ -21,7 +21,8 @@ são preservados.
 ### Quanto custa?
 
 Os preços de lançamento publicados são: Starter R$ 99/mês, Pro R$ 249/mês, Business
-R$ 599/mês e Enterprise sob consulta. Cada plano tem limites de imóveis, usuários e
+R$ 599/mês e Enterprise sob consulta. Em todos os planos pagos há a opção **anual**: 10 mensalidades por ano (2 meses grátis), numa
+cobrança única. Cada plano tem limites de imóveis, usuários e
 reservas/mês. Como os valores podem ser ajustados, consulte sempre a página de planos em
 `/gestao#planos`.
 

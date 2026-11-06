@@ -761,10 +761,10 @@
   function vPlano() {
     api('GET', '/cobranca').then(function (d) {
       setView('<div class="card"><h3>Plano e cobrança</h3><p>Plano atual: <b>' + esc(d.plano ? d.plano.nome : '—') + '</b> · assinatura: <span class="tag">' + esc(d.assinatura ? d.assinatura.status : '—') + '</span>' + (d.assinatura && d.assinatura.proximo_venc ? ' · próx. venc. ' + dt(d.assinatura.proximo_venc) : '') + '</p>' +
-        '<h3 style="margin-top:12px">Planos</h3>' + d.planos_disponiveis.map(function (p) { return '<div class="lin"><b>' + esc(p.nome) + '</b> — ' + (p.preco_centavos ? brl(p.preco_centavos) + '/mês' : 'sob consulta') + (p.preco_centavos ? ' <button class="btn g peq" data-as="' + p.slug + '">Assinar</button>' : '') + '</div>'; }).join('') +
+        '<h3 style="margin-top:12px">Planos</h3>' + d.planos_disponiveis.map(function (p) { return '<div class="lin"><b>' + esc(p.nome) + '</b> — ' + (p.preco_centavos ? brl(p.preco_centavos) + '/mês' : 'sob consulta') + (p.preco_centavos ? ' <button class="btn g peq" data-as="' + p.slug + '" data-ciclo="mensal">Assinar mensal</button>' : '') + (p.preco_anual_centavos ? ' <button class="btn g peq" data-as="' + p.slug + '" data-ciclo="anual">Assinar anual — ' + brl(p.preco_anual_centavos) + '/ano</button>' : '') + '</div>'; }).join('') +
         (d.mp_ativo ? '' : '<p class="aviso">Pagamento online em configuração — fale com o suporte para ativar seu plano.</p>') +
         (d.assinatura && d.assinatura.recorrencia_mp ? '<p style="margin-top:12px"><button class="btn g peq" id="b-canc">Cancelar assinatura</button></p>' : '') + '</div>');
-      Array.prototype.forEach.call(document.querySelectorAll('[data-as]'), function (b) { b.onclick = function () { api('POST', '/cobranca/assinar', { plano: b.getAttribute('data-as') }).then(function (r) { location.href = r.link; }).catch(function (e) { alert(e.message); }); }; });
+      Array.prototype.forEach.call(document.querySelectorAll('[data-as]'), function (b) { b.onclick = function () { api('POST', '/cobranca/assinar', { plano: b.getAttribute('data-as'), ciclo: b.getAttribute('data-ciclo') || 'mensal' }).then(function (r) { location.href = r.link; }).catch(function (e) { alert(e.message); }); }; });
       if (el('b-canc')) el('b-canc').onclick = function () { if (confirm('Cancelar a assinatura?')) api('POST', '/cobranca/cancelar').then(vPlano).catch(function (e) { alert(e.message); }); };
     }).catch(erroBox);
   }

@@ -93,7 +93,7 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
     if (req.assinante.papel !== 'admin') return res.status(403).json({ erro: 'Apenas o administrador da operação assina.' });
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
     const base = `${proto}://${req.get('host')}`;
-    const r = await billing.assinar(req.assinante.tenant_id, s((req.body || {}).plano, 60), req.assinante.email, base, ipDe(req));
+    const r = await billing.assinar(req.assinante.tenant_id, s((req.body || {}).plano, 60), req.assinante.email, base, ipDe(req), s((req.body || {}).ciclo, 10) || 'mensal');
     res.json({ ok: true, ...r });
   }));
   app.post('/gestao/api/cobranca/cancelar', requireAssinante, h(async (req, res) => {

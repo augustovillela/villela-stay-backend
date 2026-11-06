@@ -142,7 +142,7 @@ function registrarRotasConta(app, { jwtSecret, enviarEmail }) {
   app.get('/closet/api/plano', requireUsuario, h(async (req, res) => res.json(billing.estadoAssinatura(req.usuario.id))));
   app.post('/closet/api/plano/assinar', requireUsuario, h(async (req, res) => {
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    res.json({ ok: true, ...(await billing.assinarPremium(req.usuario.id, `${proto}://${req.get('host')}`)) });
+    res.json({ ok: true, ...(await billing.assinarPremium(req.usuario.id, `${proto}://${req.get('host')}`, String((req.body || {}).ciclo || 'mensal'))) });
   }));
   app.post('/closet/api/plano/cancelar', requireUsuario, h(async (req, res) => res.json(await billing.cancelarPremium(req.usuario.id))));
 

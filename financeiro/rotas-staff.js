@@ -138,6 +138,7 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
   app.get(`${B}/planos`, ...admin(() => ({
     planos: repo.listarPlanos().map(p => ({
       id: p.id, slug: p.slug, nome: p.nome, precoCents: p.preco_cents, preco: dinheiro.formatar(p.preco_cents),
+      precoAnualCents: p.preco_anual_cents || 0, precoAnual: dinheiro.formatar(p.preco_anual_cents || 0),
       periodo: p.periodo, modulos: j.parse(p.modulos, []), limites: j.parse(p.limites, {}),
       flags: j.parse(p.flags, {}), publico: p.publico === 1, ordem: p.ordem,
     })),
@@ -153,6 +154,10 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin, express }) {
     // trocar preço de plano com assinante ativo sem passar pelo fluxo.
     if (d.precoCents != null) {
       repo.atualizarPrecoPlano(p.id, dinheiro.naoNegativo(Number(d.precoCents), 'preço'));
+    }
+    // Preço ANUAL (Augusto, 05/11/2026): mesma rota, mesmo cuidado. 0 = plano sem anual.
+    if (d.precoAnualCents != null) {
+      repo.atualizarPrecoAnualPlano(p.id, dinheiro.naoNegativo(Number(d.precoAnualCents), 'preço anual'));
     }
     repo.upsertPlano({
       slug: p.slug, nome: d.nome || p.nome,

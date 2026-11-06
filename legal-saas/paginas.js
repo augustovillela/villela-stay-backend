@@ -154,13 +154,21 @@ footer .wrap{display:flex;gap:16px;justify-content:space-between;flex-wrap:wrap;
 
 const ROTULO_MOD = Object.fromEntries(repo.MODULOS.map(m => [m[0], m[1]]));
 
+// plano ANUAL (10 mensalidades): "ou R$ X/ano (2 meses grátis)" quando o plano tem preço anual
+function anualTxt(p) {
+  if (!p.preco_anual_centavos || !p.preco_centavos) return '';
+  const meses = Math.round((p.preco_anual_centavos / p.preco_centavos) * 10) / 10;
+  const nota = p.preco_anual_centavos === p.preco_centavos * 10 ? ' (2 meses grátis)' : (meses < 12 ? ` (equivale a ${meses} mensalidades)` : '');
+  return `<p class="sub" style="text-align:left;margin:4px 0 0">ou ${brl(p.preco_anual_centavos)}/ano${nota}</p>`;
+}
+
 function landingHTML() {
   const planos = repo.Planos.listar();
   const cardPlano = (p) => {
     const dest = p.slug === 'profissional';
     const preco = p.preco_centavos ? `${brl(p.preco_centavos)}<small>/mês</small>` : (p.slug === 'trial' ? 'Grátis' : 'Sob consulta');
     const itens = p.slug === 'trial'
-      ? ['Todos os módulos por 14 dias', `${p.limites.advogados} advogados`, `${p.limites.processos_ativos} processos`, 'Sem cartão']
+      ? ['Todos os módulos por 15 dias', `${p.limites.advogados} advogados`, `${p.limites.processos_ativos} processos`, 'Sem cartão']
       : [`${p.limites.advogados || '∞'} advogados`, `${p.limites.processos_ativos || 'ilimitados'} processos ativos`,
          p.modulos.includes('ia') ? 'IA por crédito pré-pago ou com a sua chave de API' : 'Sem módulo de IA',
          `${p.modulos.length} módulos${p.flags.ia_direta ? ' · IA direta' : ''}${p.flags.api_publica ? ' · API' : ''}${p.flags.white_label ? ' · marca própria' : ''}`];
@@ -168,7 +176,7 @@ function landingHTML() {
       ? `<a class="btn g" href="#contato">Falar com vendas</a>`
       : `<a class="btn" href="/juridico/assinar?plano=${p.slug}">${p.slug === 'trial' ? 'Testar grátis' : 'Assinar'}</a>`;
     return `<div class="plano ${dest ? 'dest' : ''}">${dest ? '<span class="badge">Mais popular</span>' : ''}
-      <h3>${esc(p.nome)}</h3><div class="preco">${preco}</div><p class="sub" style="text-align:left;margin:8px 0 0">${esc(p.descricao)}</p>
+      <h3>${esc(p.nome)}</h3><div class="preco">${preco}</div>${anualTxt(p)}<p class="sub" style="text-align:left;margin:8px 0 0">${esc(p.descricao)}</p>
       <ul>${itens.map(i => `<li>✓ ${esc(i)}</li>`).join('')}</ul>${cta}</div>`;
   };
   const feats = [
@@ -311,7 +319,7 @@ function shell(corpo, script) {
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
   const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
-  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
+  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>${anualTxt(p)}
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-esc" placeholder="Nome do escritório *" required>
       <input id="s-nome" placeholder="Seu nome (responsável) *" required>
@@ -358,11 +366,11 @@ function appHTML() {
     async function sair(){await api('POST','/logout').catch(()=>{});location.reload()}window.sair=sair;
     async function vPlano(){const d=await api('GET','/cobranca');
       c().innerHTML='<div class="card"><h3>Plano e cobrança</h3><p>Plano atual: <b>'+esc(d.plano?d.plano.nome:'—')+'</b> · assinatura: <span class="tag">'+esc(d.assinatura?d.assinatura.status:'—')+'</span>'+(d.assinatura&&d.assinatura.proximo_venc?' · próx. venc. '+dt(d.assinatura.proximo_venc):'')+'</p>'
-        +'<h3 style="margin-top:12px">Planos</h3>'+d.planos_disponiveis.map(p=>'<div class="lin"><b>'+esc(p.nome)+'</b> — '+(p.preco_centavos?brl(p.preco_centavos)+'/mês':'sob consulta')+(p.preco_centavos?' <button class="btn g" style="padding:6px 14px" onclick="assinar(\\''+p.slug+'\\')">Assinar</button>':'')+'</div>').join('')
+        +'<h3 style="margin-top:12px">Planos</h3>'+d.planos_disponiveis.map(p=>'<div class="lin"><b>'+esc(p.nome)+'</b> — '+(p.preco_centavos?brl(p.preco_centavos)+'/mês':'sob consulta')+(p.preco_centavos?' <button class="btn g" style="padding:6px 14px" onclick="assinar(\\''+p.slug+'\\',\\'mensal\\')">Assinar mensal</button>':'')+(p.preco_anual_centavos?' <button class="btn g" style="padding:6px 14px" onclick="assinar(\\''+p.slug+'\\',\\'anual\\')">Assinar anual — '+brl(p.preco_anual_centavos)+'/ano</button>':'')+'</div>').join('')
         +(d.mp_ativo?'':'<p class="aviso">Pagamento online em configuração — fale com o suporte para ativar seu plano.</p>')
         +(d.assinatura&&d.assinatura.recorrencia_mp?'<p style="margin-top:12px"><button class="btn g" onclick="cancelar()">Cancelar assinatura</button></p>':'')+'</div>';}
     window.vPlano=vPlano;
-    async function assinar(slug){try{const r=await api('POST','/cobranca/assinar',{plano:slug});location.href=r.link;}catch(e){alert(e.message)}}window.assinar=assinar;
+    async function assinar(slug,ciclo){try{const r=await api('POST','/cobranca/assinar',{plano:slug,ciclo:ciclo||'mensal'});location.href=r.link;}catch(e){alert(e.message)}}window.assinar=assinar;
     async function cancelar(){if(!confirm('Cancelar a assinatura?'))return;try{await api('POST','/cobranca/cancelar');vPlano()}catch(e){alert(e.message)}}window.cancelar=cancelar;
     async function vUso(){const me=await api('GET','/me');const ent=me.entitlements;const u=me.uso;
       const lim=(k)=>ent.limites[k]||0;const usado=(k)=>u[k]||0;

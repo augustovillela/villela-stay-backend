@@ -455,7 +455,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   }));
   r.post('/billing/assinar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
     const base = `${protoDe(req)}://${req.get('host')}`;
-    res.json({ ok: true, ...(await billing.assinar(req.vd.tenant.id, (req.body || {}).plano_slug, req.vd.user, base, req.vd.ip)) });
+    res.json({ ok: true, ...(await billing.assinar(req.vd.tenant.id, (req.body || {}).plano_slug, req.vd.user, base, req.vd.ip, (req.body || {}).ciclo)) });
   }));
   r.post('/billing/cancelar', requireTenant, requirePerm('administrar_cobranca'), h(async (req, res) => {
     await billing.cancelarAssinatura(req.vd.tenant.id, req.vd.user, req.vd.ip);

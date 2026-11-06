@@ -864,6 +864,7 @@ function registrarRotasApp(app, { jwtSecret, express }) {
 
   app.post('/finance/api/assinatura', ...rota((req) => billing.assinar(
     req.tenant, (req.body || {}).plano, {
+      ciclo: String((req.body || {}).ciclo || 'mensal'),
       email: req.assinante.email,
       baseUrl: `${req.protocol}://${req.get('host')}`,
     }), { permissao: 'administrar', json: true }));

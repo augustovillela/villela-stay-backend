@@ -487,6 +487,21 @@ const MIGRACOES = [
       }
     },
   },
+  {
+    // Plano ANUAL (Augusto, 05/11/2026): preço anual por plano (padrão = 10 mensalidades, 2 meses
+    // grátis, editável) e o ciclo da assinatura. Só preenche o anual de quem está zerado: preço
+    // que o Augusto já tiver ajustado fica. Plano de preço zero (avaliação/enterprise) segue sem anual.
+    nome: 'fin-0018-plano-anual',
+    aplicar() {
+      if (!temColuna('plans', 'preco_anual_cents')) {
+        db.exec('ALTER TABLE plans ADD COLUMN preco_anual_cents INTEGER NOT NULL DEFAULT 0');
+      }
+      if (!temColuna('subscriptions', 'ciclo')) {
+        db.exec("ALTER TABLE subscriptions ADD COLUMN ciclo TEXT NOT NULL DEFAULT 'mensal'");
+      }
+      db.exec('UPDATE plans SET preco_anual_cents = preco_cents * 10 WHERE preco_cents > 0 AND preco_anual_cents = 0');
+    },
+  },
 ];
 
 for (const m of MIGRACOES) {

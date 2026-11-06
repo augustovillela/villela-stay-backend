@@ -67,6 +67,14 @@ const marca = (neg) => `<span class="marca${neg ? ' neg' : ''}"><img src="${BRAN
 const marcaTop = () => `<a href="/crm" class="cp-brand" aria-label="Villela CRM"><img src="${BRAND}/simbolo-v.svg" alt=""><span><span class="m1">Villela</span><span class="m2">CRM</span></span></a>`;
 const CSS_PRO = '<link rel="stylesheet" href="/assets/brand/villela-crm-pro.css?v=1">';
 
+// plano ANUAL (10 mensalidades): "ou R$ X/ano (2 meses grátis)" quando o plano tem preço anual
+function anualTxt(p) {
+  if (!p.preco_anual_centavos || !p.preco_centavos) return '';
+  const meses = Math.round((p.preco_anual_centavos / p.preco_centavos) * 10) / 10;
+  const nota = p.preco_anual_centavos === p.preco_centavos * 10 ? ' (2 meses grátis)' : (meses < 12 ? ` (equivale a ${meses} mensalidades)` : '');
+  return `<p class="sub" style="text-align:left;margin:4px 0 0">ou ${brl(p.preco_anual_centavos)}/ano${nota}</p>`;
+}
+
 function landingHTML() {
   const planos = repo.Planos.listar();
   // Duas convenções convivem nesta coluna: o CRM nasceu com 0 = ilimitado;
@@ -84,7 +92,7 @@ function landingHTML() {
     const dest = p.slug === 'professional';
     const preco = p.preco_centavos ? `${brl(p.preco_centavos)}<small>/mês</small>` : (p.slug === 'trial' ? 'Grátis' : 'Sob consulta');
     const itens = p.slug === 'trial'
-      ? ['Todos os módulos por 14 dias', `${p.limites.contatos} contatos`, `${p.limites.usuarios} usuários`, 'Sem cartão']
+      ? ['Todos os módulos por 15 dias', `${p.limites.contatos} contatos`, `${p.limites.usuarios} usuários`, 'Sem cartão']
       : [nomeLimite(p, 'contatos', 'contatos'), nomeLimite(p, 'usuarios', 'usuários'),
          nomeLimite(p, 'funis', 'funis'),
          `${p.modulos.length} módulos${p.flags.ia ? ' · IA' : ''}${p.flags.api_publica ? ' · API' : ''}${p.flags.white_label ? ' · white label' : ''}`];
@@ -92,7 +100,7 @@ function landingHTML() {
       ? `<a class="btn secund" href="#contato">Falar com vendas</a>`
       : `<a class="btn${dest ? '' : ' secund'}" href="/crm/assinar?plano=${p.slug}">${p.slug === 'trial' ? 'Testar grátis' : 'Assinar'}</a>`;
     return `<div class="cp-plano${dest ? ' dest' : ''}">${dest ? '<span class="cp-pop">Mais popular</span>' : ''}
-      <h3>${esc(p.nome)}</h3><p class="cp-desc">${esc(p.descricao)}</p><div class="cp-preco">${preco}</div>
+      <h3>${esc(p.nome)}</h3><p class="cp-desc">${esc(p.descricao)}</p><div class="cp-preco">${preco}</div>${anualTxt(p)}
       <ul>${itens.map(i => `<li>${ic('check')}<span>${esc(i)}</span></li>`).join('')}</ul>${cta}</div>`;
   };
   const feats = [
@@ -243,7 +251,7 @@ function shell(corpo, script, titulo = 'Villela CRM — Painel') {
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
   const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
-  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
+  return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>${anualTxt(p)}
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-emp" placeholder="Nome da empresa *" required>
       <input id="s-nome" placeholder="Seu nome (responsável) *" required>

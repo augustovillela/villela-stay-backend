@@ -943,7 +943,7 @@ async function vConta() {
           <div class="lin">Plano atual: <b>${esc(cob.plano ? cob.plano.nome : '—')}</b> · status <span class="chip">${esc(cob.status_tenant)}</span></div>
           ${cob.trial_expira_em ? `<div class="lin">Trial até ${dataBr(cob.trial_expira_em)}</div>` : ''}
           <div class="lin">Assinar/trocar:
-            ${cob.planos_disponiveis.map(p => `<button class="btn peq ${p.slug === planoAtual ? 'secund' : ''} cb-plano" data-p="${p.slug}" style="margin:2px">${esc(p.nome)} ${p.preco_centavos ? '· ' + brl(p.preco_centavos) + '/mês' : ''}</button>`).join('')}
+            ${cob.planos_disponiveis.map(p => `<button class="btn peq ${p.slug === planoAtual ? 'secund' : ''} cb-plano" data-p="${p.slug}" data-c="mensal" style="margin:2px">${esc(p.nome)} ${p.preco_centavos ? '· ' + brl(p.preco_centavos) + '/mês' : ''}</button>${p.preco_anual_centavos ? `<button class="btn peq secund cb-plano" data-p="${p.slug}" data-c="anual" style="margin:2px">${esc(p.nome)} · ${brl(p.preco_anual_centavos)}/ano (2 meses grátis)</button>` : ''}`).join('')}
           </div>
           ${!cob.mp_ativo ? '<p class="aviso">Pagamento online indisponível — fale com o suporte (aba abaixo) para ativar seu plano.</p>' : ''}
           ${cob.faturas.length ? `<div class="lin"><b>Faturas:</b> ${cob.faturas.map(f => `<span class="chip">${esc(f.competencia)} ${brl(f.valor_centavos)} ${esc(f.status)}</span>`).join(' ')}</div>` : ''}
@@ -973,8 +973,8 @@ async function vConta() {
         </div>
       </div>`;
     document.querySelectorAll('.cb-plano').forEach(b => b.onclick = async () => {
-      if (!confirm(`Assinar o plano ${b.dataset.p}?`)) return;
-      try { const r = await api('POST', '/cobranca/assinar', { plano: b.dataset.p }); if (r.link) location.href = r.link; }
+      if (!confirm(`Assinar o plano ${b.dataset.p} (${b.dataset.c === 'anual' ? 'anual' : 'mensal'})?`)) return;
+      try { const r = await api('POST', '/cobranca/assinar', { plano: b.dataset.p, ciclo: b.dataset.c || 'mensal' }); if (r.link) location.href = r.link; }
       catch (e) { alert(e.message); }
     });
     $('#eq-add').onclick = async () => {

@@ -124,6 +124,8 @@ Os planos vigentes estão sempre em `/juridico#planos`. Os valores de lançament
 | Escritório | R$ 799/mês | Banca estabelecida: tudo liberado, API e marca própria |
 | Enterprise | Sob consulta | Grandes escritórios e departamentos jurídicos |
 
+**Plano anual:** em todos os planos pagos você pode escolher pagar **por ano**, numa cobrança única no Mercado Pago, por **10 mensalidades** (2 meses grátis). A escolha mensal ou anual é feita ao assinar, na aba **Conta** (ou **Plano**) do painel; o valor anual de cada plano aparece ao lado do mensal.
+
 Cada plano define módulos e limites (advogados, processos ativos, armazenamento e clientes
 no portal). A IA é cobrada por uso, à parte da mensalidade. Acompanhe seu consumo na aba **📊 Uso**. Os preços são de
 lançamento e podem ser ajustados — confira sempre a página de planos.

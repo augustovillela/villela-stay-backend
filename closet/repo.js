@@ -99,13 +99,13 @@ const Config = {
 // ---------------------------------------------------------------------
 const PLANOS_SEED = [
   {
-    slug: 'free', nome: 'Grátis', preco_centavos: 0, comissao_pct: 0, ordem: 1, // 0 = usa o padrão da plataforma
+    slug: 'free', nome: 'Grátis', preco_centavos: 0, preco_anual_centavos: 0, comissao_pct: 0, ordem: 1, // 0 = usa o padrão da plataforma
     descricao: 'Anuncie sem mensalidade. A plataforma só ganha quando você ganha.',
     limites: { pecas: 10, fotos_por_peca: 5, videos: 0, destaques_mes: 0, looks: 2 },
     flags: { ia: false, analytics: false, agenda_auto: false, video: false, destaque: false, sem_fundo: false, api: false },
   },
   {
-    slug: 'premium', nome: 'Premium', preco_centavos: 3900, comissao_pct: 0, ordem: 2, // 0 = usa o padrão da plataforma
+    slug: 'premium', nome: 'Premium', preco_centavos: 3900, preco_anual_centavos: 39000, comissao_pct: 0, ordem: 2, // 0 = usa o padrão da plataforma
     descricao: 'Mais destaque, mais fotos, vídeo, analytics e a IA trabalhando por você.',
     limites: { pecas: 0, fotos_por_peca: 15, videos: 3, destaques_mes: 5, looks: 0 },
     flags: { ia: true, analytics: true, agenda_auto: true, video: true, destaque: true, sem_fundo: true, api: true },
@@ -121,9 +121,10 @@ const Planos = {
   atualizar(id, d) {
     const p = db.prepare('SELECT * FROM plans WHERE id = ?').get(s(id, 40));
     if (!p) throw new Error('Plano não encontrado.');
-    db.prepare('UPDATE plans SET nome=?, descricao=?, preco_centavos=?, comissao_pct=?, limites=?, flags=?, ativo=?, atualizado_em=? WHERE id=?')
+    db.prepare('UPDATE plans SET nome=?, descricao=?, preco_centavos=?, preco_anual_centavos=?, comissao_pct=?, limites=?, flags=?, ativo=?, atualizado_em=? WHERE id=?')
       .run(s(d.nome, 60) || p.nome, s(d.descricao, 300) || p.descricao,
         d.preco_centavos == null ? p.preco_centavos : cent(d.preco_centavos),
+        d.preco_anual_centavos == null ? p.preco_anual_centavos : cent(d.preco_anual_centavos),
         d.comissao_pct == null ? p.comissao_pct : n(d.comissao_pct, p.comissao_pct),
         d.limites ? j.str(d.limites) : p.limites, d.flags ? j.str(d.flags) : p.flags,
         d.ativo == null ? p.ativo : (d.ativo ? 1 : 0), nowISO(), p.id);
@@ -140,8 +141,8 @@ function semear() {
         .run(p.nome, p.descricao, j.str(p.limites), j.str(p.flags), p.ordem, ex.id);
       continue;
     }
-    db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, comissao_pct, limites, flags, ordem, ativo, criado_em) VALUES (?,?,?,?,?,?,?,?,?,1,?)')
-      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, p.comissao_pct, j.str(p.limites), j.str(p.flags), p.ordem, nowISO());
+    db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, preco_anual_centavos, comissao_pct, limites, flags, ordem, ativo, criado_em) VALUES (?,?,?,?,?,?,?,?,?,?,1,?)')
+      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, p.preco_anual_centavos || 0, p.comissao_pct, j.str(p.limites), j.str(p.flags), p.ordem, nowISO());
   }
   for (const [chave, v] of Object.entries(CONFIG_PADRAO)) {
     if (db.prepare('SELECT 1 FROM config WHERE chave = ?').get(chave)) continue;

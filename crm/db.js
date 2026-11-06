@@ -26,6 +26,8 @@ const MIGRACOES = [
   { nome: '2026-11-05-avaliacao-nome', sql: "UPDATE plans SET nome = 'Avaliação (15 dias)' WHERE slug = 'trial';" },
   // teste grátis padronizado em 15 dias (Augusto, 05/11/2026): corrige só o texto do plano 'trial' já gravado
   { nome: '2026-11-05-trial-15-dias', sql: "UPDATE plans SET nome = replace(nome, '14 dias', '15 dias'), descricao = replace(descricao, '14 dias', '15 dias') WHERE slug = 'trial';" },
+  // plano ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades (2 meses gratis); so preenche quem ainda esta sem preco anual
+  { nome: '2026-11-05-plano-anual', sql: "ALTER TABLE plans ADD COLUMN preco_anual_centavos INTEGER NOT NULL DEFAULT 0; ALTER TABLE subscriptions ADD COLUMN valor_centavos INTEGER NOT NULL DEFAULT 0; UPDATE plans SET preco_anual_centavos = preco_centavos * 10 WHERE preco_centavos > 0 AND preco_anual_centavos = 0;" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

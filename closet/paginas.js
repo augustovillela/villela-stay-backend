@@ -406,7 +406,7 @@ function landingHTML() {
         <a class="btn linha" href="/closet/criar-conta?perfil=anunciar">Criar conta grátis</a>
       </div>
       <div class="plano dest">
-        <span class="mono" style="color:var(--dourado)">Premium</span><div class="valor">${brl(premium.preco_centavos)}<small>/mês</small></div>
+        <span class="mono" style="color:var(--dourado)">Premium</span><div class="valor">${brl(premium.preco_centavos)}<small>/mês</small></div>${premium.preco_anual_centavos > 0 ? `<p style="margin:2px 0 8px;font-size:13px">ou ${brl(premium.preco_anual_centavos)}/ano (2 meses grátis)</p>` : ''}
         <p style="color:var(--cinza-txt);font-size:.92rem">Para quem quer viver disso.</p>
         <ul><li><b>Peças ilimitadas</b> e 15 fotos cada</li><li><b>Destaque</b> no topo da vitrine</li>
           <li>Vídeo no anúncio</li><li>Analytics: visitas, conversão e receita por peça</li>
@@ -902,7 +902,7 @@ function anunciarHTML() {
       <div class="plano"><span class="mono">Grátis</span><div class="valor">R$ 0<small>/mês</small></div>
         <ul><li><b>10 peças</b></li><li>5 fotos por peça</li><li>Agenda, reservas e chat</li><li>Comissão de <b>${comissao}%</b></li></ul>
         <a class="btn linha" href="/closet/criar-conta?perfil=anunciar">Começar</a></div>
-      <div class="plano dest"><span class="mono" style="color:var(--dourado)">Premium</span><div class="valor">${brl(premium.preco_centavos)}<small>/mês</small></div>
+      <div class="plano dest"><span class="mono" style="color:var(--dourado)">Premium</span><div class="valor">${brl(premium.preco_centavos)}<small>/mês</small></div>${premium.preco_anual_centavos > 0 ? `<p style="margin:2px 0 8px;font-size:13px">ou ${brl(premium.preco_anual_centavos)}/ano (2 meses grátis)</p>` : ''}
         <ul><li><b>Peças ilimitadas</b>, 15 fotos</li><li><b>Destaque</b> na vitrine</li><li>Vídeo no anúncio</li>
           <li>Analytics por peça</li><li>IA de preço, descrição e SEO</li></ul>
         <a class="btn ouro" href="/closet/criar-conta?perfil=anunciar&plano=premium">Assinar</a></div>

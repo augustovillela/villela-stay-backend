@@ -123,6 +123,7 @@ function landingHTML() {
   <div class="plano${destaque ? ' dest' : ''}">
     <h3>${esc(p.nome)}</h3>
     <div class="preco">${brl(p.precoCents)}<small>/mês</small></div>
+    ${p.precoAnualCents > 0 ? `<p class="sub" style="margin:2px 0 8px">ou ${brl(p.precoAnualCents)}/ano (2 meses grátis)</p>` : ''}
     <ul>
       <li><strong>${p.limites.entidades}</strong> empresa(s) · <strong>${p.limites.usuarios}</strong> usuários</li>
       <li><strong>${p.limites.contas_bancarias}</strong> contas bancárias</li>

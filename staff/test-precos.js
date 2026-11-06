@@ -10,7 +10,7 @@ const assert = require('assert');
 
 const chamadas = [];
 const banco = {
-  '/vcrm/planos': { planos: [{ id: 'c1', slug: 'starter', nome: 'Essencial', preco_centavos: 7900, ativo: 1 }] },
+  '/vcrm/planos': { planos: [{ id: 'c1', slug: 'starter', nome: 'Essencial', preco_centavos: 7900, preco_anual_centavos: 79000, ativo: 1 }] },
   '/vdocs/planos': { planos: [{ id: 'd1', slug: 'starter', nome: 'Starter', preco_centavos: 9900, ativo: 1 }] },
   '/vsm/planos': { planos: [{ id: 'm1', slug: 'starter', nome: 'Starter', preco_centavos: 12900, ativo: 1 }] },
   '/legal-saas/planos': { planos: [{ id: 'l1', slug: 'essencial', nome: 'Essencial', preco_centavos: 14900, ativo: 1 }] },
@@ -31,7 +31,8 @@ async function api(metodo, caminho, corpo) {
   const m = caminho.match(/^\/(vcrm|vdocs|vsm|legal-saas|vpe|closet)\/planos\/(.+)$/);
   if (m) {
     const k = m[1] === 'closet' ? '/closet/dashboard' : `/${m[1]}/planos`;
-    banco[k].planos.find(p => p.id === m[2]).preco_centavos = corpo.preco_centavos; return { ok: true };
+    const pl = banco[k].planos.find(p => p.id === m[2]); pl.preco_centavos = corpo.preco_centavos;
+    if (corpo.preco_anual_centavos != null) pl.preco_anual_centavos = corpo.preco_anual_centavos; return { ok: true };
   }
   if (caminho.startsWith('/finance/planos/')) { banco['/finance/planos'].planos.find(p => p.slug === caminho.split('/').pop()).precoCents = corpo.precoCents; return { ok: true }; }
   if (caminho === '/music/assinaturas/plano') { for (const [k, v] of Object.entries(corpo.planos)) banco['/music/assinaturas'].planos.find(p => p.slug === k).preco_cents = v; return { ok: true }; }
@@ -76,6 +77,7 @@ const PRC = sandbox.PRC;
   for (const [sid, i, v] of casos) {
     doc.getElementById(`prc-${sid}-${i}`).value = v;
     if (sid === 'origena') doc.getElementById(`prc-${sid}-${i}-a`).value = '599,00';
+    if (sid === 'vcrm') doc.getElementById(`prc-${sid}-${i}-a`).value = '390,00';
     await PRC.salvar(sid, i);
     const esperado = PRC.reaisParaCent(v);
     assert.strictEqual(PRC.cache[sid].linhas[i].centavos, esperado, `${sid}: valor relido diferente do gravado`);
@@ -86,7 +88,9 @@ const PRC = sandbox.PRC;
   eq(g(/music/).corpo, { planos: { starter: 6500 } }, 'music usa PUT com o mapa de planos');
   assert.strictEqual(g(/music/).metodo, 'PUT');
   eq(g(/origena/).corpo, { preco_centavos: 5990, preco_anual_centavos: 59900 });
-  eq(g(/vcrm/).corpo, { preco_centavos: 6500 }, 'só o preço vai no PATCH');
+  eq(g(/vcrm/).corpo, { preco_centavos: 6500, preco_anual_centavos: 39000 }, 'mensal e anual vão no PATCH');
+  assert.strictEqual(PRC.cache.vcrm.linhas[0].anual, 39000, 'a tela relê o anual gravado');
+  eq(g(/vsm/).corpo, { preco_centavos: 6500 }, 'sem anual na leitura, só o mensal vai');
   assert.strictEqual(PRC.cache.origena.linhas[0].anual, 59900);
 
   // valor inválido não grava nada

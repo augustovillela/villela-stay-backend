@@ -22,10 +22,12 @@ const PLANOS_SEED = [
   { slug: 'business', nome: 'Business', preco_centavos: 59900, ordem: 3, descricao: 'Para operações com volume e integrações via API.', limites: { usuarios: 60, armazenamento_mb: 204800, documentos: 100000, ocr_paginas_mes: 15000, ia_consultas_mes: 1500, workflows_ativos: 50, api: true, sso: false } },
   { slug: 'enterprise', nome: 'Enterprise', preco_centavos: 0, ordem: 4, descricao: 'Limites customizados, SSO e suporte dedicado. Sob consulta.', limites: { usuarios: 0, armazenamento_mb: 0, documentos: 0, ocr_paginas_mes: 0, ia_consultas_mes: 0, workflows_ativos: 0, api: true, sso: true } }, // 0 = ilimitado/negociado
 ];
+// Anual = 10 mensalidades (Augusto, 05/11/2026): 2 meses gratis. Plano sem preco (enterprise) fica sem anual.
+PLANOS_SEED.forEach(p => { p.preco_anual_centavos = p.preco_centavos * 10; });
 const _PROF_SEED = PLANOS_SEED.find(p => p.slug === 'professional');
 // Plano de avaliação: mesma linha "Avaliação (15 dias)" dos outros sistemas, R$ 0, com os
 // MESMOS limites do Professional (o teste sempre rodou nele). Não é vendável (preço 0).
-PLANOS_SEED.unshift({ slug: 'trial', nome: 'Avaliação (15 dias)', preco_centavos: 0, ordem: 0,
+PLANOS_SEED.unshift({ slug: 'trial', nome: 'Avaliação (15 dias)', preco_centavos: 0, preco_anual_centavos: 0, ordem: 0,
   descricao: 'Avaliação completa por 15 dias, sem cartão.', limites: { ..._PROF_SEED.limites } });
 function semearPlanos() {
   for (const p of PLANOS_SEED) {
@@ -36,8 +38,8 @@ function semearPlanos() {
       const prof = db.prepare("SELECT limites FROM plans WHERE slug = 'professional'").get();
       if (prof && prof.limites) limites = j.parse(prof.limites, p.limites);
     }
-    db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, limites, ativo, ordem, criado_em) VALUES (?,?,?,?,?,?,1,?,?)')
-      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, j.str(limites), p.ordem, nowISO());
+    db.prepare('INSERT INTO plans (id, slug, nome, descricao, preco_centavos, preco_anual_centavos, limites, ativo, ordem, criado_em) VALUES (?,?,?,?,?,?,?,1,?,?)')
+      .run(novoId(), p.slug, p.nome, p.descricao, p.preco_centavos, p.preco_anual_centavos || 0, j.str(limites), p.ordem, nowISO());
   }
 }
 const listarPlanos = (soAtivos = true) =>
@@ -48,10 +50,11 @@ function atualizarPlano(id, campos) {
   const p = db.prepare('SELECT * FROM plans WHERE id = ?').get(String(id));
   if (!p) throw new Error('Plano não encontrado.');
   const preco = campos.preco_centavos != null ? Math.max(0, Math.trunc(Number(campos.preco_centavos) || 0)) : p.preco_centavos;
+  const anual = campos.preco_anual_centavos != null ? Math.max(0, Math.trunc(Number(campos.preco_anual_centavos) || 0)) : p.preco_anual_centavos;
   const limites = campos.limites != null ? j.str(campos.limites) : p.limites;
   const ativo = campos.ativo != null ? (campos.ativo ? 1 : 0) : p.ativo;
-  db.prepare('UPDATE plans SET nome = ?, descricao = ?, preco_centavos = ?, limites = ?, ativo = ?, atualizado_em = ? WHERE id = ?')
-    .run(s(campos.nome || p.nome, 60), s(campos.descricao ?? p.descricao, 300), preco, limites, ativo, nowISO(), p.id);
+  db.prepare('UPDATE plans SET nome = ?, descricao = ?, preco_centavos = ?, preco_anual_centavos = ?, limites = ?, ativo = ?, atualizado_em = ? WHERE id = ?')
+    .run(s(campos.nome || p.nome, 60), s(campos.descricao ?? p.descricao, 300), preco, anual, limites, ativo, nowISO(), p.id);
   return db.prepare('SELECT * FROM plans WHERE id = ?').get(p.id);
 }
 
@@ -410,7 +413,10 @@ function dashboardTenant(tenantId) {
 function resumoPlataforma() {
   const porStatus = {};
   for (const r of db.prepare('SELECT status, COUNT(*) n FROM tenants GROUP BY status').all()) porStatus[r.status] = r.n;
-  const mrr = db.prepare(`SELECT COALESCE(SUM(p.preco_centavos),0) v FROM subscriptions sb
+  // MRR: o anual entra dividido por 12 (valor contratado na assinatura; se faltar, o preco anual do plano).
+  const mrr = db.prepare(`SELECT COALESCE(CAST(ROUND(SUM(CASE WHEN sb.ciclo = 'anual'
+      THEN (CASE WHEN sb.valor_centavos > 0 THEN sb.valor_centavos ELSE p.preco_anual_centavos END) / 12.0
+      ELSE p.preco_centavos END)) AS INTEGER),0) v FROM subscriptions sb
     JOIN plans p ON p.id = sb.plan_id JOIN tenants t ON t.id = sb.tenant_id
     WHERE sb.status = 'ativa' AND t.status = 'ativa'`).get().v;
   return {

@@ -1619,8 +1619,11 @@ const F = {
             <td>${F.esc(f.status)}${f.pagoEm ? ' em ' + F.dt(f.pagoEm) : ''}</td></tr>`).join('')}</tbody></table></div>`
       : '<p class="sub" style="margin:10px 0 0">Nenhuma fatura ainda.</p>';
 
+    // Uma lista só: cada plano aparece no mensal e, se tiver preço anual, também no anual
+    // (cobrança única por ano, 2 meses grátis). O valor da opção é "slug|ciclo".
     const planos = a.planosDisponiveis.map((p) =>
-      `<option value="${F.esc(p.slug)}"${a.plano && p.slug === a.plano.slug ? ' selected' : ''}>${F.esc(p.nome)} — ${F.esc(p.preco)}/mês</option>`).join('');
+      `<option value="${F.esc(p.slug)}|mensal"${a.plano && p.slug === a.plano.slug ? ' selected' : ''}>${F.esc(p.nome)} — ${F.esc(p.preco)}/mês</option>`
+      + (p.precoAnualCents > 0 ? `<option value="${F.esc(p.slug)}|anual">${F.esc(p.nome)} — ${F.esc(p.precoAnual)}/ano (2 meses grátis)</option>` : '')).join('');
 
     const acao = a.conta.cortesia
       ? '<p class="sub" style="margin:10px 0 0">Conta de cortesia do grupo — sem cobrança.</p>'
@@ -1635,7 +1638,7 @@ const F = {
     alvo.innerHTML = `
       <div class="card" style="margin-bottom:14px">
         <h3 style="margin:0 0 6px">Assinatura</h3>
-        <p style="margin:0">Conta <b>${F.esc(a.conta.status)}</b>${a.plano ? ` · plano ${F.esc(a.plano.nome)} (${F.esc(a.plano.preco)}/mês)` : ''}
+        <p style="margin:0">Conta <b>${F.esc(a.conta.status)}</b>${a.plano ? ` · plano ${F.esc(a.plano.nome)} (${a.assinatura && a.assinatura.ciclo === 'anual' && a.plano.precoAnual ? F.esc(a.plano.precoAnual) + '/ano' : F.esc(a.plano.preco) + '/mês'})` : ''}
           ${a.assinatura ? ` · assinatura ${F.esc(a.assinatura.status)}${a.assinatura.recorrenciaOnline ? ', recorrente' : ''}` : ''}
           ${a.conta.trialAte ? ` · avaliação até ${F.dt(a.conta.trialAte)}` : ''}</p>
         <div class="aviso" style="margin-top:10px">
@@ -1663,7 +1666,8 @@ const F = {
   async assinar() {
     const msg = F.el('f-as-msg'); msg.className = 'sub'; msg.textContent = 'Falando com o Mercado Pago…';
     try {
-      const r = await F.api('POST', F.url('/assinatura'), { plano: F.el('f-as-plano').value });
+      const [plano, ciclo] = String(F.el('f-as-plano').value).split('|');
+      const r = await F.api('POST', F.url('/assinatura'), { plano, ciclo: ciclo || 'mensal' });
       msg.innerHTML = `Assinatura criada. <a href="${F.esc(r.link)}">Concluir o pagamento no Mercado Pago</a> —
         a conta é ativada quando o Mercado Pago confirmar, não ao clicar.`;
     } catch (e) { msg.className = 'erro'; msg.textContent = e.message; }

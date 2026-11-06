@@ -4,8 +4,9 @@
 // Modelo: assinatura MENSAL via MP *preapproval* (recorrência hospedada
 // no Mercado Pago — nenhum dado de cartão no nosso lado). Mesma conta MP
 // do restante do backend (MP_ACCESS_TOKEN, injeção de mpFetch).
-// DECISÕES (07/07/2026, padrão razoável até o Augusto definir): só plano
-// mensal (anual fica p/ evolução); sem cupons na v1; 1 assinatura ativa
+// DECISÕES (07/07/2026, padrão razoável até o Augusto definir): plano mensal
+// e, desde 05/11/2026, ANUAL (10 mensalidades, cobrança única por ano: preapproval
+// com frequency de 12 meses); sem cupons na v1; 1 assinatura ativa
 // por empresa (mudar de plano = cancelar e assinar de novo; o staff pode
 // trocar manualmente a qualquer momento).
 //
@@ -46,7 +47,8 @@ function estado(tenantId) {
   const pagamentos = db.prepare('SELECT valor_centavos, status, criado_em FROM payments WHERE tenant_id = ? ORDER BY criado_em DESC LIMIT 12').all(String(tenantId));
   return {
     online_disponivel: ativo(),
-    plano: plano ? { nome: plano.nome, slug: plano.slug, preco_centavos: plano.preco_centavos, status: plano.subscription.status, recorrencia_mp: !!plano.subscription.mp_preapproval_id } : null,
+    plano: plano ? { nome: plano.nome, slug: plano.slug, preco_centavos: plano.preco_centavos, preco_anual_centavos: plano.preco_anual_centavos || 0,
+      ciclo: plano.subscription.ciclo || 'mensal', valor_cobrado_centavos: plano.subscription.valor_centavos || 0, status: plano.subscription.status, recorrencia_mp: !!plano.subscription.mp_preapproval_id } : null,
     planos: repo.listarPlanos().filter(p => p.preco_centavos > 0), // enterprise = sob consulta
     pagamentos,
   };
@@ -56,10 +58,15 @@ function estado(tenantId) {
 // baseUrl (ex.: https://villela-stay-backend.onrender.com) → back_url e
 // notification_url próprios: a assinatura fica AUTO-SUFICIENTE (não depende
 // do webhook global do painel do MP), igual ao hóspede e à livraria.
-async function assinar(tenantId, planoSlug, user, baseUrl, ip) {
+async function assinar(tenantId, planoSlug, user, baseUrl, ip, ciclo) {
+  const cic = String(ciclo || 'mensal').trim().toLowerCase();
+  if (!['mensal', 'anual'].includes(cic)) throw new Error('Ciclo inválido: use mensal ou anual.');
   if (!ativo()) throw new Error('Pagamento online indisponível — fale com a Villela Docs para ativar seu plano.');
   const plano = repo.planoPorSlug(planoSlug);
   if (!plano || !plano.ativo || !plano.preco_centavos) throw new Error('Plano inválido para assinatura online.');
+  const anual = cic === 'anual';
+  if (anual && !(plano.preco_anual_centavos > 0)) throw new Error('Este plano não tem preço anual: escolha o ciclo mensal.');
+  const valor = anual ? plano.preco_anual_centavos : plano.preco_centavos;
   const atual = subAtual(tenantId);
   if (atual && atual.mp_preapproval_id && atual.status === 'ativa') {
     throw new Error('Já existe uma assinatura ativa — cancele-a antes de trocar de plano (ou fale com o suporte).');
@@ -68,21 +75,21 @@ async function assinar(tenantId, planoSlug, user, baseUrl, ip) {
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: `Villela Docs — plano ${plano.nome}`,
+      reason: `Villela Docs — plano ${plano.nome}${anual ? ' (anual)' : ''}`,
       external_reference: 'vdocs:' + String(tenantId),
       payer_email: user.email,
-      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((plano.preco_centavos / 100).toFixed(2)), currency_id: 'BRL' },
+      auto_recurring: { frequency: anual ? 12 : 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
       back_url: `${base}/vdocs/app`,
       notification_url: `${base}/vdocs/api/billing/webhook`,
       status: 'pending',
     }),
   });
-  logEvento(tenantId, 'preapproval.criada', pre.id, { plano: plano.slug });
-  repo.auditar(tenantId, user, 'billing.assinar_iniciado', 'subscriptions', String(pre.id), { plano: plano.slug }, ip);
+  logEvento(tenantId, 'preapproval.criada', pre.id, { plano: plano.slug, ciclo: cic });
+  repo.auditar(tenantId, user, 'billing.assinar_iniciado', 'subscriptions', String(pre.id), { plano: plano.slug, ciclo: cic }, ip);
   // guarda a intenção: nova subscription 'pendente' vira 'ativa' quando o MP autorizar
-  db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, inicio, criado_em, mp_preapproval_id) VALUES (?,?,?,?,?,?,?)')
-    .run(novoId(), String(tenantId), plano.id, 'pendente', nowISO(), nowISO(), String(pre.id));
-  return { link: pre.init_point || pre.sandbox_init_point, preapproval_id: pre.id };
+  db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, inicio, criado_em, mp_preapproval_id, ciclo, valor_centavos) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(novoId(), String(tenantId), plano.id, 'pendente', nowISO(), nowISO(), String(pre.id), cic, valor);
+  return { link: pre.init_point || pre.sandbox_init_point, preapproval_id: pre.id, ciclo: cic, valor_centavos: valor };
 }
 
 async function cancelarAssinatura(tenantId, user, ip) {
@@ -173,7 +180,7 @@ function receitaPlataforma() {
     .all(nowISO(), new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString());
   const custoIA = db.prepare('SELECT tenant_id, SUM(custo_centavos_usd) custo, SUM(input_tokens+output_tokens) tokens, COUNT(*) chamadas FROM ai_runs GROUP BY tenant_id ORDER BY custo DESC LIMIT 20').all()
     .map(r => ({ ...r, nome: (repo.obterTenant(r.tenant_id) || {}).nome || r.tenant_id }));
-  const assinaturas = db.prepare(`SELECT sb.tenant_id, sb.status, sb.mp_preapproval_id, p.nome plano, p.preco_centavos FROM subscriptions sb
+  const assinaturas = db.prepare(`SELECT sb.tenant_id, sb.status, sb.mp_preapproval_id, sb.ciclo, sb.valor_centavos, p.nome plano, p.preco_centavos, p.preco_anual_centavos FROM subscriptions sb
     JOIN plans p ON p.id = sb.plan_id WHERE sb.status IN ('ativa','pendente') ORDER BY sb.criado_em DESC LIMIT 100`).all()
     .map(a => ({ ...a, tenant_nome: (repo.obterTenant(a.tenant_id) || {}).nome || a.tenant_id, recorrencia_mp: !!a.mp_preapproval_id }));
   return { ...repo.resumoPlataforma(), recebido_mes_centavos: recebidoMes, recebido_por_mes: porMes, trials_expirando_7d: trials7, custo_ia_por_tenant: custoIA, assinaturas };

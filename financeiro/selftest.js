@@ -4386,6 +4386,93 @@ testeAsync('cobrança: as ações comerciais estão no catálogo de risco, e nã
   }
 });
 
+// ---- PLANO ANUAL (Augusto, 05/11/2026): 10 mensalidades, editável, cobrança única por ano --------
+testeAsync('anual: a semente traz 10 mensalidades e o banco recebe o mesmo valor', () => {
+  for (const p of entitlements.PLANOS_SEMENTE.filter(x => x.precoCents > 0)) {
+    assert.strictEqual(p.precoAnualCents, p.precoCents * 10, `${p.slug}: o anual da semente não é 10× o mensal`);
+    assert.strictEqual(repo.planoPorSlug(p.slug).preco_anual_cents, p.precoAnualCents, `${p.slug}: banco sem o anual da semente`);
+  }
+  for (const slug of ['trial', 'enterprise']) {
+    assert.strictEqual(repo.planoPorSlug(slug).preco_anual_cents, 0, `${slug} (preço zero) não pode ter anual`);
+  }
+});
+
+testeAsync('anual: o staff edita o preço anual e a semente NÃO o sobrescreve', async () => {
+  const lista = await pedir('GET', '/staff/api/finance/planos');
+  assert.strictEqual(lista.status, 200, lista.cru);
+  const ess = lista.corpo.planos.find(p => p.slug === 'essencial');
+  assert.strictEqual(ess.precoAnualCents, ess.precoCents * 10, 'a rota não devolve o anual');
+  const r = await pedir('PATCH', '/staff/api/finance/planos/essencial', { corpo: { precoAnualCents: 120000 } });
+  assert.strictEqual(r.status, 200, r.cru);
+  assert.strictEqual(r.corpo.plano.preco_anual_cents, 120000);
+  assert.strictEqual(r.corpo.plano.preco_cents, ess.precoCents, 'editar o anual mexeu no mensal');
+  entitlements.semear();   // reinício do servidor: a semente roda de novo
+  assert.strictEqual(repo.planoPorSlug('essencial').preco_anual_cents, 120000, 'a semente sobrescreveu o anual editado');
+  const ruim = await pedir('PATCH', '/staff/api/finance/planos/essencial', { corpo: { precoAnualCents: -5 } });
+  assert.notStrictEqual(ruim.status, 200, 'aceitou preço anual negativo');
+  await pedir('PATCH', '/staff/api/finance/planos/essencial', { corpo: { precoAnualCents: ess.precoCents * 10 } });
+});
+
+let contaAnual;
+testeAsync('anual: assinar no ciclo anual cria preapproval de 12 meses com o valor anual', async () => {
+  contaAnual = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Confeitaria Anual', slug: 'confeitaria-anual', planoSlug: 'essencial', contatoEmail: 'dono@confeitaria.exemplo',
+  })).tenant;
+  billing.configurar({ mpFetch: mpFalso });
+  const essencial = repo.planoPorSlug('essencial');
+  const r = await tenancy.comTenant({ tenantId: contaAnual.id, userId: 'dono', perfil: 'proprietario' }, () =>
+    billing.assinar(repo.tenantPorId(contaAnual.id), 'essencial', { email: 'dono@confeitaria.exemplo', ciclo: 'anual' }));
+  assert.strictEqual(r.ciclo, 'anual');
+  const criada = [...chamadasMP].reverse().find(c => c.caminho === '/preapproval' && c.metodo === 'POST');
+  assert.strictEqual(criada.corpo.auto_recurring.frequency, 12, 'cobrança anual tem de ser a cada 12 meses');
+  assert.strictEqual(criada.corpo.auto_recurring.frequency_type, 'months');
+  assert.strictEqual(criada.corpo.auto_recurring.transaction_amount, essencial.preco_anual_cents / 100, 'o MP não recebeu o valor anual');
+  assert.strictEqual(criada.corpo.external_reference, `finance:${contaAnual.id}:essencial`, 'o formato que o webhook lê mudou');
+  assert.ok(/anual/.test(criada.corpo.reason));
+  tenancy.comTenant({ tenantId: contaAnual.id, userId: 'auditor' }, () => {
+    const sub = repo.assinaturaVigente();
+    assert.strictEqual(sub.ciclo, 'anual');
+    assert.strictEqual(sub.status, 'pendente');
+    const e = billing.estado(repo.tenantPorId(contaAnual.id));
+    assert.strictEqual(e.assinatura.ciclo, 'anual');
+    assert.ok(e.planosDisponiveis.every(p => p.precoAnualCents === repo.planoPorSlug(p.slug).preco_anual_cents));
+  });
+});
+
+testeAsync('anual: o mensal continua frequency 1; ciclo inválido e plano sem anual são recusados', async () => {
+  const outra = tenancy.semContexto(() => contasSvc.provisionar({
+    nome: 'Doceria Mensal', slug: 'doceria-mensal', planoSlug: 'essencial', contatoEmail: 'dono@doceria.exemplo',
+  })).tenant;
+  const ctx = { tenantId: outra.id, userId: 'dono', perfil: 'proprietario' };
+  await assert.rejects(() => tenancy.comTenant(ctx, () => billing.assinar(repo.tenantPorId(outra.id), 'essencial', { ciclo: 'semestral' })), /Ciclo inválido/);
+  const ctrl = repo.planoPorSlug('controle');
+  repo.atualizarPrecoAnualPlano(ctrl.id, 0);
+  await assert.rejects(() => tenancy.comTenant(ctx, () => billing.assinar(repo.tenantPorId(outra.id), 'controle', { ciclo: 'anual' })), /não tem preço anual/);
+  repo.atualizarPrecoAnualPlano(ctrl.id, ctrl.preco_cents * 10);
+  await tenancy.comTenant(ctx, () => billing.assinar(repo.tenantPorId(outra.id), 'essencial', { email: 'dono@doceria.exemplo' }));
+  const m = [...chamadasMP].reverse().find(c => c.caminho === '/preapproval' && c.metodo === 'POST');
+  assert.strictEqual(m.corpo.auto_recurring.frequency, 1);
+  assert.strictEqual(m.corpo.auto_recurring.transaction_amount, repo.planoPorSlug('essencial').preco_cents / 100);
+  tenancy.comTenant(ctx, () => assert.strictEqual(repo.assinaturaVigente().ciclo, 'mensal'));
+});
+
+testeAsync('anual: autorizado gera UMA fatura do valor anual e o MRR conta o anual dividido por 12', () => {
+  const essencial = repo.planoPorSlug('essencial');
+  tenancy.comTenant({ tenantId: contaAnual.id, userId: 'mercadopago', perfil: 'plataforma' }, () => {
+    const sub = repo.assinaturaVigente();
+    assert.strictEqual(billing.aplicarPreapproval(contaAnual.id, sub.externo_ref, 'authorized').resultado, 'ativada');
+    const faturas = repo.listarInvoices(5);
+    assert.strictEqual(faturas.length, 1);
+    assert.strictEqual(faturas[0].valor_cents, essencial.preco_anual_cents, 'a fatura anual saiu pelo valor mensal');
+  });
+  const r = tenancy.comoPlataforma({ userId: 'teste', motivo: 'conferir MRR anual' }, () => billing.resumo());
+  const linha = r.contas.find(c => c.id === contaAnual.id);
+  assert.strictEqual(linha.ciclo, 'anual');
+  assert.strictEqual(linha.pagante, true);
+  assert.strictEqual(linha.precoCents, Math.round(essencial.preco_anual_cents / 12), 'MRR da assinatura anual não é anual/12');
+  assert.strictEqual(r.mrrCents, r.contas.filter(c => c.pagante).reduce((t, c) => t + c.precoCents, 0));
+});
+
 // // =====================================================================
 // 14.6 PAINEL DO STAFF (staff/app-finance.js) contra a API DE VERDADE
 //

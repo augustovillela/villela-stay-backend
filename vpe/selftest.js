@@ -628,9 +628,11 @@ function teste(nome, cond) {
 
   // mock do Mercado Pago
   const preapprovals = {};
+  const corposPre = []; // corpo de cada POST /preapproval (confere ciclo/valor)
   const mockMp = async (pathname, opts) => {
     if (pathname === '/preapproval' && opts && opts.method === 'POST') {
       const body = JSON.parse(opts.body);
+      corposPre.push(body);
       const id = 'pre_' + (Object.keys(preapprovals).length + 1);
       preapprovals[id] = { id, status: 'pending', external_reference: body.external_reference, init_point: 'https://mp.test/autorizar/' + id };
       return preapprovals[id];
@@ -676,6 +678,51 @@ function teste(nome, cond) {
   teste('cancelar assinatura', r.status === 200);
   r = await req('GET', '/vpe/api/me', { jar: 'bobB' });
   teste('cancelamento suspende o tenant', r.dados.tenant.status === 'suspensa');
+
+  // ---- PLANO ANUAL (Augusto, 05/11/2026): anual = 10 mensalidades, cobranca unica por ano ----
+  r = await req('GET', '/staff/api/vpe/planos', { staff: 'adm' });
+  const pagosVpe = r.dados.planos.filter(p => p.preco_centavos > 0);
+  teste('anual: GET /staff/api/vpe/planos devolve preco_anual_centavos e a semente é 10 × o mensal',
+    r.status === 200 && pagosVpe.length >= 3 && pagosVpe.every(p => p.preco_anual_centavos === p.preco_centavos * 10)
+    && r.dados.planos.filter(p => p.preco_centavos === 0).every(p => p.preco_anual_centavos === 0));
+  const proVpe = r.dados.planos.find(p => p.slug === 'professional');
+  r = await req('PATCH', '/staff/api/vpe/planos/' + proVpe.id, { body: { preco_anual_centavos: 310000 }, staff: 'adm' });
+  teste('anual: PATCH muda só o anual e mantém o mensal', r.status === 200 && r.dados.plano.preco_anual_centavos === 310000 && r.dados.plano.preco_centavos === proVpe.preco_centavos);
+  r = await req('PATCH', '/staff/api/vpe/planos/' + proVpe.id, { body: { nome: 'Professional' }, staff: 'adm' });
+  teste('anual: PATCH sem o campo mantém o anual', r.status === 200 && r.dados.plano.preco_anual_centavos === 310000);
+  // tenant B volta a poder assinar (o teste mensal acima o cancelou e suspendeu)
+  await req('PATCH', '/staff/api/vpe/tenants/' + tenantB.id, { body: { status: 'ativa', plano_slug: 'professional' }, staff: 'adm' });
+  await req('PATCH', '/staff/api/vpe/planos/' + proVpe.id, { body: { preco_anual_centavos: 0 }, staff: 'adm' });
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional', ciclo: 'anual' }, jar: 'bobB' });
+  teste('anual: plano sem preço anual rejeita o ciclo anual com erro claro', r.status === 400 && /preço anual/i.test(r.dados.erro || ''));
+  await req('PATCH', '/staff/api/vpe/planos/' + proVpe.id, { body: { preco_anual_centavos: 310000 }, staff: 'adm' });
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional', ciclo: 'quinzenal' }, jar: 'bobB' });
+  teste('anual: ciclo desconhecido é rejeitado', r.status === 400 && /ciclo/i.test(r.dados.erro || ''));
+  r = await req('GET', '/staff/api/vpe/resumo', { staff: 'adm' });
+  const mrrAntesVpe = r.dados.mrr_centavos;
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional', ciclo: 'anual' }, jar: 'bobB' });
+  const corpoAnualVpe = corposPre[corposPre.length - 1];
+  teste('anual: assinar cria preapproval de 12 meses com o valor anual (cobrança única por ano)',
+    r.status === 200 && r.dados.ciclo === 'anual' && corpoAnualVpe.auto_recurring.frequency === 12
+    && corpoAnualVpe.auto_recurring.frequency_type === 'months' && corpoAnualVpe.auto_recurring.transaction_amount === 3100 && /anual/.test(corpoAnualVpe.reason));
+  const preAnualVpe = r.dados.preapproval_id;
+  r = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional' }, jar: 'bobB' });
+  const corpoMensalVpe = corposPre[corposPre.length - 1];
+  teste('anual: sem ciclo continua mensal (frequency 1, valor do mensal)', r.status === 200 && corpoMensalVpe.auto_recurring.frequency === 1 && corpoMensalVpe.auto_recurring.transaction_amount === proVpe.preco_centavos / 100);
+  preapprovals[preAnualVpe].status = 'authorized';
+  await req('POST', '/vpe/api/billing/webhook', { body: { type: 'subscription_preapproval', data: { id: preAnualVpe } } });
+  r = await req('GET', '/vpe/api/billing', { jar: 'bobB' });
+  teste('anual: estado do tenant mostra ciclo anual e o valor cobrado', r.dados.plano.ciclo === 'anual' && r.dados.plano.valor_cobrado_centavos === 310000 && r.dados.plano.preco_anual_centavos === 310000);
+  r = await req('GET', '/staff/api/vpe/resumo', { staff: 'adm' });
+  teste('anual: MRR conta o anual dividido por 12', r.dados.mrr_centavos === mrrAntesVpe - proVpe.preco_centavos + Math.round(310000 / 12));
+  {
+    const lp = await (await fetch(BASE + '/vpe')).text();
+    teste('anual: landing mostra "ou R$ X/ano (2 meses grátis)" nos planos pagos', lp.includes('2 meses grátis') && /\/ano/.test(lp));
+  }
+  // devolve o tenant B ao estado que os testes seguintes esperam (suspenso depois do cancelamento)
+  await req('POST', '/vpe/api/billing/cancelar', { jar: 'bobB' });
+  r = await req('GET', '/vpe/api/me', { jar: 'bobB' });
+  teste('anual: cancelar a assinatura anual suspende o tenant, como a mensal', r.dados.tenant.status === 'suspensa');
 
   // ---- API pública por chave (precisa de plano Business/Enterprise) ----
   r = await req('POST', '/vpe/api/integracoes/chaves', { body: { nome: 'ERP' }, jar: 'anaA' });

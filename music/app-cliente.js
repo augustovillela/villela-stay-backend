@@ -295,8 +295,8 @@ const JS = `
   // ---- ASSINATURA: o que mostrar, nos dois lugares (Cursos e Minha conta) ----
   function reais(c) { return 'R$ ' + (c / 100).toFixed(2).replace('.', ','); }
   function dataBR(iso) { return iso ? new Date(iso).toLocaleDateString('pt-BR') : ''; }
-  function assinar(plano) {
-    api('POST', '/assinatura/assinar', { plano: plano || 'starter' }).then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
+  function assinar(plano, ciclo) {
+    api('POST', '/assinatura/assinar', { plano: plano || 'starter', ciclo: ciclo || 'mensal' }).then(function (r) { location.href = r.link; }).catch(function (e) { erro(e.message); });
   }
   function cartaoAssinatura(st, onde) {
     var box = el('div', { class: onde === 'conta' ? 'cartao-conta' : 'card assin-card' });
@@ -305,8 +305,8 @@ const JS = `
     if (a && a.status === 'cortesia') {
       box.innerHTML = titulo + '<p class="sub"><b>Cortesia' + (a.origem === 'dono' ? ' vitalícia' : '') + '.</b> Os cursos de música da Academia estão incluídos, sem cobrança.</p>';
     } else if (a && a.status === 'ativa') {
-      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b>' + (a.plano_slug ? ' · <b>' + esc(a.plano_slug.charAt(0).toUpperCase() + a.plano_slug.slice(1)) + '</b>' : '') + (a.vagas > 1 ? ' · <b>até ' + a.vagas + ' pessoas</b>' : '') +
-        ' desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + '/mês' +
+      box.innerHTML = titulo + '<p class="sub"><b>\u{2705} Ativa</b>' + (a.plano_slug ? ' · <b>' + esc(a.plano_slug.charAt(0).toUpperCase() + a.plano_slug.slice(1)) + '</b>' : '') + (a.vagas > 1 ? ' · <b>até ' + a.vagas + ' pessoas</b>' : '') + (a.ciclo === 'anual' ? ' · <b>anual</b>' : '') +
+        ' desde ' + dataBR(a.desde) + ' · ' + reais(a.preco_cents || st.plano.preco_cents) + (a.ciclo === 'anual' ? '/ano' : '/mês') +
         (a.ultimo_pagamento_em ? ' · último pagamento em ' + dataBR(a.ultimo_pagamento_em) : '') + '.</p>';
       if (onde === 'conta') box.appendChild(el('button', { class: 'btn peq sec', txt: 'Cancelar a assinatura', onclick: function () {
         if (!confirm('Cancelar a assinatura? Não haverá novas cobranças; você usa o Musique e os cursos da Academia até o fim do mês já pago.')) return;
@@ -316,7 +316,7 @@ const JS = `
       box.innerHTML = titulo + '<p class="sub"><b>\u{26A0}\u{FE0F} Pagamento não confirmado.</b> ' + (st.acesso
         ? 'Os cursos continuam liberados por ' + st.plano.carencia_dias + ' dias enquanto o Mercado Pago tenta de novo. Confira o cartão cadastrado lá.'
         : 'O prazo de tolerância acabou e os cursos saíram da sua conta da Academia. Assine de novo para voltar.') + '</p>';
-      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: function () { assinar(a.plano_slug || (a.plano === 'banda' ? 'business' : 'starter')); } }));
+      if (!st.acesso) box.appendChild(el('button', { class: 'btn peq', txt: 'Assinar de novo', onclick: function () { assinar(a.plano_slug || (a.plano === 'banda' ? 'business' : 'starter'), a.ciclo); } }));
     } else if (a && a.status === 'pendente') {
       box.innerHTML = titulo + '<p class="sub"><b>\u{23F3} Aguardando o pagamento no Mercado Pago.</b> Assim que ele confirmar, os cursos chegam na sua conta da Academia.</p>';
       if (a.link) box.appendChild(el('a', { class: 'btn peq', href: a.link, txt: 'Continuar o pagamento' }));
@@ -330,11 +330,21 @@ const JS = `
       if (!st.email_verificado) box.appendChild(el('p', { class: 'peq', txt: 'Para assinar, confirme primeiro o seu e-mail: é por ele que os cursos chegam na Academia.' }));
       else if (!st.cobranca_ligada) box.appendChild(el('p', { class: 'peq', txt: 'O pagamento online está temporariamente indisponível.' }));
       else {
+        var anual = false;
         var linhaPlanos = el('div', { class: 'linha', style: 'display:flex;gap:10px;flex-wrap:wrap' }, (st.plano.planos || []).map(function (p, i) {
-          return el('button', { class: i === 1 ? 'btn' : 'btn sec',
-            txt: p.nome + ': ' + reais(p.preco_cents) + '/mês' + (p.vagas > 1 ? ' (até ' + p.vagas + ' pessoas)' : ' (1 pessoa)'),
-            onclick: function () { assinar(p.slug); } });
+          var b = el('button', { class: i === 1 ? 'btn' : 'btn sec', onclick: function () { assinar(p.slug, anual ? 'anual' : 'mensal'); } });
+          b._pintar = function () {
+            b.textContent = p.nome + ': ' + (anual ? reais(p.preco_anual_cents) + '/ano' : reais(p.preco_cents) + '/mês') + (p.vagas > 1 ? ' (até ' + p.vagas + ' pessoas)' : ' (1 pessoa)');
+          };
+          b._pintar();
+          return b;
         }));
+        var cicloSel = el('label', { class: 'peq', style: 'display:block;margin:0 0 8px' }, [document.createTextNode('Cobrança: ')]);
+        var sel = el('select', {},
+          [el('option', { value: 'mensal', txt: 'mensal' }), el('option', { value: 'anual', txt: 'anual (2 meses grátis)' })]);
+        sel.onchange = function () { anual = sel.value === 'anual'; linhaPlanos.childNodes.forEach(function (b) { if (b._pintar) b._pintar(); }); };
+        cicloSel.appendChild(sel);
+        box.appendChild(cicloSel);
         box.appendChild(linhaPlanos);
         box.appendChild(el('p', { class: 'peq', txt: 'Nos planos com mais de uma pessoa, você paga tudo numa cobrança só e escolhe quem ocupa as outras vagas pelo e-mail da conta Musique de cada um.' }));
       }

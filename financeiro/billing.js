@@ -78,9 +78,11 @@ function estado(tenant) {
     plano: plano ? {
       slug: plano.slug, nome: plano.nome,
       precoCents: plano.preco_cents, preco: dinheiro.formatar(plano.preco_cents),
+      precoAnualCents: plano.preco_anual_cents || 0,
+      precoAnual: plano.preco_anual_cents ? dinheiro.formatar(plano.preco_anual_cents) : '',
     } : null,
     assinatura: sub ? {
-      id: sub.id, status: sub.status, inicio: sub.inicio, fim: sub.fim || '',
+      id: sub.id, status: sub.status, ciclo: sub.ciclo || 'mensal', inicio: sub.inicio, fim: sub.fim || '',
       recorrenciaOnline: !!sub.externo_ref,
     } : null,
     faturas: repo.listarInvoices(12).map(f => ({
@@ -89,7 +91,8 @@ function estado(tenant) {
     })),
     planosDisponiveis: repo.listarPlanos()
       .filter(p => p.publico === 1 && p.preco_cents > 0)
-      .map(p => ({ slug: p.slug, nome: p.nome, precoCents: p.preco_cents, preco: dinheiro.formatar(p.preco_cents) })),
+      .map(p => ({ slug: p.slug, nome: p.nome, precoCents: p.preco_cents, preco: dinheiro.formatar(p.preco_cents),
+        precoAnualCents: p.preco_anual_cents || 0, precoAnual: p.preco_anual_cents ? dinheiro.formatar(p.preco_anual_cents) : '' })),
     pagamentoOnline: ativo(),
     consequencias: {
       escrita: e.bloqueiaEscrita ? 'bloqueada' : 'liberada',
@@ -106,7 +109,7 @@ function estado(tenant) {
  * assinatura como `pendente`: quem a promove a `ativa` é o webhook,
  * quando o MP autoriza. Marcar ativa aqui seria acreditar na intenção.
  */
-async function assinar(tenant, planoSlug, { email = '', baseUrl = '' } = {}) {
+async function assinar(tenant, planoSlug, { email = '', baseUrl = '', ciclo = 'mensal' } = {}) {
   if (!ativo()) {
     throw new ErroDeCobranca(
       'O pagamento online ainda não está ligado. Fale com o suporte para receber a cobrança por Pix ou boleto.', 503);
@@ -115,6 +118,12 @@ async function assinar(tenant, planoSlug, { email = '', baseUrl = '' } = {}) {
   if (!plano || plano.publico !== 1 || !plano.preco_cents) {
     throw new ErroDeCobranca('Plano inválido para assinatura online.');
   }
+  // Ciclo: mensal (padrão) ou anual — cobrança ÚNICA por ano no Mercado Pago. O anual só existe
+  // se o plano tem preço anual; pedir anual num plano sem ele é erro, não "cobra o mensal".
+  if (!['mensal', 'anual'].includes(ciclo)) throw new ErroDeCobranca('Ciclo inválido: use mensal ou anual.');
+  const anual = ciclo === 'anual';
+  if (anual && !(plano.preco_anual_cents > 0)) throw new ErroDeCobranca('Este plano não tem preço anual.');
+  const valorCents = anual ? plano.preco_anual_cents : plano.preco_cents;
   const vigente = repo.assinaturaVigente();
   if (vigente && vigente.externo_ref && vigente.status === 'ativa') {
     throw new ErroDeCobranca(
@@ -129,29 +138,29 @@ async function assinar(tenant, planoSlug, { email = '', baseUrl = '' } = {}) {
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: `Villela Finance — plano ${plano.nome}`,
+      reason: `Villela Finance — plano ${plano.nome}${anual ? ' (anual)' : ''}`,
       external_reference: `finance:${tenant.id}:${plano.slug}`,
       payer_email: email || tenant.contato_email,
       back_url: `${base}/finance`,
       notification_url: `${base}/finance/webhooks/mercadopago`,
       auto_recurring: {
-        frequency: 1, frequency_type: 'months',
-        transaction_amount: Number((plano.preco_cents / 100).toFixed(2)),
+        frequency: anual ? 12 : 1, frequency_type: 'months',
+        transaction_amount: Number((valorCents / 100).toFixed(2)),
         currency_id: 'BRL',
       },
       status: 'pending',
     }),
   });
 
-  const sub = repo.criarAssinatura({ planoId: plano.id, status: 'pendente', externoRef: String(pre.id) });
+  const sub = repo.criarAssinatura({ planoId: plano.id, status: 'pendente', externoRef: String(pre.id), ciclo });
   repo.atualizarTenant(tenant.id, { plano_id: plano.id });
   auditoria.registrar('assinatura.iniciar', {
     objetoTipo: 'assinatura', objetoId: sub.id,
-    motivo: `assinatura do plano ${plano.slug}`,
-    detalhe: { plano: plano.slug, precoCents: plano.preco_cents, preapproval: String(pre.id) },
+    motivo: `assinatura do plano ${plano.slug} (${ciclo})`,
+    detalhe: { plano: plano.slug, ciclo, precoCents: valorCents, preapproval: String(pre.id) },
   });
   repo.publicarEvento({ tipo: 'billing.preapproval_criada', payload: { assinaturaId: sub.id, plano: plano.slug } });
-  return { link: pre.init_point || pre.sandbox_init_point, assinaturaId: sub.id, plano: plano.slug };
+  return { link: pre.init_point || pre.sandbox_init_point, assinaturaId: sub.id, plano: plano.slug, ciclo };
 }
 
 /** Cancela. O MP pode recusar (rede, id vencido) — o registro local vale assim mesmo, e o aviso sai junto. */
@@ -213,6 +222,18 @@ function contatoDaConta(t) {
   } catch (_) { return ''; }
 }
 
+/** Ciclo da assinatura vigente da conta no contexto atual (mensal se não houver). */
+function cicloDaConta() {
+  try { const sub = repo.assinaturaVigente(); return sub && sub.ciclo === 'anual' ? 'anual' : 'mensal'; } catch (_) { return 'mensal'; }
+}
+/** Valor cobrado por período de um plano no ciclo; anual cai no mensal se o plano não tem preço anual. */
+function precoDoCiclo(plano, ciclo) {
+  if (!plano) return { cents: 0, rotulo: '' };
+  const anual = ciclo === 'anual' && plano.preco_anual_cents > 0;
+  const cents = anual ? plano.preco_anual_cents : plano.preco_cents;
+  return { cents, anual, rotulo: `${reais(cents)}/${anual ? 'ano' : 'mês'}` };
+}
+
 function camposDaConta(tenantId, { risco = false } = {}) {
   try {
     const t = repo.tenantPorId(tenantId);
@@ -221,7 +242,7 @@ function camposDaConta(tenantId, { risco = false } = {}) {
     return [
       ['Cliente', t.nome],
       ['Responsável', contatoDaConta(t)],
-      [risco ? 'Plano em risco' : 'Plano', plano ? plano.nome + (plano.preco_cents ? ` (${reais(plano.preco_cents)}/mês)` : '') : ''],
+      [risco ? 'Plano em risco' : 'Plano', plano ? plano.nome + (plano.preco_cents ? ` (${precoDoCiclo(plano, cicloDaConta()).rotulo})` : '') : ''],
     ];
   } catch (_) { return [['Cliente', tenantId]]; }
 }
@@ -380,7 +401,7 @@ function gerarFatura(tenantId, { status = 'aberta', externoRef = '', competencia
   const plano = t.plano_id ? repo.planoPorId(t.plano_id) : null;
   return repo.criarInvoice({
     competencia: competencia || competenciaDeHoje(),
-    valorCents: plano ? plano.preco_cents : 0,
+    valorCents: plano ? precoDoCiclo(plano, cicloDaConta()).cents : 0,
     status,
     vencimento: vencimento || hojeISO(),
     pagoEm: status === 'paga' ? nowISO() : '',
@@ -401,7 +422,7 @@ function marcarPago(tenantId, { competencia = '', valorCents = null, motivo = ''
   const plano = t.plano_id ? repo.planoPorId(t.plano_id) : null;
   const fatura = repo.criarInvoice({
     competencia: competencia || competenciaDeHoje(),
-    valorCents: valorCents == null ? (plano ? plano.preco_cents : 0) : dinheiro.naoNegativo(Number(valorCents), 'valor'),
+    valorCents: valorCents == null ? (plano ? precoDoCiclo(plano, cicloDaConta()).cents : 0) : dinheiro.naoNegativo(Number(valorCents), 'valor'),
     status: 'paga', vencimento: hojeISO(), pagoEm: nowISO(),
   });
   const sub = repo.assinaturaVigente();
@@ -468,14 +489,17 @@ function cicloDeVida({ agora = nowISO() } = {}) {
  */
 function resumo() {
   const planos = new Map(repo.listarPlanos().map(p => [p.id, p]));
+  const ciclos = repo.ciclosVigentes();
   const linhas = repo.listarTenants().map(t => {
     const plano = t.plano_id ? planos.get(t.plano_id) : null;
-    const preco = plano ? plano.preco_cents : 0;
+    // MRR é receita MENSAL: assinatura anual entra como o anual dividido por 12.
+    const anual = !!plano && ciclos.get(t.id) === 'anual' && plano.preco_anual_cents > 0;
+    const preco = plano ? (anual ? Math.round(plano.preco_anual_cents / 12) : plano.preco_cents) : 0;
     const pagante = t.status === 'ativa' && t.interno !== 1 && preco > 0;
     return {
       id: t.id, slug: t.slug, nome: t.nome, status: t.status, interno: t.interno === 1,
       planoSlug: plano ? plano.slug : '', planoNome: plano ? plano.nome : '—',
-      precoCents: preco, preco: dinheiro.formatar(preco), pagante,
+      ciclo: anual ? 'anual' : 'mensal', precoCents: preco, preco: dinheiro.formatar(preco), pagante,
       trialAte: t.trial_ate || '', criadoEm: t.criado_em, atualizadoEm: t.atualizado_em || '',
       contatoEmail: t.contato_email || '',
     };

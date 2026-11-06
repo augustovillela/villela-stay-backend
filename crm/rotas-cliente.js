@@ -204,7 +204,7 @@ function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   app.get('/crm/api/cobranca', requireAssinante, h(async (req, res) => res.json(billing.estado(req.assinante.tenant_id))));
   app.post('/crm/api/cobranca/assinar', requireAssinante, requirePapel('gerir_conta'), h(async (req, res) => {
     const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
-    const r = await billing.assinar(req.assinante.tenant_id, s((req.body || {}).plano, 60), req.assinante.email, `${proto}://${req.get('host')}`, ipDe(req));
+    const r = await billing.assinar(req.assinante.tenant_id, s((req.body || {}).plano, 60), req.assinante.email, `${proto}://${req.get('host')}`, ipDe(req), s((req.body || {}).ciclo, 10) || 'mensal');
     res.json({ ok: true, ...r });
   }));
   app.post('/crm/api/cobranca/cancelar', requireAssinante, requirePapel('gerir_conta'), h(async (req, res) => {

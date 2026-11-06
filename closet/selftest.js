@@ -35,7 +35,7 @@ const alertaAugusto = async (m) => { alertas.push(m); };
 // ---- Mercado Pago mockado ----
 const mpChamadas = [];
 const mpFetch = async (p, opts) => {
-  mpChamadas.push({ p, metodo: (opts && opts.method) || 'GET' });
+  mpChamadas.push({ p, metodo: (opts && opts.method) || 'GET', corpo: opts && opts.body ? JSON.parse(opts.body) : null });
   if (p === '/v1/payments' && opts && opts.method === 'POST') {
     return { id: 'PAY' + mpChamadas.length, status: 'pending', point_of_interaction: { transaction_data: { qr_code: '000201PIX', qr_code_base64: 'QkFTRTY0' } } };
   }
@@ -696,6 +696,78 @@ async function rodar() {
     const r = await req('POST', '/closet/api/app/pecas/' + vestido + '/destacar', { como: 'dona', corpo: { dias: 7 } });
     assert.equal(r.st, 200);
     assert.equal(r.json.peca.destacado, true);
+  });
+
+  // ================= Plano ANUAL do Premium (Augusto, 05/11/2026) =================
+  const planoPremium = () => require('./repo').Planos.porSlug('premium');
+  const ultimoPreapproval = () => [...mpChamadas].reverse().find((c) => c.p === '/preapproval' && c.metodo === 'POST');
+  await t('anual: o Premium nasce com 10 mensalidades e o Grátis não tem anual', async () => {
+    assert.equal(planoPremium().preco_anual_centavos, planoPremium().preco_centavos * 10);
+    assert.equal(require('./repo').Planos.porSlug('free').preco_anual_centavos, 0);
+  });
+  await t('anual: o staff edita o preço anual, o dashboard devolve e a semente não sobrescreve', async () => {
+    const p = planoPremium();
+    let r = await req('PATCH', '/staff/api/closet/planos/' + p.id, { corpo: { preco_anual_centavos: 36000 } });
+    assert.equal(r.st, 200);
+    assert.equal(r.json.plano.preco_anual_centavos, 36000);
+    assert.equal(r.json.plano.preco_centavos, p.preco_centavos, 'editar o anual mexeu no mensal');
+    require('./repo').semear();   // reinício do servidor
+    assert.equal(planoPremium().preco_anual_centavos, 36000, 'a semente sobrescreveu o anual editado');
+    r = await req('GET', '/staff/api/closet/dashboard');
+    assert.equal(r.json.planos.find((x) => x.slug === 'premium').preco_anual_centavos, 36000);
+    r = await req('PATCH', '/staff/api/closet/planos/' + p.id, { corpo: { preco_anual_centavos: p.preco_centavos * 10 } });
+    assert.equal(r.json.plano.preco_anual_centavos, 39000);
+  });
+  let anuais = {};
+  await t('anual: ciclo inválido e Premium sem preço anual são recusados; o mensal continua frequency 1', async () => {
+    for (const nome of ['mensal3', 'anual3']) {
+      const r = await req('POST', '/closet/api/cadastrar', { como: nome, corpo: { nome: 'Teste ' + nome, email: nome + '@t.br', senha: 'senha12345', cidade: 'Brasília', uf: 'DF', aceite_termos: true } });
+      anuais[nome] = r.json.usuario.id;
+    }
+    let r = await req('POST', '/closet/api/plano/assinar', { como: 'mensal3', corpo: { ciclo: 'semestral' } });
+    assert.equal(r.st, 400); assert.match(r.json.erro, /Ciclo inválido/);
+    const p = planoPremium();
+    await req('PATCH', '/staff/api/closet/planos/' + p.id, { corpo: { preco_anual_centavos: 0 } });
+    r = await req('POST', '/closet/api/plano/assinar', { como: 'mensal3', corpo: { ciclo: 'anual' } });
+    assert.equal(r.st, 400); assert.match(r.json.erro, /não tem preço anual/);
+    await req('PATCH', '/staff/api/closet/planos/' + p.id, { corpo: { preco_anual_centavos: p.preco_centavos * 10 } });
+    r = await req('POST', '/closet/api/plano/assinar', { como: 'mensal3' });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    const m = ultimoPreapproval();
+    assert.equal(m.corpo.auto_recurring.frequency, 1);
+    assert.equal(m.corpo.auto_recurring.transaction_amount, p.preco_centavos / 100);
+    assert.equal(db.prepare('SELECT ciclo FROM subscriptions WHERE user_id = ? ORDER BY criado_em DESC').get(anuais.mensal3).ciclo, 'mensal');
+  });
+  await t('anual: assinar no ciclo anual cria preapproval de 12 meses com o valor anual', async () => {
+    const r = await req('POST', '/closet/api/plano/assinar', { como: 'anual3', corpo: { ciclo: 'anual' } });
+    assert.equal(r.st, 200, JSON.stringify(r.json));
+    assert.equal(r.json.ciclo, 'anual');
+    const m = ultimoPreapproval();
+    assert.equal(m.corpo.auto_recurring.frequency, 12, 'cobrança anual tem de ser a cada 12 meses');
+    assert.equal(m.corpo.auto_recurring.frequency_type, 'months');
+    assert.equal(m.corpo.auto_recurring.transaction_amount, planoPremium().preco_anual_centavos / 100, 'o MP não recebeu o valor anual');
+    assert.match(m.corpo.reason, /anual/);
+    assert.equal(m.corpo.external_reference, 'closet-premium:' + anuais.anual3, 'o formato que o webhook lê mudou');
+    const est = await req('GET', '/closet/api/plano', { como: 'anual3' });
+    assert.equal(est.json.assinatura.ciclo, 'anual');
+    assert.equal(est.json.planos.find((x) => x.slug === 'premium').preco_anual_centavos, 39000);
+  });
+  await t('anual: autorizado vale 365 dias e a fatura sai pelo valor anual', async () => {
+    const billing = require('./billing');
+    billing.aplicarPreapproval(anuais.anual3, 'PRE1', 'authorized');   // PRE1 = preapproval da assinatura mais recente
+    const u = db.prepare('SELECT plano, premium_ate FROM users WHERE id = ?').get(anuais.anual3);
+    assert.equal(u.plano, 'premium');
+    const dias = (Date.parse(u.premium_ate) - Date.now()) / 86400000;
+    assert.ok(dias > 364 && dias <= 365.01, 'o anual devia valer 365 dias e valeu ' + dias.toFixed(2));
+    const sub = db.prepare('SELECT status, proximo_venc FROM subscriptions WHERE user_id = ? ORDER BY criado_em DESC').get(anuais.anual3);
+    assert.equal(sub.status, 'ativa');
+    assert.ok((Date.parse(sub.proximo_venc) - Date.now()) / 86400000 > 364, 'próximo vencimento do anual não é daqui a um ano');
+    const inv = db.prepare('SELECT valor_centavos FROM invoices WHERE user_id = ? ORDER BY criado_em DESC').get(anuais.anual3);
+    assert.equal(inv.valor_centavos, 39000, 'a fatura anual saiu pelo valor mensal');
+    // o mensal continua 30 dias
+    const ate = billing.ativarPremium(anuais.mensal3, { origem: 'teste' });
+    const d30 = (Date.parse(ate) - Date.now()) / 86400000;
+    assert.ok(d30 > 29 && d30 <= 30.01, 'o mensal devia valer 30 dias e valeu ' + d30.toFixed(2));
   });
 
   // ================= LGPD =================

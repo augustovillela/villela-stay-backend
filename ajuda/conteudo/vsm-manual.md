@@ -162,6 +162,8 @@ lançamento publicados são:
 | Business | R$ 599/mês | Gestora estabelecida (tudo liberado, API e marca própria) |
 | Enterprise | Sob consulta | Grandes gestoras e redes |
 
+**Plano anual:** em todos os planos pagos você pode escolher pagar **por ano**, numa cobrança única no Mercado Pago, por **10 mensalidades** (2 meses grátis). A escolha mensal ou anual é feita ao assinar, na aba **Conta** (ou **Plano**) do painel; o valor anual de cada plano aparece ao lado do mensal.
+
 Cada plano define os módulos disponíveis e os limites (imóveis, usuários, reservas/mês etc.).
 Você acompanha seu consumo na aba **📈 Uso**. Os preços são de lançamento e podem ser
 ajustados — confira sempre a página de planos.

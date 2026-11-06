@@ -14,7 +14,7 @@ function registrarRotasAssinatura(app, { requireUsuario, requireAuth, requireAdm
 
   app.get('/music/api/assinatura', requireUsuario, h(async (req, res) => res.json(assinatura.estadoDaConta(req.usuario.id))));
   app.post('/music/api/assinatura/assinar', requireUsuario, h(async (req, res) =>
-    res.json({ ok: true, ...(await assinatura.assinar(req.usuario.id, { plano: s((req.body || {}).plano, 20) || 'individual' })) })));
+    res.json({ ok: true, ...(await assinatura.assinar(req.usuario.id, { plano: s((req.body || {}).plano, 20) || 'starter', ciclo: s((req.body || {}).ciclo, 10) || 'mensal' })) })));
   // Plano banda: a titular distribui as vagas pelo e-mail da conta Musique;
   // cada integrante pode sair da própria vaga.
   app.post('/music/api/assinatura/vagas', requireUsuario, h(async (req, res) =>

@@ -96,10 +96,10 @@ function reembolsoFalhou(referencia, centavos, mpPaymentId, erro) {
   });
 }
 
-function novoPremium(userId, centavos) {
+function novoPremium(userId, centavos, ciclo = 'mensal') {
   return montarAviso({
     titulo: '💚 Closet Club: novo assinante Premium',
-    campos: [['Assinante', contato(userId)], ['Valor', reais(centavos) + '/mês']],
+    campos: [['Assinante', contato(userId)], ['Valor', reais(centavos) + (ciclo === 'anual' ? '/ano (plano anual)' : '/mês')]],
     fazer: 'Nada: Premium liberado automaticamente.',
   });
 }

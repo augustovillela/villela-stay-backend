@@ -14,7 +14,7 @@ A conta fica bloqueada até você assinar um plano — seus dados são preservad
 
 ### Quanto custa?
 
-Starter R$ 149/mês, Professional R$ 349/mês, Business R$ 799/mês e Enterprise sob consulta. Os planos variam em usuários, projetos, eventos por mês, consultas de IA, automações, portal do cliente e API — veja a comparação na página de planos. O preço é **por workspace**, não por usuário.
+Starter R$ 149/mês (ou R$ 1.490/ano), Professional R$ 349/mês (ou R$ 3.490/ano), Business R$ 799/mês (ou R$ 7.990/ano) e Enterprise sob consulta. O plano anual custa 10 mensalidades (2 meses grátis) e é cobrado uma vez por ano no Mercado Pago; você escolhe mensal ou anual na hora de assinar. Os planos variam em usuários, projetos, eventos por mês, consultas de IA, automações, portal do cliente e API — veja a comparação na página de planos. O preço é **por workspace**, não por usuário.
 
 ### Como funciona o pagamento? Posso cancelar quando quiser?
 

@@ -14,7 +14,7 @@ Não. O trial dura **15 dias**, com todos os módulos liberados, sem cartão. Ao
 
 ### Quanto custa?
 
-Os planos mensais de referência são: Starter R$ 79, Professional R$ 189, Business R$ 449 e Enterprise sob consulta. Limites de contatos, usuários, funis, campanhas e IA variam por plano — **consulte a página de planos** para os valores e condições vigentes.
+Os planos mensais de referência são: Starter R$ 79, Professional R$ 189, Business R$ 449 e Enterprise sob consulta. Em todos os planos pagos há a opção **anual**: 10 mensalidades por ano (2 meses grátis), numa cobrança única. Limites de contatos, usuários, funis, campanhas e IA variam por plano — **consulte a página de planos** para os valores e condições vigentes.
 
 ### Como funciona o pagamento?
 

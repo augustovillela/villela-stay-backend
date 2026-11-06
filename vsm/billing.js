@@ -27,6 +27,9 @@ async function mp(pathname, opts) {
   return _mpFetch(pathname, opts);
 }
 
+// dias ate o proximo vencimento: ano (365) ou mes (30)
+const diasDoCiclo = (sub) => (sub && sub.ciclo === 'anual' ? 365 : 30);
+
 function assinaturaAtiva(tenantId) {
   return db.prepare("SELECT * FROM subscriptions WHERE tenant_id = ? AND status IN ('trial','pendente','ativa','inadimplente') ORDER BY criado_em DESC LIMIT 1").get(String(tenantId));
 }
@@ -38,8 +41,8 @@ function estado(tenantId) {
   const sub = t.assinatura;
   return {
     status_tenant: t.status,
-    plano: t.plano ? { slug: t.plano.slug, nome: t.plano.nome, preco_centavos: t.plano.preco_centavos } : null,
-    assinatura: sub ? { status: sub.status, proximo_venc: sub.proximo_venc, recorrencia_mp: !!sub.mp_preapproval_id } : null,
+    plano: t.plano ? { slug: t.plano.slug, nome: t.plano.nome, preco_centavos: t.plano.preco_centavos, preco_anual_centavos: t.plano.preco_anual_centavos || 0 } : null,
+    assinatura: sub ? { status: sub.status, proximo_venc: sub.proximo_venc, recorrencia_mp: !!sub.mp_preapproval_id, ciclo: sub.ciclo || 'mensal', valor_centavos: sub.valor_centavos || 0 } : null,
     trial_expira_em: t.trial_expira_em || '',
     planos_disponiveis: repo.Planos.listar().filter(p => p.slug !== 'trial'),
     mp_ativo: ativo(),
@@ -48,10 +51,16 @@ function estado(tenantId) {
 }
 
 // inicia assinatura online (preapproval) — retorna link de checkout do MP
-async function assinar(tenantId, planoSlug, quemEmail, baseUrl, ip) {
+// ciclo: 'mensal' (padrao) | 'anual' - anual = cobranca UNICA por ano (preapproval de 12 meses no Mercado Pago)
+async function assinar(tenantId, planoSlug, quemEmail, baseUrl, ip, ciclo = 'mensal') {
   if (!ativo()) throw new Error('Pagamento online indisponível no momento — fale com o suporte para ativar seu plano.');
   const plano = repo.Planos.porSlug(planoSlug);
   if (!plano || !plano.ativo || !plano.preco_centavos) throw new Error('Plano inválido para assinatura online.');
+  ciclo = String(ciclo || 'mensal');
+  if (!['mensal', 'anual'].includes(ciclo)) throw new Error('Ciclo inválido: escolha mensal ou anual.');
+  const anual = ciclo === 'anual';
+  if (anual && !(plano.preco_anual_centavos > 0)) throw new Error('Este plano não tem preço anual. Escolha o pagamento mensal ou fale com o suporte.');
+  const valor = anual ? plano.preco_anual_centavos : plano.preco_centavos;
   const atual = assinaturaAtiva(tenantId);
   if (atual && atual.mp_preapproval_id && atual.status === 'ativa') {
     throw new Error('Já existe uma assinatura ativa. Cancele-a antes de trocar de plano, ou fale com o suporte.');
@@ -60,18 +69,18 @@ async function assinar(tenantId, planoSlug, quemEmail, baseUrl, ip) {
   const pre = await mp('/preapproval', {
     method: 'POST',
     body: JSON.stringify({
-      reason: `Villela Stay Manager — plano ${plano.nome}`,
+      reason: `Villela Stay Manager — plano ${plano.nome}${anual ? ' (anual)' : ''}`,
       external_reference: `vsm:${tenantId}:${plano.slug}`,
       payer_email: quemEmail || t.email_contato,
       back_url: `${baseUrl}/gestao/app`,
-      auto_recurring: { frequency: 1, frequency_type: 'months', transaction_amount: Number((plano.preco_centavos / 100).toFixed(2)), currency_id: 'BRL' },
+      auto_recurring: { frequency: anual ? 12 : 1, frequency_type: 'months', transaction_amount: Number((valor / 100).toFixed(2)), currency_id: 'BRL' },
       status: 'pending',
     }),
   });
-  repo.evento(tenantId, 'billing.preapproval_criada', pre.id, { plano: plano.slug });
-  repo.Auditoria.registrar({ tenant_id: tenantId, quem: quemEmail, acao: 'billing.assinar', entidade: 'subscriptions', entidade_id: String(pre.id), detalhe: plano.slug, ip });
-  db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, ciclo, inicio, criado_em, mp_preapproval_id) VALUES (?,?,?,?,?,?,?,?)')
-    .run(novoId(), String(tenantId), plano.id, 'pendente', 'mensal', nowISO(), nowISO(), String(pre.id));
+  repo.evento(tenantId, 'billing.preapproval_criada', pre.id, { plano: plano.slug, ciclo });
+  repo.Auditoria.registrar({ tenant_id: tenantId, quem: quemEmail, acao: 'billing.assinar', entidade: 'subscriptions', entidade_id: String(pre.id), detalhe: plano.slug + (anual ? ' (anual)' : ''), ip });
+  db.prepare('INSERT INTO subscriptions (id, tenant_id, plan_id, status, ciclo, valor_centavos, inicio, criado_em, mp_preapproval_id) VALUES (?,?,?,?,?,?,?,?,?)')
+    .run(novoId(), String(tenantId), plano.id, 'pendente', ciclo, valor, nowISO(), nowISO(), String(pre.id));
   db.prepare('UPDATE tenants SET plan_id = ? WHERE id = ?').run(plano.id, String(tenantId)); // reflete o plano escolhido
   return { link: pre.init_point || pre.sandbox_init_point, preapproval_id: pre.id };
 }
@@ -97,7 +106,7 @@ function aplicarPreapproval(tenantId, preapprovalId, statusMP) {
   if (statusMP === 'authorized') {
     const jaAtiva = sub.status === 'ativa'; // preapproval reenviado → não duplicar fatura/alerta
     db.prepare("UPDATE subscriptions SET status = 'ativa', proximo_venc = ?, atualizado_em = ? WHERE id = ?")
-      .run(new Date(Date.now() + 30 * 86400000).toISOString(), agora, sub.id);
+      .run(new Date(Date.now() + diasDoCiclo(sub) * 86400000).toISOString(), agora, sub.id);
     db.prepare("UPDATE subscriptions SET status = 'cancelada', fim = ? WHERE tenant_id = ? AND status IN ('trial','ativa') AND id != ?").run(agora, sub.tenant_id, sub.id);
     repo.Tenants.mudarStatus(sub.tenant_id, 'ativa', 'mercadopago', 'assinatura autorizada');
     if (!jaAtiva) {
@@ -123,7 +132,7 @@ function registrarPagamento(tenantId, mpPaymentId = '') {
   const sub = assinaturaAtiva(tenantId);
   if (!sub) return { resultado: 'sem-assinatura' };
   db.prepare("UPDATE subscriptions SET status = 'ativa', proximo_venc = ?, atualizado_em = ? WHERE id = ?")
-    .run(new Date(Date.now() + 30 * 86400000).toISOString(), nowISO(), sub.id);
+    .run(new Date(Date.now() + diasDoCiclo(sub) * 86400000).toISOString(), nowISO(), sub.id);
   if (repo.Tenants.obter(tenantId).status !== 'ativa') repo.Tenants.mudarStatus(tenantId, 'ativa', 'mercadopago', 'pagamento recorrente');
   gerarFatura(tenantId, 'paga', mpPaymentId);
   return { resultado: 'registrada' };
@@ -131,7 +140,8 @@ function registrarPagamento(tenantId, mpPaymentId = '') {
 
 function gerarFatura(tenantId, status = 'aberta', mpPaymentId = '') {
   const t = repo.Tenants.obter(tenantId);
-  const valor = t.plano ? t.plano.preco_centavos : 0;
+  const subCob = assinaturaAtiva(tenantId);
+  const valor = subCob && subCob.valor_centavos > 0 ? subCob.valor_centavos : (t.plano ? t.plano.preco_centavos : 0);
   db.prepare('INSERT INTO invoices (id, tenant_id, valor_centavos, competencia, vencimento, status, mp_payment_id, criado_em, pago_em) VALUES (?,?,?,?,?,?,?,?,?)')
     .run(novoId(), String(tenantId), valor, new Date().toISOString().slice(0, 7), new Date().toISOString().slice(0, 10), status, String(mpPaymentId || ''), nowISO(), status === 'paga' ? nowISO() : '');
 }
@@ -142,12 +152,16 @@ function trocarPlano(tenantId, planoSlug, quem) {
   if (!plano) throw new Error('Plano inválido.');
   const atual = assinaturaAtiva(tenantId);
   const t = repo.Tenants.obter(tenantId);
-  const precoAtual = t.plano ? t.plano.preco_centavos : 0;
-  const tipo = plano.preco_centavos > precoAtual ? 'upgrade' : (plano.preco_centavos < precoAtual ? 'downgrade' : 'troca');
+  // compara no MESMO ciclo da assinatura atual (anual x anual, mensal x mensal)
+  const anualAtual = !!(atual && atual.ciclo === 'anual');
+  const doCiclo = (p) => (p ? (anualAtual ? p.preco_anual_centavos : p.preco_centavos) : 0) || 0;
+  const precoAtual = doCiclo(t.plano);
+  const precoNovo = doCiclo(plano);
+  const tipo = precoNovo > precoAtual ? 'upgrade' : (precoNovo < precoAtual ? 'downgrade' : 'troca');
   repo.Tenants.definirPlano(tenantId, plano.id, quem);
   if (atual) db.prepare('UPDATE subscriptions SET plan_id = ?, atualizado_em = ? WHERE id = ?').run(plano.id, nowISO(), atual.id);
   repo.evento(tenantId, 'billing.' + tipo, plano.slug, {});
-  const exigeReassinar = !!(atual && atual.mp_preapproval_id && atual.status === 'ativa' && plano.preco_centavos !== precoAtual);
+  const exigeReassinar = !!(atual && atual.mp_preapproval_id && atual.status === 'ativa' && precoNovo !== precoAtual);
   return { tipo, exige_reassinar: exigeReassinar, plano: plano.slug };
 }
 

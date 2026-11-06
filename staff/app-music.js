@@ -119,7 +119,8 @@ async function muAssinaturas(alvo) {
     </div>
     <h3>Preço dos planos e tolerância</h3>
     <div class="barra">
-      ${(d.planos || []).map(p => `<label>${esc(p.nome)} · ${p.vagas} pessoa(s) (R$/mês) <input class="mu-preco-plano" data-slug="${esc(p.slug)}" type="number" step="0.01" min="1" value="${(p.preco_cents / 100).toFixed(2)}" style="max-width:110px"></label>`).join('')}
+      ${(d.planos || []).map(p => `<label>${esc(p.nome)} · ${p.vagas} pessoa(s) (R$/mês) <input class="mu-preco-plano" data-slug="${esc(p.slug)}" type="number" step="0.01" min="1" value="${(p.preco_cents / 100).toFixed(2)}" style="max-width:110px"></label>
+        <label>${esc(p.nome)} anual (R$/ano) <input class="mu-preco-anual" data-slug="${esc(p.slug)}" type="number" step="0.01" min="1" value="${(p.preco_anual_cents / 100).toFixed(2)}" style="max-width:110px"></label>`).join('')}
       <label>Tolerância (dias) <input id="mu-car" type="number" min="0" max="60" value="${d.plano.carencia_dias}" style="max-width:80px"></label>
       <label>Avaliação — teste grátis (dias) <input id="mu-teste" type="number" min="0" max="90" value="${d.plano.teste_dias}" style="max-width:80px"></label>
       <button class="btn" id="mu-plano">Salvar</button>
@@ -137,7 +138,8 @@ async function muAssinaturas(alvo) {
   $('#mu-plano').onclick = async () => {
     try {
       const planos = {}; document.querySelectorAll('.mu-preco-plano').forEach(i => { planos[i.dataset.slug] = Math.round(Number(i.value) * 100); });
-      await api('PUT', '/music/assinaturas/plano', { planos, carencia_dias: Number($('#mu-car').value), teste_dias: Number($('#mu-teste').value) });
+      const planos_anual = {}; document.querySelectorAll('.mu-preco-anual').forEach(i => { planos_anual[i.dataset.slug] = Math.round(Number(i.value) * 100); });
+      await api('PUT', '/music/assinaturas/plano', { planos, planos_anual, carencia_dias: Number($('#mu-car').value), teste_dias: Number($('#mu-teste').value) });
       muAvisar('Plano salvo. Vale para assinaturas novas.'); muAssinaturas(alvo);
     } catch (e) { muAvisar(e.message); }
   };

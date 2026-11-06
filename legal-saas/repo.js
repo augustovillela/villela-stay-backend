@@ -13,6 +13,8 @@ const { db, transacao, nowISO, novoId, periodoAtual, j } = require('./db');
 
 const s = (v, max = 4000) => String(v == null ? '' : v).trim().slice(0, max);
 const cent = (v) => Math.round(Number(v || 0));
+// preco ANUAL: inteiro em centavos, >= 0 (0 = plano sem opcao anual)
+const centAnual = (v) => { const n = Math.round(Number(v)); if (!Number.isFinite(n) || n < 0) throw new Error('Preço anual inválido.'); return n; };
 const slugify = (t) => s(t, 60).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || ('t' + novoId().toLowerCase());
 
 // ---- catálogo de MÓDULOS do produto jurídico (chaves) ----
@@ -95,15 +97,15 @@ const PLANOS_SEED = [
 
 function semear() {
   const agora = nowISO();
-  const upP = db.prepare(`INSERT INTO plans (id, slug, nome, descricao, preco_centavos, ciclo, limites, modulos, flags, ativo, ordem, criado_em, atualizado_em)
-    VALUES (?,?,?,?,?,'mensal',?,?,?,1,?,?,?)
+  const upP = db.prepare(`INSERT INTO plans (id, slug, nome, descricao, preco_centavos, preco_anual_centavos, ciclo, limites, modulos, flags, ativo, ordem, criado_em, atualizado_em)
+    VALUES (?,?,?,?,?,?,'mensal',?,?,?,1,?,?,?)
     ON CONFLICT(slug) DO UPDATE SET nome=excluded.nome, descricao=excluded.descricao, preco_centavos=excluded.preco_centavos,
       limites=excluded.limites, modulos=excluded.modulos, flags=excluded.flags, ordem=excluded.ordem, atualizado_em=excluded.atualizado_em`);
   for (const p of PLANOS_SEED) {
     // preserva preço já editado no painel: só semeia preço se o plano ainda não existe
     const existe = db.prepare('SELECT preco_centavos FROM plans WHERE slug = ?').get(p.slug);
     const preco = existe ? existe.preco_centavos : p.preco_centavos;
-    upP.run(novoId(), p.slug, p.nome, p.descricao, preco, j.str(p.limites), j.str(p.modulos), j.str(p.flags), p.ordem, agora, agora);
+    upP.run(novoId(), p.slug, p.nome, p.descricao, preco, p.preco_centavos > 0 ? p.preco_centavos * 10 : 0, j.str(p.limites), j.str(p.modulos), j.str(p.flags), p.ordem, agora, agora);
   }
   const upF = db.prepare('INSERT INTO feature_flags (chave, nome, descricao, padrao, atualizado_em) VALUES (?,?,?,?,?) ON CONFLICT(chave) DO UPDATE SET nome=excluded.nome, descricao=excluded.descricao');
   for (const [ch, nome, desc, pad] of FLAGS_SEED) upF.run(ch, nome, desc, pad, agora);
@@ -126,18 +128,19 @@ const Planos = {
       nome: d.nome != null ? s(d.nome, 120) : p.nome,
       descricao: d.descricao != null ? s(d.descricao, 500) : p.descricao,
       preco_centavos: d.preco_centavos != null ? cent(d.preco_centavos) : p.preco_centavos,
+      preco_anual_centavos: d.preco_anual_centavos != null ? centAnual(d.preco_anual_centavos) : p.preco_anual_centavos,
       limites: d.limites != null ? j.str(d.limites) : p.limites,
       modulos: d.modulos != null ? j.str((d.modulos || []).filter(m => MODULOS_KEYS.includes(m))) : p.modulos,
       flags: d.flags != null ? j.str(d.flags) : p.flags,
       ativo: d.ativo != null ? (d.ativo ? 1 : 0) : p.ativo,
     };
-    db.prepare('UPDATE plans SET nome=?, descricao=?, preco_centavos=?, limites=?, modulos=?, flags=?, ativo=?, atualizado_em=? WHERE id=?')
-      .run(campos.nome, campos.descricao, campos.preco_centavos, campos.limites, campos.modulos, campos.flags, campos.ativo, nowISO(), id);
+    db.prepare('UPDATE plans SET nome=?, descricao=?, preco_centavos=?, preco_anual_centavos=?, limites=?, modulos=?, flags=?, ativo=?, atualizado_em=? WHERE id=?')
+      .run(campos.nome, campos.descricao, campos.preco_centavos, campos.preco_anual_centavos, campos.limites, campos.modulos, campos.flags, campos.ativo, nowISO(), id);
     return Planos.porId(id);
   },
 };
 function hidratarPlano(p) {
-  return { ...p, limites: j.parse(p.limites, {}), modulos: j.parse(p.modulos, []), flags: j.parse(p.flags, {}), preco_reais: (p.preco_centavos / 100) };
+  return { ...p, limites: j.parse(p.limites, {}), modulos: j.parse(p.modulos, []), flags: j.parse(p.flags, {}), preco_reais: (p.preco_centavos / 100), preco_anual_reais: ((p.preco_anual_centavos || 0) / 100) };
 }
 
 // =====================================================================
@@ -519,7 +522,7 @@ const Dashboard = {
     const um = (sql, ...a) => db.prepare(sql).get(...a).n;
     const periodo = periodoAtual();
     // MRR = soma do preço dos planos das assinaturas ativas
-    const mrr = db.prepare(`SELECT COALESCE(SUM(p.preco_centavos),0) v FROM subscriptions sb
+    const mrr = db.prepare(`SELECT CAST(COALESCE(SUM(CASE WHEN sb.ciclo = 'anual' THEN (CASE WHEN sb.valor_centavos > 0 THEN sb.valor_centavos ELSE p.preco_anual_centavos END) / 12.0 ELSE p.preco_centavos END),0) AS INTEGER) v FROM subscriptions sb
       JOIN plans p ON p.id = sb.plan_id JOIN tenants t ON t.id = sb.tenant_id
       WHERE sb.status = 'ativa' AND t.status = 'ativa'`).get().v;
     const custoMes = db.prepare('SELECT COALESCE(SUM(custo_centavos),0) v FROM cost_records WHERE periodo = ?').get(periodo).v;
@@ -539,7 +542,7 @@ const Dashboard = {
   },
   // margem por cliente: receita (preço do plano) − custo do período
   custoPorCliente(periodo = periodoAtual()) {
-    return db.prepare(`SELECT t.id, t.nome, t.status, p.nome AS plano, p.preco_centavos AS receita_centavos,
+    return db.prepare(`SELECT t.id, t.nome, t.status, p.nome AS plano, CASE WHEN (SELECT ciclo FROM subscriptions sx WHERE sx.tenant_id = t.id AND sx.status = 'ativa' ORDER BY sx.criado_em DESC LIMIT 1) = 'anual' THEN CAST(ROUND(p.preco_anual_centavos / 12.0) AS INTEGER) ELSE p.preco_centavos END AS receita_centavos,
       COALESCE((SELECT SUM(custo_centavos) FROM cost_records c WHERE c.tenant_id = t.id AND c.periodo = ?), 0) AS custo_centavos
       FROM tenants t LEFT JOIN plans p ON p.id = t.plan_id ORDER BY t.criado_em DESC`).all(periodo)
       .map(r => ({ ...r, margem_centavos: (r.receita_centavos || 0) - (r.custo_centavos || 0) }));

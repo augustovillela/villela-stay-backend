@@ -21,7 +21,8 @@ são preservados.
 ### Quanto custa?
 
 Os valores de lançamento publicados são: Essencial R$ 149/mês, Profissional R$ 349/mês,
-Escritório R$ 799/mês e Enterprise sob consulta. Cada plano tem limites de advogados
+Escritório R$ 799/mês e Enterprise sob consulta. Em todos os planos pagos há a opção **anual**: 10 mensalidades por ano (2 meses grátis), numa
+cobrança única. Cada plano tem limites de advogados
 e processos ativos. A IA é paga por uso, à parte (veja "Como funciona a cobrança da IA?").
 Os preços podem ser ajustados — consulte sempre a página de planos em `/juridico#planos`.
 
