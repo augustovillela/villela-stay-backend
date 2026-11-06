@@ -98,7 +98,7 @@ function checarLimite(tenantId, metrica, adicionando = 1) {
   const plano = planoDoTenant(tenantId);
   if (!plano) throw new Error('Empresa sem assinatura ativa.');
   const lim = Number(plano.limites[LIMITE_POR_METRICA[metrica] || metrica] || 0);
-  if (!lim) return;
+  if (!lim || lim < 0) return; // 0 e negativo (-1 do Growth OS) = ilimitado; sem o `< 0` "atual + 1 > -1" sempre estoura
   const atual = Number(usoDoMes(tenantId)[metrica] || 0);
   if (atual + adicionando > lim) throw new Error(`Limite do plano ${plano.nome} atingido para ${metrica} (${atual}/${lim}). Faça upgrade para continuar.`);
 }

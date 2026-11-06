@@ -192,6 +192,17 @@ function teste(nome, cond) {
   catch (e) { estourou = /Limite do plano/.test(e.message); }
   teste('limite de projetos do Starter bloqueia o 16º', estourou);
 
+  { // regressão 06/11/2026: -1 (convenção do Growth OS) tem de valer ilimitado, não "limite impossível"
+    const { db: dbp } = require('./db');
+    const pl = dbp.prepare("SELECT id, limites FROM plans WHERE slug = 'starter'").get();
+    const lim = JSON.parse(pl.limites); lim.projetos = -1;
+    dbp.prepare('UPDATE plans SET limites = ? WHERE id = ?').run(JSON.stringify(lim), pl.id);
+    let travou = false;
+    try { repo.criarProjeto(tenantB.id, { nome: 'P-sem-teto' }, staffAtor, 'teste'); } catch (e) { travou = true; }
+    dbp.prepare('UPDATE plans SET limites = ? WHERE id = ?').run(pl.limites, pl.id);
+    teste('limite negativo (-1) vale ilimitado nos projetos', !travou);
+  }
+
   // ---------- SEED INTERNO VILLELA (16 projetos) ----------
   r = await req('POST', '/staff/api/vpe/semear-interno', { body: {}, staff: 'ceo' });
   teste('seed interno exige admin (ceo → 403)', r.status === 403);

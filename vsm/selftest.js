@@ -352,6 +352,10 @@ async function rodar() {
     for (let i = 0; i < 3; i++) assert.equal((await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q' + i }, cookies: true })).st, 200);
     const q4 = await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q4' }, cookies: true });
     assert.equal(q4.st, 400); assert.ok(/limite/i.test(q4.json.erro));
+    // regressão 06/11/2026: -1 (convenção do Growth OS) vale ilimitado
+    await req('POST', `/staff/api/vsm/tenants/${nova.json.tenant.id}/settings`, { corpo: { limites_over: { imoveis: -1 } } });
+    assert.equal((await req('POST', '/gestao/api/app/imoveis', { corpo: { nome: 'Q4' }, cookies: true })).st, 200);
+    await req('POST', `/staff/api/vsm/tenants/${nova.json.tenant.id}/settings`, { corpo: { limites_over: {} } });
   });
   await t('app: suspensa bloqueia o acesso ao app (403)', async () => {
     const delta = (await req('GET', '/staff/api/vsm/tenants')).json.tenants.find(x => x.email_contato === 'delta@t.br');

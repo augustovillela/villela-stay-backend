@@ -497,6 +497,14 @@ async function rodar() {
     repo.Tenants.addUsuario(esc.id, { email: 'terceiro@equipe.br' }); // a vaga liberou
     assert.throws(() => repo.Tenants.mudarUsuario(esc.id, id2, { ativo: true }), /Sem vaga/);
   });
+  await t('limite negativo (-1 do Growth OS) vale ilimitado na equipe e nos processos', async () => {
+    const repo = saas.repo;
+    const esc = repo.Tenants.criar({ nome: 'Sem Teto Adv', email: 'dona@semteto.br', plano: 'essencial' }, 'teste'); // essencial: 2 usuários
+    await req('POST', `/staff/api/legal-saas/tenants/${esc.id}/settings`, { corpo: { limites_over: { advogados: -1, processos_ativos: -1 } } });
+    for (const n of ['a', 'b', 'c']) repo.Tenants.addUsuario(esc.id, { nome: n, email: `${n}@semteto.br`, papel: 'usuario' }); // 4 usuários > 2 do plano
+    assert.equal(repo.Tenants.vagasUsuarios(esc.id).livre, true);
+    assert.equal(repo.dentroLimite(esc.id, 'processos_ativos').ok, true);
+  });
   await t('auditoria administrativa registrada', async () => {
     assert.ok((await req('GET', '/staff/api/legal-saas/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));
   });

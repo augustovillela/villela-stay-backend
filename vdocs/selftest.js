@@ -173,6 +173,17 @@ function teste(nome, cond) {
   catch (e) { estourou = /Limite do plano/.test(e.message); }
   teste('limite de usuários do plano Starter bloqueia o 6º', estourou);
 
+  { // regressão 06/11/2026: -1 (convenção do Growth OS) tem de valer ilimitado, não "limite impossível"
+    const { db: dbd } = require('./db');
+    const pl = dbd.prepare("SELECT id, limites FROM plans WHERE slug = 'starter'").get();
+    const lim = JSON.parse(pl.limites); lim.usuarios = -1;
+    dbd.prepare('UPDATE plans SET limites = ? WHERE id = ?').run(JSON.stringify(lim), pl.id);
+    let travou = false;
+    try { repo.criarConvite(tenantB.id, { email: 'u8@b.com', papel: 'usuario' }, staff, 'teste'); } catch (e) { travou = true; }
+    dbd.prepare('UPDATE plans SET limites = ? WHERE id = ?').run(pl.limites, pl.id);
+    teste('limite negativo (-1) vale ilimitado nos usuários', !travou);
+  }
+
   // ---------- config ----------
   r = await req('PATCH', '/vdocs/api/config', { body: { tenant: { cnpj: '00.000.000/0001-00' }, settings: { retencao_padrao_dias: '365' } }, jar: 'anaA' });
   teste('dono grava config', r.status === 200);

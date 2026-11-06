@@ -265,7 +265,7 @@ const Tenants = {
     const e = entitlements(tenantId);
     const limite = Number((e && e.limites && e.limites.advogados) || 0);
     const ativos = db.prepare('SELECT COUNT(*) n FROM tenant_users WHERE tenant_id = ? AND ativo = 1').get(s(tenantId, 40)).n;
-    return { limite, ativos, livre: limite === 0 || ativos < limite };
+    return { limite, ativos, livre: limite <= 0 || ativos < limite };
   },
   addUsuario(tenantId, d) {
     const email = s(d.email, 120).toLowerCase();
@@ -337,7 +337,7 @@ function dentroLimite(tenantId, metrica, incremento = 1) {
   if (!e) return { ok: false, limite: 0, usado: 0 };
   const limite = Number(e.limites[metrica] || 0);
   const usado = Uso.atual(tenantId, metrica);
-  if (limite === 0) return { ok: true, limite: 0, usado }; // ilimitado
+  if (limite <= 0) return { ok: true, limite: 0, usado }; // ilimitado: 0 (convenção local) ou negativo (-1 do Growth OS)
   return { ok: (usado + incremento) <= limite, limite, usado };
 }
 function flag(tenantId, chave) {

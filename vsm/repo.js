@@ -296,7 +296,7 @@ function dentroLimite(tenantId, metrica, incremento = 1) {
   if (!e) return { ok: false, limite: 0, usado: 0 };
   const limite = Number(e.limites[metrica] || 0);
   const usado = Uso.atual(tenantId, metrica);
-  if (limite === 0) return { ok: true, limite: 0, usado }; // ilimitado
+  if (limite <= 0) return { ok: true, limite: 0, usado }; // ilimitado: 0 (convenção local) ou negativo (-1 do Growth OS)
   return { ok: (usado + incremento) <= limite, limite, usado };
 }
 function flag(tenantId, chave) {
