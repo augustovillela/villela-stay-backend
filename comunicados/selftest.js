@@ -950,6 +950,15 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     assert.equal((await req('DELETE', `/staff/api/comunicados/${idChave}`, { quem: 'adm' })).status, 200);
   });
 
+  await t('trava: todo sistema de fontes.js está classificado em clientes/motor.js (sistema novo vive em DOIS lugares)', async () => {
+    const motor = require('../clientes/motor');
+    const cat = motor.catalogo();
+    const sem = cat.filter((c) => c.sem_classificacao).map((c) => c.chave);
+    assert.deepEqual(sem, [], 'sistema(s) em comunicados/fontes.js sem leitor/FORA/EXTRAS em clientes/motor.js: ' + sem.join(', '));
+    const chaves = cat.map((c) => c.chave);
+    assert.equal(new Set(chaves).size, chaves.length, 'sistema duplicado no catálogo de clientes');
+  });
+
   srv.close();
   com.desligarFila();
   console.log(`\n${ok} ok, ${falhas.length} falha(s).`);
