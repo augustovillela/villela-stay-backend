@@ -790,6 +790,7 @@ async function abrirContato(id) {
             <button class="btn peq secund" id="f-tarefa">+ Tarefa</button>
             <button class="btn peq secund" id="f-proposta">+ Proposta</button>
             <button class="btn peq secund" id="f-optout">🚫 Opt-out</button>
+            <button class="btn peq secund" id="f-excluir" title="Apaga o contato e tudo dele, inclusive do kanban">🗑 Excluir</button>
           </div>
           <div style="margin-top:12px"><label>Registrar contato/nota <textarea id="f-nota" rows="2" placeholder="ex.: liguei, cliente vai decidir amanhã"></textarea></label>
             <select id="f-nota-tipo" style="width:auto"><option value="nota">nota</option><option value="mensagem-enviada">mensagem enviada</option><option value="mensagem-recebida">mensagem recebida</option><option value="ligacao">ligação</option><option value="email">e-mail</option></select>
@@ -827,6 +828,11 @@ async function abrirContato(id) {
     $('#f-optout').onclick = async () => {
       if (!confirm('Marcar opt-out (não contatar mais)?')) return;
       try { await api('PATCH', '/app/contatos/' + id, { consentimento: { optIn: false, base: 'opt-out', em: new Date().toISOString() } }); abrirContato(id); } catch (e) { avisar(e); }
+    };
+    $('#f-excluir').onclick = async () => {
+      const aviso = ['EXCLUIR este contato para sempre?', '', 'Sai do kanban e somem a timeline, as tarefas, as propostas, as conversas e a fila de campanhas dele. Não dá para desfazer.', '', 'Dica: se você só não quer mais contato, use "Opt-out": ele fica no CRM, marcado como "não contatar", e uma busca nova não o traz de volta como lead.'].join('\n');
+      if (!confirm(aviso)) return;
+      try { await api('DELETE', '/app/contatos/' + id); navegar('contatos'); } catch (e) { avisar(e); }
     };
     $('#f-msg').onclick = () => dlgTemplateEnvio(c);
     $('#f-ia').onclick = async () => {
