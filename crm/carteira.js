@@ -80,13 +80,15 @@ async function atualizarPTAX() {
   }
 }
 
+// padrão por variável de ambiente (CRM_CARTEIRA=on); o que o staff gravar no painel SEMPRE vence (liga ou desliga)
+const ligadaPedida = (c) => (c.ativa !== undefined ? !!c.ativa : String(process.env.CRM_CARTEIRA || 'off').toLowerCase() === 'on');
 function cfg() {
   const c = Plataforma.obter('carteira', {});
   const cb = cambio(c);
   const pacotes = (Array.isArray(c.pacotes_centavos) ? c.pacotes_centavos : PACOTES_PADRAO).map((n) => Math.round(Number(n) || 0)).filter((n) => n >= 100);
   return {
-    ligada: !!c.ativa,                       // o que o dono pediu
-    ativa: !!c.ativa && cb.valor > 0,        // o que está valendo (sem câmbio não liga pela metade)
+    ligada: ligadaPedida(c),                       // o que o dono pediu
+    ativa: ligadaPedida(c) && cb.valor > 0,        // o que está valendo (sem câmbio não liga pela metade)
     cambio_brl_usd: cb.valor, cambio_origem: cb.origem, cambio_aviso: cb.aviso, cambio_folga_pct: cb.folga_pct,
     cambio_modo: c.cambio_modo === 'fixo' ? 'fixo' : 'ptax', cambio_fixo: Number(c.cambio_fixo) || 0,
     margem_pct: Number.isFinite(Number(c.margem_pct)) ? Math.max(0, Number(c.margem_pct)) : MARGEM_PADRAO_PCT,

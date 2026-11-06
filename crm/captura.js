@@ -63,8 +63,9 @@ const OPCOES = {
   },
 };
 
-const ligadoExterna = () => !!Carteira.Plataforma.obter('captura', {}).externa_ativa;
-const configurarPlataforma = (novo = {}) => { const c = Carteira.Plataforma.obter('captura', {}); if ('externa_ativa' in novo) c.externa_ativa = !!novo.externa_ativa; Carteira.Plataforma.salvar('captura', c); return { externa_ativa: !!c.externa_ativa }; };
+// padrão por variável de ambiente (CRM_CAPTURA_EXTERNA=on); o que o staff gravar no painel SEMPRE vence (liga ou desliga)
+const ligadoExterna = () => { const c = Carteira.Plataforma.obter('captura', {}); return c.externa_ativa !== undefined ? !!c.externa_ativa : String(process.env.CRM_CAPTURA_EXTERNA || 'off').toLowerCase() === 'on'; };
+const configurarPlataforma = (novo = {}) => { const c = Carteira.Plataforma.obter('captura', {}); if ('externa_ativa' in novo) c.externa_ativa = !!novo.externa_ativa; Carteira.Plataforma.salvar('captura', c); return { externa_ativa: ligadoExterna() }; };
 
 /** O que este assinante pode fazer agora na captura externa, e por quê. */
 function situacaoExterna(tid) {
