@@ -121,7 +121,7 @@ async function muAssinaturas(alvo) {
     <div class="barra">
       ${(d.planos || []).map(p => `<label>${esc(p.nome)} · ${p.vagas} pessoa(s) (R$/mês) <input class="mu-preco-plano" data-slug="${esc(p.slug)}" type="number" step="0.01" min="1" value="${(p.preco_cents / 100).toFixed(2)}" style="max-width:110px"></label>`).join('')}
       <label>Tolerância (dias) <input id="mu-car" type="number" min="0" max="60" value="${d.plano.carencia_dias}" style="max-width:80px"></label>
-      <label>Teste grátis (dias) <input id="mu-teste" type="number" min="0" max="90" value="${d.plano.teste_dias}" style="max-width:80px"></label>
+      <label>Avaliação — teste grátis (dias) <input id="mu-teste" type="number" min="0" max="90" value="${d.plano.teste_dias}" style="max-width:80px"></label>
       <button class="btn" id="mu-plano">Salvar</button>
     </div>
     <h3 style="margin-top:14px">Dar cortesia</h3>

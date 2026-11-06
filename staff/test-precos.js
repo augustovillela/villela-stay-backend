@@ -17,7 +17,7 @@ const banco = {
   '/vpe/planos': { planos: [{ id: 'p1', slug: 'starter', nome: 'Starter', preco_centavos: 14900, ativo: 1 }] },
   '/finance/planos': { planos: [{ id: 'f1', slug: 'essencial', nome: 'Essencial', precoCents: 14900, publico: true },
     { id: 'f2', slug: 'trial', nome: 'Avaliação', precoCents: 0, publico: false }] },
-  '/music/assinaturas': { planos: [{ slug: 'starter', nome: 'Starter', vagas: 1, preco_cents: 3900 }, { slug: 'professional', nome: 'Professional', vagas: 3, preco_cents: 5900 }] },
+  '/music/assinaturas': { plano: { teste_dias: 15 }, planos: [{ slug: 'starter', nome: 'Starter', vagas: 1, preco_cents: 3900 }, { slug: 'professional', nome: 'Professional', vagas: 3, preco_cents: 5900 }] },
   '/origena/precos': { planos: [{ id: 'o1', slug: 'familia', nome: 'Família', preco_centavos: 3990, preco_anual_centavos: 39900, ativo: true }] },
   '/closet/dashboard': { planos: [{ id: 'k1', slug: 'premium', nome: 'Premium', preco_centavos: 3900, ativo: 1 }] },
 };
@@ -64,13 +64,15 @@ const PRC = sandbox.PRC;
   await PRC.abrir();
   for (const s of PRC.sistemas) assert.ok(PRC.cache[s.id].linhas && PRC.cache[s.id].linhas.length, 'sem planos: ' + s.id);
   assert.strictEqual(PRC.cache.finance.linhas[1].oculto, true, 'plano oculto do Finance deve aparecer marcado');
-  assert.strictEqual(PRC.cache.music.linhas[0].centavos, 3900);
-  assert.strictEqual(PRC.cache.music.linhas.length, 2, 'Musique lista todos os planos');
+  assert.strictEqual(PRC.cache.music.linhas[0].nome, 'Avaliação (15 dias)', 'Musique mostra a Avaliação como os outros');
+  assert.strictEqual(PRC.cache.music.linhas[0].fixo, true);
+  assert.strictEqual(PRC.cache.music.linhas[1].centavos, 3900);
+  assert.strictEqual(PRC.cache.music.linhas.length, 3, 'Avaliação + planos');
   assert.ok(els['prc-corpo'].innerHTML.includes('Villela Finance'));
 
   // gravação em cada sistema: valor novo em reais -> o campo certo de cada rota
   const casos = [['vcrm', 0, '65,00'], ['vdocs', 0, '65'], ['vsm', 0, '65'], ['legal-saas', 0, '65'], ['vpe', 0, '65'],
-    ['finance', 0, '65'], ['music', 0, '65'], ['origena', 0, '59,90'], ['closet', 0, '59,90']];
+    ['finance', 0, '65'], ['music', 1, '65'], ['origena', 0, '59,90'], ['closet', 0, '59,90']];
   for (const [sid, i, v] of casos) {
     doc.getElementById(`prc-${sid}-${i}`).value = v;
     if (sid === 'origena') doc.getElementById(`prc-${sid}-${i}-a`).value = '599,00';

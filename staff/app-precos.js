@@ -33,8 +33,13 @@ const PRC = {
       gravar: (l, c) => api('PATCH', '/finance/planos/' + l.id, { precoCents: c }) },
     { id: 'music', nome: '🎵 Musique', url: 'musique.villelastay.com.br',
       aviso: 'Os planos do Musique diferem pelo número de pessoas (Starter 1, Professional 3, Business 5, Enterprise 10). Preço novo vale para quem assinar depois.',
-      ler: async () => (await api('GET', '/music/assinaturas')).planos.map(p => ({
-        id: p.slug, nome: p.nome + ' · ' + p.vagas + ' pessoa(s)', slug: p.slug, ativo: true, centavos: p.preco_cents })),
+      ler: async () => {
+        const r = await api('GET', '/music/assinaturas');
+        // A Avaliação não tem preço: aparece como nos outros sistemas, só que sem campo para editar.
+        const aval = { id: 'avaliacao', nome: 'Avaliação (' + ((r.plano && r.plano.teste_dias) || 15) + ' dias)', slug: 'trial', ativo: true, centavos: 0, fixo: true };
+        return [aval].concat(r.planos.map(p => ({
+          id: p.slug, nome: p.nome + ' · ' + p.vagas + ' pessoa(s)', slug: p.slug, ativo: true, centavos: p.preco_cents })));
+      },
       gravar: (l, c) => api('PUT', '/music/assinaturas/plano', { planos: { [l.id]: c } }) },
     { id: 'origena', nome: '🌳 Origena', url: 'origena.villelastay.com.br',
       aviso: 'Anual = preço pago uma vez por ano (hoje, 10 mensalidades). Pacotes de créditos ficam na aba 🌳 Origena → Preços.',
@@ -82,10 +87,10 @@ const PRC = {
           ${r.linhas.map((l, i) => `<tr>
             <td data-rot="Plano"><b>${esc(l.nome)}</b> <span class="tag">${esc(l.slug || '')}</span>
               ${l.ativo ? '' : '<span class="chip">inativo</span>'}${l.oculto ? ' <span class="chip">oculto</span>' : ''}</td>
-            <td data-rot="Preço/mês (R$)"><input type="text" inputmode="decimal" id="prc-${s.id}-${i}" style="max-width:120px"
+            <td data-rot="Preço/mês (R$)"><input type="text" inputmode="decimal" id="prc-${s.id}-${i}"${l.fixo ? ' disabled' : ''}
                 value="${(l.centavos / 100).toFixed(2).replace('.', ',')}"></td>
             <td data-rot="Anual (R$)">${l.anual === undefined ? '<span class="sub">—</span>' : `<input type="text" inputmode="decimal" id="prc-${s.id}-${i}-a" value="${l.anual == null ? '' : (l.anual / 100).toFixed(2).replace('.', ',')}">`}</td>
-            <td data-rot=""><button class="btn peq" onclick="PRC.salvar('${s.id}',${i})">Salvar</button>
+            <td data-rot="">${l.fixo ? '<span class="sub">teste grátis</span>' : `<button class="btn peq" onclick="PRC.salvar('${s.id}',${i})">Salvar</button>`}
               <span class="sub" id="prc-${s.id}-${i}-m"></span></td></tr>`).join('')}
           </tbody></table></div>`;
       return `<div class="card"><h3>${esc(s.nome)} <span class="sub">· ${esc(s.url)}</span></h3>
