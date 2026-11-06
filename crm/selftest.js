@@ -1217,6 +1217,29 @@ async function rodar() {
     assert.equal(ex.status, 'erro'); assert.match(ex.erro, /Apify respondeu 402/); assert.ok(!ex.erro.includes('SEGREDOSEGREDO123'), 'sem token no registro');
   });
 
+  await t('contatos: resumo Total/Novos/Antigos pelo último dia de busca e filtro de recência', async () => {
+    const r0 = (await req('GET', '/crm/api/app/contatos-resumo', { cookies: true })).json;
+    assert.equal(r0.total, r0.novos + r0.antigos); assert.ok(r0.ultimo_dia, 'há buscas feitas');
+    const tid = await tidDoTenant();
+    // um contato antigo de busca (criado antes do dia da última busca) e outro novo
+    const ex = require('./db').db;
+    const rec = saas.appRepo.Contatos.recorteNovos(tid);
+    const antigo = saas.appRepo.Contatos.criar(tid, { nome: 'Lead Antigo Busca', email: 'antigo@busca.br', origem: 'busca-ativa' }, 'teste').contato;
+    ex.prepare('UPDATE crm_contatos SET criado_em = ? WHERE id = ?').run(new Date(Date.parse(rec.inicio) - 5 * 86400000).toISOString(), antigo.id);
+    ex.prepare("INSERT INTO crm_busca_lugares (id, tenant_id, busca_id, place_id, contato_id, nome, visto_em, criado_em) VALUES ('lz-antigo', ?, 'b-x', 'PL-ANTIGO', ?, 'Lead Antigo Busca', ?, ?)").run(tid, antigo.id, new Date().toISOString(), new Date().toISOString());
+    const novo = saas.appRepo.Contatos.criar(tid, { nome: 'Lead Novo Busca', email: 'novo@busca.br', origem: 'busca-ativa' }, 'teste').contato;
+    ex.prepare("INSERT INTO crm_busca_lugares (id, tenant_id, busca_id, place_id, contato_id, nome, visto_em, criado_em) VALUES ('lz-novo', ?, 'b-x', 'PL-NOVO', ?, 'Lead Novo Busca', ?, ?)").run(tid, novo.id, new Date().toISOString(), new Date().toISOString());
+    const r1 = (await req('GET', '/crm/api/app/contatos-resumo', { cookies: true })).json;
+    assert.equal(r1.total, r0.total + 2); assert.equal(r1.novos, r0.novos + 1, 'só o criado hoje por busca conta como novo'); assert.equal(r1.antigos, r0.antigos + 1);
+    const nomes = async (rec) => (await req('GET', '/crm/api/app/contatos?recencia=' + rec, { cookies: true })).json.contatos.map((c) => c.nome);
+    assert.ok((await nomes('novos')).includes('Lead Novo Busca') && !(await nomes('novos')).includes('Lead Antigo Busca'));
+    assert.ok((await nomes('antigos')).includes('Lead Antigo Busca') && !(await nomes('antigos')).includes('Lead Novo Busca'));
+    assert.equal((await nomes('novos')).length, r1.novos); assert.equal((await nomes('antigos')).length, r1.antigos, 'a lista bate com o contador');
+    // outro assinante não vê os números deste
+    const outro = dbm.prepare("SELECT id FROM tenants WHERE email_contato = 'z@outra.br'").get().id;
+    assert.deepEqual(saas.appRepo.Contatos.resumo(outro), { total: 0, novos: 0, antigos: 0, ultimo_dia: '', buscas_no_dia: 0 });
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

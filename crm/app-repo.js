@@ -198,6 +198,22 @@ const Atividades = {
 // =====================================================================
 const Contatos = {
   contar: (tid) => db.prepare("SELECT COUNT(*) n FROM crm_contatos WHERE tenant_id = ? AND status != 'arquivado'").get(T(tid)).n,
+  // "Novos" = contatos que as buscas ativas gravaram NO ÚLTIMO DIA em que uma busca foi acionada (dia de Brasília).
+  // Todo o resto é "antigo". Sem nenhuma busca já feita, nada é novo.
+  recorteNovos(tid) {
+    const ult = db.prepare('SELECT MAX(iniciada_em) m FROM crm_busca_execucoes WHERE tenant_id = ?').get(T(tid)).m;
+    if (!ult) return null;
+    const dia = new Date(Date.parse(ult) - 3 * 3600e3).toISOString().slice(0, 10); // dia em Brasília (UTC-3)
+    return { dia, inicio: new Date(Date.parse(dia + 'T00:00:00Z') + 3 * 3600e3).toISOString() };
+  },
+  resumo(tid) {
+    const total = Contatos.contar(tid);
+    const rec = Contatos.recorteNovos(tid);
+    if (!rec) return { total, novos: 0, antigos: total, ultimo_dia: '', buscas_no_dia: 0 };
+    const novos = db.prepare("SELECT COUNT(*) n FROM crm_contatos WHERE tenant_id = ? AND status != 'arquivado' AND criado_em >= ? AND id IN (SELECT contato_id FROM crm_busca_lugares WHERE tenant_id = ? AND contato_id != '')").get(T(tid), rec.inicio, T(tid)).n;
+    const buscas = db.prepare('SELECT COUNT(DISTINCT busca_id) n FROM crm_busca_execucoes WHERE tenant_id = ? AND iniciada_em >= ?').get(T(tid), rec.inicio).n;
+    return { total, novos, antigos: total - novos, ultimo_dia: rec.dia, buscas_no_dia: buscas };
+  },
   listar(tid, q = {}) {
     let sql = 'SELECT * FROM crm_contatos WHERE tenant_id = ?';
     const args = [T(tid)];
@@ -211,6 +227,13 @@ const Contatos = {
     if (q.score_min) { sql += ' AND score >= ?'; args.push(Number(q.score_min) || 0); }
     if (q.score_max) { sql += ' AND score <= ?'; args.push(Number(q.score_max) || 100); }
     if (q.empresa_id) { sql += ' AND empresa_id = ?'; args.push(T(q.empresa_id)); }
+    // recência: novos (gravados pelas buscas do último dia de busca) × antigos (todo o resto)
+    if (q.recencia === 'novos' || q.recencia === 'antigos') {
+      const rec = Contatos.recorteNovos(tid);
+      const NOVO = "(criado_em >= ? AND id IN (SELECT contato_id FROM crm_busca_lugares WHERE tenant_id = ? AND contato_id != ''))";
+      if (q.recencia === 'novos') { sql += rec ? ' AND ' + NOVO : ' AND 0'; if (rec) args.push(rec.inicio, T(tid)); }
+      else if (rec) { sql += ' AND NOT ' + NOVO; args.push(rec.inicio, T(tid)); }
+    }
     // segmento por CONVERSA (só as aprovadas como lead): assunto, razão, temperatura e há quantos dias foi a última conversa
     if (q.assunto || q.razao || q.conversa_qualificacao || q.conversa_dias_min || q.conversa_dias_max) {
       let sub = "SELECT contato_id FROM crm_conversas WHERE tenant_id = ? AND status = 'lead' AND contato_id != ''";

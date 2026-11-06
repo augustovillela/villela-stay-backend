@@ -43,6 +43,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.post('/crm/api/app/config', ...GE('contatos', 'gerir_conta'), h((req, res) => res.json({ ok: true, config: app.Config.salvar(tid(req), req.body || {}).config })));
 
   // ---- contatos ----
+  server.get('/crm/api/app/contatos-resumo', ...G('contatos'), h((req, res) => res.json(app.Contatos.resumo(tid(req)))));
   server.get('/crm/api/app/contatos', ...G('contatos'), h((req, res) => res.json({ contatos: app.Contatos.listar(tid(req), req.query) })));
   server.get('/crm/api/app/contatos/exportar', ...GE('importacao', 'editar'), h((req, res) => {
     res.type('text/csv').attachment('contatos.csv').send(app.Contatos.exportarCSV(tid(req), req.query));

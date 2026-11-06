@@ -609,9 +609,21 @@ async function vContatos() {
         <button class="btn peq secund" id="c-importar">⬆ Importar</button>
         <button class="btn peq secund" id="c-unificar">🔗 Unificar cadastros</button>
         <a class="btn peq secund" href="/crm/api/app/contatos/exportar">⬇ Exportar</a>
-      </div><div id="c-lista"><p class="sub">Carregando…</p></div>`;
+      </div>
+      <div id="c-resumo" class="grid" style="margin-bottom:10px"></div>
+      <div id="c-lista"><p class="sub">Carregando…</p></div>`;
+    let recencia = '';
+    const pintarResumo = async () => {
+      try {
+        const r = await api('GET', '/app/contatos-resumo');
+        const blocos = [['', 'Total de contatos', r.total, ''], ['novos', 'Novos', r.novos, r.ultimo_dia ? 'gravados pelas buscas de ' + dataBr(r.ultimo_dia) + (r.buscas_no_dia > 1 ? ' (' + r.buscas_no_dia + ' buscas)' : '') : 'nenhuma busca feita ainda'], ['antigos', 'Antigos', r.antigos, 'cadastrados antes disso']];
+        $('#c-resumo').innerHTML = blocos.map(([k, rot, n, dica]) => `<button type="button" class="card c-rec" data-r="${k}" style="text-align:left;cursor:pointer;${recencia === k ? 'outline:2px solid var(--vx-accent, #B0185A);' : ''}"><span class="sub" style="margin:0">${rot}</span><div style="font-size:1.6rem;font-weight:700">${n}</div><span class="sub" style="margin:0">${esc(dica)}</span></button>`).join('');
+        document.querySelectorAll('.c-rec').forEach((b) => b.onclick = () => { recencia = b.dataset.r; pintarResumo(); carregar(); });
+      } catch (_) { /* o resumo é um extra: a lista continua funcionando */ }
+    };
     const carregar = async () => {
       const q = new URLSearchParams();
+      if (recencia) q.set('recencia', recencia);
       if ($('#c-busca').value.trim()) q.set('busca', $('#c-busca').value.trim());
       if ($('#c-tipo').value) q.set('tipo', $('#c-tipo').value);
       if ($('#c-origem').value) q.set('origem', $('#c-origem').value);
@@ -633,7 +645,7 @@ async function vContatos() {
     $('#c-novo').onclick = () => dlgContato(cfg);
     $('#c-importar').onclick = () => dlgImportar();
     $('#c-unificar').onclick = () => dlgUnificar();
-    carregar();
+    pintarResumo(); carregar();
   } catch (e) { erroTela(e); }
 }
 function dlgContato(cfg) {
