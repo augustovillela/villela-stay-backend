@@ -347,7 +347,7 @@ function precos() {
   <h2>Escolha o tamanho da sua operação</h2>
   <p style="color:var(--suave)">Todos os planos começam com <b>15 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
   <div style="overflow-x:auto"><table>
-    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos) + (Number(p.preco_centavos) ? '/mês' : '')}${Number(p.preco_anual_centavos) > 0 ? '<br>ou ' + brl(p.preco_anual_centavos) + '/ano <small>(2 meses grátis)</small>' : ''}</span></th>`).join('')}</tr>
+    <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${p.slug === 'trial' ? '15 dias grátis' : brl(p.preco_centavos)}${Number(p.preco_anual_centavos) > 0 ? '<br>ou ' + brl(p.preco_anual_centavos).replace('/mês', '') + '/ano <small>(2 meses grátis)</small>' : ''}</span></th>`).join('')}</tr>
     ${linhas.map(([rot, fn]) => `<tr><td><b>${rot}</b></td>${planos.map(p => `<td>${fn(p)}</td>`).join('')}</tr>`).join('')}
     <tr><td></td>${planos.map(() => `<td><a class="btn" style="padding:9px 16px" href="/vdocs/cadastro">Testar grátis</a></td>`).join('')}</tr>
   </table></div>
