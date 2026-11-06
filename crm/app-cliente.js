@@ -72,10 +72,25 @@ async function api(metodo, caminho, corpo) {
   // jogar de volta para a tela de login apagaria o código que a pessoa
   // acabou de digitar no segundo fator.
   if (r.status === 401 && !caminho.startsWith('/login')) { telaLogin(); throw new Error('Sessão expirada — entre novamente.'); }
+  // 402 com `codigo` = bloqueio do PLANO: em vez de um texto solto, abre o cartão "Disponível no <plano> [Fazer upgrade]".
+  // O erro volta marcado (`e.upgrade`) para os `catch` não repetirem o aviso com alert().
+  if (window.VillelaUpgrade && VillelaUpgrade.ehPlano(r.status, d)) {
+    if (!(metodo === 'GET' && meu !== SEQ)) VillelaUpgrade.mostrar(d, { assinar: assinarPlano, planos: () => navegar('conta') });
+    const e = new Error(d.erro); e.upgrade = true; throw e;
+  }
   if (!r.ok) throw new Error(d.erro || ('Erro ' + r.status));
   if (metodo === 'GET' && meu !== SEQ) await new Promise(() => {});
   return d;
 }
+
+// botão "Fazer upgrade" do cartão: abre o checkout do plano sugerido (mesma rota da tela Conta e plano)
+async function assinarPlano(slug, ciclo) {
+  const r = await api('POST', '/cobranca/assinar', { plano: slug, ciclo: ciclo || 'mensal' });
+  if (r && r.link) return r.link;
+  throw new Error('O pagamento online não está disponível agora. Abra "Conta e plano" ou fale com o suporte.');
+}
+// aviso de erro que NÃO repete o que o cartão de upgrade já mostrou
+function avisar(e) { if (e && e.upgrade) return; alert(e && e.message ? e.message : String(e)); }
 
 async function bootCRM() {
   try { ME = await api('GET', '/me'); telaApp(); }
@@ -354,7 +369,7 @@ async function alternarPush() {
       const nova = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ParaU8(publicKey) });
       await api('POST', '/app/push/subscribe', { subscription: nova.toJSON() });
     }
-  } catch (e) { alert(e.message); }
+  } catch (e) { avisar(e); }
   pintarBotaoPush();
 }
 function mapaDeTelas() {
@@ -401,6 +416,13 @@ const carregando = () => {
   $('#tela').innerHTML = '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--bloco"></div>';
 };
 const erroTela = (e) => {
+  if (e && e.upgrade) { // bloqueio de plano não é "erro ao carregar": o cartão de upgrade já abriu, aqui fica o caminho de volta
+    $('#tela').innerHTML = `<div class="vx-alerta" role="status"><div><b>Este recurso depende de outro plano</b>
+      <p class="vx-mb0">${esc(e.message)}</p>
+      <button class="vx-btn vx-btn--sm" id="crm-planos" style="margin-top:8px">Ver planos</button></div></div>`;
+    const bp = $('#crm-planos'); if (bp) bp.onclick = () => navegar('conta');
+    return;
+  }
   $('#tela').innerHTML = `<div class="vx-alerta vx-alerta--danger" role="alert">
     <span class="vx-alerta-ico" aria-hidden="true">${svgIco('alert')}</span>
     <div><b>Não foi possível carregar esta tela</b>
@@ -502,7 +524,7 @@ async function vKanban() {
     $('#k-novo').onclick = () => dlgOportunidade();
     $('#k-novo-funil').onclick = async () => {
       const nome = prompt('Nome do novo funil:'); if (!nome) return;
-      try { const r = await api('POST', '/app/funis', { nome }); KANBAN_FUNIL = r.funil.id; vKanban(); } catch (e) { alert(e.message); }
+      try { const r = await api('POST', '/app/funis', { nome }); KANBAN_FUNIL = r.funil.id; vKanban(); } catch (e) { avisar(e); }
     };
     ligaKanban();
   } catch (e) { erroTela(e); }
@@ -536,7 +558,7 @@ function ligaKanban() {
         const motivo = /perdid/i.test(nome) ? prompt('Motivo da perda (opcional):') || '' : '';
         await api('POST', `/app/oportunidades/${id}/mover`, { estagio_id: col.dataset.est, motivo });
         vKanban();
-      } catch (e) { alert(e.message); }
+      } catch (e) { avisar(e); }
     };
   });
 }
@@ -761,26 +783,26 @@ async function abrirContato(id) {
       try { await api('POST', `/app/contatos/${id}/canais`, { canal: $('#cn-canal').value, identificador: $('#cn-valor').value.trim() }); abrirContato(id); }
       catch (e) { $('#cn-msg').textContent = e.message; }
     };
-    document.querySelectorAll('.cn-opt').forEach(b => b.onclick = async () => { try { await api('POST', `/app/contatos/${id}/canais/${b.dataset.id}/optout`, { sair: b.dataset.sair === '1' }); abrirContato(id); } catch (e) { alert(e.message); } });
-    document.querySelectorAll('.cn-del').forEach(b => b.onclick = async () => { if (!confirm('Remover este canal do contato?')) return; try { await api('DELETE', `/app/contatos/${id}/canais/${b.dataset.id}`); abrirContato(id); } catch (e) { alert(e.message); } });
+    document.querySelectorAll('.cn-opt').forEach(b => b.onclick = async () => { try { await api('POST', `/app/contatos/${id}/canais/${b.dataset.id}/optout`, { sair: b.dataset.sair === '1' }); abrirContato(id); } catch (e) { avisar(e); } });
+    document.querySelectorAll('.cn-del').forEach(b => b.onclick = async () => { if (!confirm('Remover este canal do contato?')) return; try { await api('DELETE', `/app/contatos/${id}/canais/${b.dataset.id}`); abrirContato(id); } catch (e) { avisar(e); } });
     $('#f-salvar').onclick = async () => {
       try { await api('PATCH', '/app/contatos/' + id, { responsavel: $('#f-resp').value.trim(), proxima_acao: $('#f-acao').value.trim(), proxima_acao_em: $('#f-prazo').value, prioridade: $('#f-prio').value }); abrirContato(id); }
-      catch (e) { alert(e.message); }
+      catch (e) { avisar(e); }
     };
     $('#f-add').onclick = async () => {
       const texto = $('#f-nota').value.trim(); if (!texto) return;
-      try { await api('POST', `/app/contatos/${id}/atividade`, { tipo: $('#f-nota-tipo').value, texto }); abrirContato(id); } catch (e) { alert(e.message); }
+      try { await api('POST', `/app/contatos/${id}/atividade`, { tipo: $('#f-nota-tipo').value, texto }); abrirContato(id); } catch (e) { avisar(e); }
     };
     $('#f-oport').onclick = () => dlgOportunidade(id);
     $('#f-tarefa').onclick = async () => {
       const titulo = prompt('Tarefa:'); if (!titulo) return;
       const vence = prompt('Prazo (AAAA-MM-DD, vazio = sem prazo):') || '';
-      try { await api('POST', '/app/tarefas', { contato_id: id, titulo, vence_em: vence }); abrirContato(id); } catch (e) { alert(e.message); }
+      try { await api('POST', '/app/tarefas', { contato_id: id, titulo, vence_em: vence }); abrirContato(id); } catch (e) { avisar(e); }
     };
     $('#f-proposta').onclick = () => dlgProposta(id);
     $('#f-optout').onclick = async () => {
       if (!confirm('Marcar opt-out (não contatar mais)?')) return;
-      try { await api('PATCH', '/app/contatos/' + id, { consentimento: { optIn: false, base: 'opt-out', em: new Date().toISOString() } }); abrirContato(id); } catch (e) { alert(e.message); }
+      try { await api('PATCH', '/app/contatos/' + id, { consentimento: { optIn: false, base: 'opt-out', em: new Date().toISOString() } }); abrirContato(id); } catch (e) { avisar(e); }
     };
     $('#f-msg').onclick = () => dlgTemplateEnvio(c);
     $('#f-ia').onclick = async () => {
@@ -842,16 +864,16 @@ async function vTarefas() {
       ${bloco('📄 Propostas sem resposta', cx.propostas_sem_resposta.map(p => ({ ...p, titulo: p.titulo + ' · ' + brl(p.valor_centavos) })), '#7C3AED')}
       ${bloco('🧊 Leads parados (7+ dias, negócio aberto)', cx.leads_parados.map(l => ({ titulo: (l.nome || l.telefone) + ' · score ' + l.score, contato_id: l.id, contato_nome: '', id: '' })), '#0E7490')}
       ${bloco('⏭ Próximas', cx.proximas, '#E2E6EC')}`;
-    document.querySelectorAll('.t-ok').forEach(b => b.onclick = async () => { if (!b.dataset.id) return; try { await api('POST', `/app/tarefas/${b.dataset.id}/concluir`); vTarefas(); } catch (e) { alert(e.message); } });
+    document.querySelectorAll('.t-ok').forEach(b => b.onclick = async () => { if (!b.dataset.id) return; try { await api('POST', `/app/tarefas/${b.dataset.id}/concluir`); vTarefas(); } catch (e) { avisar(e); } });
     document.querySelectorAll('.t-c').forEach(a => a.onclick = (ev) => { ev.preventDefault(); abrirContato(a.dataset.id); });
     $('#t-nova').onclick = async () => {
       const titulo = prompt('Tarefa:'); if (!titulo) return;
       const vence = prompt('Prazo (AAAA-MM-DD, vazio = sem prazo):') || '';
-      try { await api('POST', '/app/tarefas', { titulo, vence_em: vence }); vTarefas(); } catch (e) { alert(e.message); }
+      try { await api('POST', '/app/tarefas', { titulo, vence_em: vence }); vTarefas(); } catch (e) { avisar(e); }
     };
     $('#t-auto').onclick = async () => {
       try { const r = await api('POST', '/app/automacoes/rodar'); alert(`Automações: ${r.tarefas_criadas} tarefa(s) criada(s), ${r.propostas_vencidas} proposta(s) vencida(s), ${r.priorizados} lead(s) priorizado(s).`); vTarefas(); }
-      catch (e) { alert(e.message); }
+      catch (e) { avisar(e); }
     };
   } catch (e) { erroTela(e); }
 }
@@ -909,7 +931,7 @@ async function vPropostas() {
       </tbody></table></div>`;
     $('#pp-nova').onclick = () => dlgProposta();
     document.querySelectorAll('.pp-c').forEach(a => a.onclick = (ev) => { ev.preventDefault(); abrirContato(a.dataset.id); });
-    document.querySelectorAll('.pp-env').forEach(b => b.onclick = async () => { try { await api('POST', `/app/propostas/${b.dataset.id}/enviar`); vPropostas(); } catch (e) { alert(e.message); } });
+    document.querySelectorAll('.pp-env').forEach(b => b.onclick = async () => { try { await api('POST', `/app/propostas/${b.dataset.id}/enviar`); vPropostas(); } catch (e) { avisar(e); } });
   } catch (e) { erroTela(e); }
 }
 async function dlgProposta(contatoId) {
@@ -977,19 +999,19 @@ async function vBuscas() {
     document.querySelectorAll('.bu-aprovar').forEach(x => x.onclick = () => {
       const b = d.buscas.find(y => y.id === x.dataset.id);
       if (!confirm(`Aprovar esta busca?\n\nCusto estimado: ~${reais(b.custo.brl_centavos)} por varredura, a cada ${b.frequencia_dias} dia(s) (≈ ${reais(b.custo.por_mes_centavos)}/mês).\n\nA fonte é um serviço que lê o Google Maps e cobra por lugar; isso pode contrariar os termos de uso do Google Maps. Você assume esse risco e a responsabilidade LGPD pela abordagem (legítimo interesse B2B).\n\nConfirma?`)) return;
-      api('POST', `/app/buscas/${b.id}/aprovar`, { aceite: true }).then(vBuscas).catch(e => alert(e.message));
+      api('POST', `/app/buscas/${b.id}/aprovar`, { aceite: true }).then(vBuscas).catch(e => avisar(e));
     });
     document.querySelectorAll('.bu-rodar').forEach(x => x.onclick = () => {
-      rodarBuscaPaga(x.dataset.id, x.dataset.custo).then(vBuscas).catch(e => alert(e.message));
+      rodarBuscaPaga(x.dataset.id, x.dataset.custo).then(vBuscas).catch(e => avisar(e));
     });
     document.querySelectorAll('.bu-st').forEach(x => x.onclick = () => {
       if (x.dataset.st === 'arquivada' && !confirm('Arquivar esta busca? Os contatos já capturados continuam no CRM.')) return;
-      api('POST', `/app/buscas/${x.dataset.id}/status`, { status: x.dataset.st }).then(vBuscas).catch(e => alert(e.message));
+      api('POST', `/app/buscas/${x.dataset.id}/status`, { status: x.dataset.st }).then(vBuscas).catch(e => avisar(e));
     });
     document.querySelectorAll('.bu-ver').forEach(x => x.onclick = () => verLugaresBusca(x.dataset.id));
     document.querySelectorAll('.bu-camp').forEach(x => x.onclick = async () => {
       if (!confirm(`Montar a campanha dos contatos com a tag "${x.dataset.tag}" (e-mail e WhatsApp)?\n\nEla nasce em RASCUNHO e NADA é enviado: a lista passa pela sua aprovação e cada envio é manual.`)) return;
-      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s).`); navegar('campanhas'); } catch (e) { alert(e.message); }
+      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s).`); navegar('campanhas'); } catch (e) { avisar(e); }
     });
     if (rodando) { const meu = SEQ; BUSCA_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'buscas') return clearInterval(BUSCA_POLL); vBuscas(); }, 8000); }
   } catch (e) { erroTela(e); }
@@ -1361,7 +1383,7 @@ async function pontuarLeads(id) {
     const porId = Object.fromEntries(r.resultado.itens.map((i) => [i.id, i]));
     document.querySelectorAll('#bu-lugares .lin').forEach((el, k) => { const l = lugares[k]; const n = l && porId[l.id]; if (n) { const tag = el.querySelector('.cp-nota') || el.appendChild(document.createElement('span')); tag.className = 'cp-nota chip'; tag.textContent = `★ ${n.nota} — ${n.motivo}`; } });
     if (box) box.textContent = `✨ ${r.resultado.itens.length} lead(s) pontuado(s) (só os 25 primeiros por vez). É uma sugestão: a decisão é sua. ${r.uso.cobrado}`;
-  } catch (e) { if (box) box.textContent = e.message; else alert(e.message); }
+  } catch (e) { if (box) box.textContent = e.message; else avisar(e); }
 }
 let CAP_POLL = null;
 async function carregarBuscasArea(acompanhar) {
@@ -1379,7 +1401,7 @@ async function carregarBuscasArea(acompanhar) {
     document.querySelectorAll('.cp-ver').forEach((x) => x.onclick = () => verLugaresBusca(x.dataset.id));
     document.querySelectorAll('.cp-camp').forEach((x) => x.onclick = async () => {
       if (!confirm('Montar a campanha dos contatos desta busca? Ela nasce em RASCUNHO e NADA é enviado: você aprova a lista e cada envio é manual (redes sociais são assistidas).')) return;
-      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: ($('#cp-msgtxt') && $('#cp-msgtxt').value.trim()) || 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { alert(e.message); }
+      try { const r = await api('POST', '/app/buscas/preparar-campanha', { tag: x.dataset.tag, canais: [CAP_AREA], modo: 'todos', nome: 'Leads de ' + CANAIS_UI[CAP_AREA], mensagem: ($('#cp-msgtxt') && $('#cp-msgtxt').value.trim()) || 'Olá, {{nome}}! Aqui é {{nome_responsavel}}, da {{nome_empresa}}. Podemos conversar sobre como ajudar a sua empresa? Se preferir não receber mais contato, é só avisar.' }); alert(`${r.aviso}\n\n${r.alvos} alvo(s) em ${r.contatos} contato(s). Edite a mensagem na campanha antes de usar.`); navegar('campanhas'); } catch (e) { avisar(e); }
     });
     if (rodando || acompanhar) { const meu = SEQ; CAP_POLL = setInterval(() => { if (meu !== SEQ || ABA !== 'captura') return clearInterval(CAP_POLL); carregarBuscasArea(); }, 8000); }
     if (!rodando && acompanhar) { clearInterval(CAP_POLL); }
@@ -1485,7 +1507,7 @@ async function abrirCampanha(id, mensagem) {
     window.open(b.dataset.link, '_blank', 'noopener');
   });
   document.querySelectorAll('.cp-mark').forEach(b => b.onclick = async () => {
-    try { await api('POST', `/app/campanha-alvos/${b.dataset.id}`, { status: b.dataset.st }); abrirCampanha(id, mensagem); } catch (e) { alert(e.message); }
+    try { await api('POST', `/app/campanha-alvos/${b.dataset.id}`, { status: b.dataset.st }); abrirCampanha(id, mensagem); } catch (e) { avisar(e); }
   });
 }
 
@@ -1541,7 +1563,7 @@ async function vConversas() {
       dlgCampanha(pre);
     };
     document.querySelectorAll('.cv-dec').forEach(b => b.onclick = async () => {
-      try { await api('POST', `/app/conversas/${b.dataset.id}/decidir`, { acao: b.dataset.a }); vConversas(); } catch (e) { alert(e.message); }
+      try { await api('POST', `/app/conversas/${b.dataset.id}/decidir`, { acao: b.dataset.a }); vConversas(); } catch (e) { avisar(e); }
     });
     document.querySelectorAll('.cv-ver').forEach(b => b.onclick = () => abrirContato(b.dataset.id));
   } catch (e) { erroTela(e); }
@@ -1638,7 +1660,7 @@ async function vConta() {
     document.querySelectorAll('.cb-plano').forEach(b => b.onclick = async () => {
       if (!confirm(`Assinar o plano ${b.dataset.p} (${b.dataset.c === 'anual' ? 'anual' : 'mensal'})?`)) return;
       try { const r = await api('POST', '/cobranca/assinar', { plano: b.dataset.p, ciclo: b.dataset.c || 'mensal' }); if (r.link) location.href = r.link; }
-      catch (e) { alert(e.message); }
+      catch (e) { avisar(e); }
     });
     $('#eq-add').onclick = async () => {
       try {
@@ -1662,7 +1684,7 @@ async function vConta() {
     if ($('#ak-nova')) {
       $('#ak-nova').onclick = async () => {
         try { const r = await api('POST', '/app/chaves', { nome: 'painel' }); alert('Chave criada (copie agora, não será exibida de novo):\n\n' + r.chave); carregarChaves(); }
-        catch (e) { alert(e.message); }
+        catch (e) { avisar(e); }
       };
       carregarChaves();
     }
@@ -1672,7 +1694,7 @@ async function vConta() {
     };
     $('#tk-abrir').onclick = async () => {
       try { await api('POST', '/tickets', { assunto: $('#tk-ass').value.trim(), texto: $('#tk-txt').value.trim() }); $('#tk-ass').value = ''; $('#tk-txt').value = ''; carregarTickets(); }
-      catch (e) { alert(e.message); }
+      catch (e) { avisar(e); }
     };
     carregarTickets();
   } catch (e) { erroTela(e); }

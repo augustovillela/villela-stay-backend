@@ -231,7 +231,7 @@ const Buscas = {
         r.lugares += achados.length;
         db.prepare('UPDATE crm_busca_execucoes SET lugares = ? WHERE id = ?').run(r.lugares, exId); // o que a fonte cobrou fica gravado mesmo se algo falhar depois
         for (const l of achados) {
-          if (!repo.dentroLimite(tid, 'contatos').ok) { erro = 'Limite de contatos do plano atingido — varredura parou.'; break parar; }
+          if (!repo.dentroLimite(tid, 'contatos').ok) { erro = 'Limite de contatos do plano atingido — varredura parou. Abra Conta e plano para ampliar e rode de novo.'; break parar; }
           const p = processarLugar(app, tid, b, { ...l, bairro: regiao || '' });
           if (p.novo) r.novos++; else r.existentes++;
         }

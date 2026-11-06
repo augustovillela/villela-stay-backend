@@ -47,7 +47,10 @@ function criarAuth({ jwtSecret }) {
       req.vp = { user, tenant, vinculo: v, permissoes: permissoesDe(v), papelNome: nomePapel(v.papel, tid), ip: ipDe(req) };
       const trialVencido = !tenant.interno && tenant.status === 'trial' && tenant.trial_expira_em && tenant.trial_expira_em < new Date().toISOString();
       req.vp.bloqueado = (!tenant.interno && (tenant.status === 'suspensa' || tenant.status === 'cancelada')) || trialVencido;
-      if (req.vp.bloqueado && !req.path.endsWith('/me')) {
+      // Teste vencido NÃO é conta suspensa: o dono precisa conseguir ver os planos e assinar (antes o 402 valia até
+      // para /billing e a tela mandava "falar pela página inicial" — beco sem saída). Suspensa/cancelada continua fechada.
+      const rotaDeCobranca = trialVencido && /\/(billing(\/assinar)?|uso)$/.test(req.path); // `uso` alimenta a tela Plano e uso
+      if (req.vp.bloqueado && !req.path.endsWith('/me') && !rotaDeCobranca) {
         return res.status(402).json({ erro: trialVencido ? 'Período de teste encerrado — escolha um plano para continuar.' : 'Conta suspensa — fale com a Villela para reativar.' });
       }
       next();

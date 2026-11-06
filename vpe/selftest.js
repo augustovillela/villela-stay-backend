@@ -657,6 +657,19 @@ function teste(nome, cond) {
   r = await req('PATCH', '/staff/api/vpe/tenants/' + tenantGate, { body: { estender_trial_dias: 30 }, staff: 'adm' });
   teste('admin estende o trial do tenant', r.status === 200 && r.dados.tenant.trial_expira_em > antesTrial);
 
+  // teste VENCIDO não é beco sem saída: o dono vê planos e uso e consegue assinar; o resto segue fechado (402)
+  { const { db: dbv } = require('./db');
+    const expira = dbv.prepare('SELECT trial_expira_em FROM tenants WHERE id = ?').get(tenantGate).trial_expira_em;
+    dbv.prepare("UPDATE tenants SET status = 'trial', trial_expira_em = '2020-01-01T00:00:00.000Z' WHERE id = ?").run(tenantGate);
+    const fechado = await req('GET', '/vpe/api/projetos', { jar: 'gilG' });
+    const bill = await req('GET', '/vpe/api/billing', { jar: 'gilG' });
+    const uso = await req('GET', '/vpe/api/uso', { jar: 'gilG' });
+    const assinar = await req('POST', '/vpe/api/billing/assinar', { body: { plano_slug: 'professional' }, jar: 'gilG' });
+    dbv.prepare('UPDATE tenants SET trial_expira_em = ? WHERE id = ?').run(expira, tenantGate);
+    teste('trial vencido: projetos continuam bloqueados (402)', fechado.status === 402 && /Período de teste encerrado/.test(fechado.dados.erro || ''));
+    teste('trial vencido: o dono ainda vê planos, uso e consegue iniciar a assinatura', bill.status === 200 && uso.status === 200 && assinar.status !== 402);
+  }
+
   // ================== FASE 8: billing (MP mockado) + API pública + webhooks ==================
   const billing = require('./billing');
   const apiV1 = (caminho, chave) => fetch(BASE + '/vpe/api/v1' + caminho, { headers: chave ? { Authorization: 'Bearer ' + chave } : {} }).then(async rr => ({ status: rr.status, dados: await rr.json().catch(() => ({})) }));

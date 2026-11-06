@@ -9,11 +9,13 @@
 const repo = require('./repo');
 const app = require('./app-repo');
 const push = require('./push');
+const Upgrade = require('../nucleo/upgrade');
 const buscas = require('./buscas');
 const { db } = require('./db');
 
 function registrarRotasApp(server, { requireAssinante, requirePapel }) {
-  const h = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { res.status(400).json({ erro: e.message }); } };
+  // erro de plano (402 estruturado, com o plano que resolve) sai pelo Upgrade.responder; o resto segue 400
+  const h = (fn) => async (req, res) => { try { await fn(req, res); } catch (e) { if (Upgrade.responder(res, e)) return; res.status(400).json({ erro: e.message }); } };
   const tid = (req) => req.assinante.tenant_id;
   const quem = (req) => req.assinante.nome || req.assinante.email;
 
@@ -23,7 +25,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
     req.ent = e; next();
   }
   const gate = (mod) => (req, res, next) => (req.ent && req.ent.modulos.includes(mod)) ? next()
-    : res.status(403).json({ erro: `O módulo "${mod}" não está no seu plano. Faça upgrade para liberar.`, modulo: mod });
+    : Upgrade.responder(res, repo.erroModulo(req.assinante.tenant_id, mod)) || res.status(403).json({ erro: `O módulo "${mod}" não está no seu plano.`, modulo: mod });
   const G = (mod) => [requireAssinante, requireAcesso, gate(mod)];
   const GE = (mod, acao) => [requireAssinante, requireAcesso, gate(mod), requirePapel(acao)]; // gate + papel
   const B = [requireAssinante, requireAcesso];
@@ -52,7 +54,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   }));
   server.post('/crm/api/app/contatos', ...GE('contatos', 'editar'), h((req, res) => {
     const lim = repo.dentroLimite(tid(req), 'contatos');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de contatos do plano atingido (${lim.limite}). Faça upgrade.` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'contatos', 'contatos');
     res.json({ ok: true, ...app.Contatos.criar(tid(req), req.body || {}, quem(req)) });
   }));
   server.patch('/crm/api/app/contatos/:id', ...GE('contatos', 'editar'), h((req, res) => res.json({ ok: true, contato: app.Contatos.atualizar(tid(req), req.params.id, req.body || {}, quem(req)) })));
@@ -113,7 +115,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   // campanha de leads de uma tag (ex.: confraternizacao-2026): nasce em RASCUNHO, nada é enviado
   server.post('/crm/api/app/buscas/preparar-campanha', ...GE('campanhas', 'campanhas'), h((req, res) => {
     const lim = repo.dentroLimite(tid(req), 'campanhas_mes');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de campanhas do mês atingido (${lim.limite}). Faça upgrade.` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'campanhas_mes', 'campanhas por mês', { modulo: 'campanhas' });
     res.json({ ok: true, ...buscas.prepararCampanha(tid(req), req.body || {}, quem(req)) });
   }));
   server.get('/crm/api/app/buscas/:id/execucoes', ...G('importacao'), h((req, res) => res.json({ execucoes: buscas.execucoes(tid(req), req.params.id) })));
@@ -128,7 +130,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.get('/crm/api/app/funis', ...G('funis'), h((req, res) => res.json({ funis: app.Funis.listar(tid(req)) })));
   server.post('/crm/api/app/funis', ...GE('funis', 'gerir_conta'), h((req, res) => {
     const lim = repo.dentroLimite(tid(req), 'funis');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de funis do plano atingido (${lim.limite}). Faça upgrade.` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'funis', 'funis de venda');
     res.json({ ok: true, funil: app.Funis.criar(tid(req), req.body || {}) });
   }));
   server.get('/crm/api/app/kanban', ...G('funis'), h((req, res) => {
@@ -160,7 +162,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.get('/crm/api/app/templates', ...G('templates'), h((req, res) => res.json({ templates: app.Templates.listar(tid(req), req.query), variaveis: app.VARIAVEIS })));
   server.post('/crm/api/app/templates', ...GE('templates', 'editar'), h((req, res) => {
     const lim = repo.dentroLimite(tid(req), 'templates');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de templates do plano atingido (${lim.limite}).` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'templates', 'templates');
     res.json({ ok: true, template: app.Templates.criar(tid(req), req.body || {}) });
   }));
   server.patch('/crm/api/app/templates/:id', ...GE('templates', 'editar'), h((req, res) => res.json({ ok: true, template: app.Templates.atualizar(tid(req), req.params.id, req.body || {}) })));
@@ -182,7 +184,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   server.get('/crm/api/app/campanhas', ...G('campanhas'), h((req, res) => res.json({ campanhas: app.Campanhas.listar(tid(req)) })));
   server.post('/crm/api/app/campanhas', ...GE('campanhas', 'campanhas'), h((req, res) => {
     const lim = repo.dentroLimite(tid(req), 'campanhas_mes');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de campanhas do mês atingido (${lim.limite}). Faça upgrade.` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'campanhas_mes', 'campanhas por mês', { modulo: 'campanhas' });
     res.json({ ok: true, ...app.Campanhas.criar(tid(req), req.body || {}, quem(req)) });
   }));
   server.get('/crm/api/app/campanhas/:id/alvos', ...G('campanhas'), h((req, res) => res.json({ alvos: app.Campanhas.alvos(tid(req), req.params.id, req.query.status, req.query.canal) })));
@@ -191,15 +193,15 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
 
   // ---- automações ----
   server.post('/crm/api/app/automacoes/rodar', ...G('automacoes'), h((req, res) => {
-    if (!repo.flag(tid(req), 'automacoes')) return res.status(403).json({ erro: 'Automações não estão no seu plano.' });
+    if (!repo.flag(tid(req), 'automacoes')) throw repo.erroFlag(tid(req), 'automacoes', 'As automações');
     res.json({ ok: true, ...app.rodarAutomacoes(tid(req)) });
   }));
 
   // ---- agentes (IA) — sempre sugestão com log + revisão humana ----
   const gateIA = (req, res, next) => {
-    if (!repo.flag(tid(req), 'ia')) return res.status(403).json({ erro: 'Agentes de IA não estão no seu plano.' });
+    if (!repo.flag(tid(req), 'ia')) throw repo.erroFlag(tid(req), 'ia', 'Os agentes de IA');
     const lim = repo.dentroLimite(tid(req), 'ia_mes');
-    if (!lim.ok) return res.status(400).json({ erro: `Limite de execuções de IA do mês atingido (${lim.limite}).` });
+    if (!lim.ok) throw repo.erroLimite(tid(req), 'ia_mes', 'execuções de IA por mês');
     next();
   };
   server.post('/crm/api/app/ia/qualificar/:contatoId', ...G('ia'), gateIA, h((req, res) => res.json({ ok: true, ...app.Agentes.qualificar(tid(req), req.params.contatoId) })));
@@ -213,7 +215,7 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
   // ---- API pública (chaves) ----
   server.get('/crm/api/app/chaves', ...G('api'), h((req, res) => res.json({ chaves: app.ApiKeys.listar(tid(req)) })));
   server.post('/crm/api/app/chaves', ...GE('api', 'gerir_conta'), h((req, res) => {
-    if (!repo.flag(tid(req), 'api_publica')) return res.status(403).json({ erro: 'API pública não está no seu plano.' });
+    if (!repo.flag(tid(req), 'api_publica')) throw repo.erroFlag(tid(req), 'api_publica', 'A API pública');
     res.json({ ok: true, ...app.ApiKeys.criar(tid(req), (req.body || {}).nome) });
   }));
   server.delete('/crm/api/app/chaves/:id', ...GE('api', 'gerir_conta'), h((req, res) => res.json({ ok: true, ...app.ApiKeys.revogar(tid(req), req.params.id) })));

@@ -407,7 +407,7 @@ async function boot(){
   menu();
   pintarBotaoPush();
   pintarBotaoInstalar();
-  if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela.':'Seu período de teste terminou — fale com a gente pela página inicial.')+'</div>';return;}
+  if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela.':'Seu período de teste terminou — escolha um plano para continuar com seus projetos.')+'</div>'+(S.me.tenant.status==='suspensa'?'':'<p><button class="btn" id="b-planos">Escolher plano</button></p>');if(S.me.tenant.status!=='suspensa'&&$('b-planos'))$('b-planos').onclick=()=>vPlano().catch(erroTela);return;}
   // F5, favorito e Voltar/Avançar: a tela (e o projeto/aba abertos) vêm do endereço
   const rota=rotaDeHash(location.hash,visiveis().map(t=>t[0]));
   await aplicarRota(rota);

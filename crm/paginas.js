@@ -299,6 +299,7 @@ function appHTML() {
     </style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">${CSS_PRO}</head><body class="vx" data-vertical="crm">${sprite()}
     <div class="cp-top"><div class="cp-top-in">${marcaTop()}<span class="tag">painel comercial</span></div></div>
     <div class="cx"><div id="app"><p class="sub">Carregando…</p></div></div>
+    <script src="/assets/brand/villela-upgrade.js?v=1"></script>
     <script src="/crm/app.js"></script>
     <!-- Extensao do Villela Growth OS: acrescenta abas ao shell sem tocar no nucleo -->
     <script src="/crm/app-growth.js"></script>

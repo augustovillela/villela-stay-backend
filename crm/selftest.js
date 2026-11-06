@@ -1367,7 +1367,12 @@ async function rodar() {
     assert.equal((await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'C1', telefone: '61844443333' }, cookies: true })).st, 200);
     assert.equal((await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'C2', telefone: '61844443334' }, cookies: true })).st, 200);
     const r = await req('POST', '/crm/api/app/contatos', { corpo: { nome: 'C3', telefone: '61844443335' }, cookies: true });
-    assert.equal(r.st, 400); assert.ok(/limite/i.test(r.json.erro));
+    // 402 estruturado: o painel mostra o cartão de upgrade com o plano que resolve (antes: 400 com texto solto)
+    assert.equal(r.st, 402); assert.equal(r.json.codigo, 'limite'); assert.equal(r.json.recurso, 'contatos');
+    assert.equal(r.json.limite, 2); assert.equal(r.json.usado >= 2, true);
+    assert.equal(r.json.plano_atual.slug, 'professional'); assert.equal(r.json.plano_sugerido.slug, 'business');
+    assert.ok(r.json.plano_sugerido.preco_centavos > 0 && /Business|Completo|Growth/i.test(r.json.plano_sugerido.nome) && /upgrade|plano/i.test(r.json.erro));
+    assert.ok(!JSON.stringify(r.json).includes(tid), 'o corpo não pode vazar o id do tenant');
     saas.repo.salvarSettings(tid, { limites_over: {} });
   });
   await t('limite negativo (-1, convenção do Growth OS) e 0 valem ilimitado; positivo continua bloqueando', async () => {
@@ -1386,7 +1391,30 @@ async function rodar() {
     saas.repo.salvarSettings(tid, { flags_over: {}, modulos_extra: [] });
     const { json } = await req('GET', '/crm/api/app/contatos', { cookies: true });
     const r = await req('POST', '/crm/api/app/ia/followups', { cookies: true });
-    assert.equal(r.st, 403);
+    assert.equal(r.st, 402); assert.equal(r.json.codigo, 'modulo'); assert.equal(r.json.plano_atual.slug, 'professional');
+    assert.equal(r.json.plano_sugerido.slug, 'business'); // o menor plano que TEM o módulo de IA
+  });
+  await t('nucleo/upgrade: sugere o menor plano pago acima do atual, ignora grátis/sob consulta e não vaza nada', async () => {
+    const U = require('../nucleo/upgrade');
+    const planos = [
+      { slug: 'trial', nome: 'Avaliação', preco_centavos: 0, limites: { x: 5 } },
+      { slug: 'a', nome: 'A', preco_centavos: 5000, preco_anual_centavos: 50000, limites: { x: 10 } },
+      { slug: 'b', nome: 'B', preco_centavos: 9000, limites: { x: 100 } },
+      { slug: 'ent', nome: 'Enterprise', preco_centavos: 0, limites: { x: 0 } }, // sob consulta: nunca sugerido
+    ];
+    const atende = (n) => (p) => U.ilimitado(p.limites.x) || p.limites.x > n;
+    assert.equal(U.menorPlanoQue(planos, 'trial', atende(5)).slug, 'a');
+    assert.equal(U.menorPlanoQue(planos, 'a', atende(10)).slug, 'b'); // A não resolve (10 não é > 10)
+    assert.equal(U.menorPlanoQue(planos, 'b', atende(100)), null);   // topo: nada a sugerir
+    const e = U.erroDePlano({ codigo: 'limite', recurso: 'x', rotulo: 'coisas', usado: 10, limite: 10, planos, atualSlug: 'a', atende: atende(10), valorNoPlano: (p) => p.limites.x });
+    assert.equal(e.status, 402); assert.equal(e.corpo.plano_sugerido.slug, 'b'); assert.equal(e.corpo.plano_sugerido.novo_limite, 100);
+    assert.ok(/10 coisas do plano A/.test(e.corpo.erro) && /R\$\s?90/.test(e.corpo.erro));
+    const topo = U.erroDePlano({ codigo: 'limite', recurso: 'x', rotulo: 'coisas', usado: 100, limite: 100, planos, atualSlug: 'b', atende: atende(100) });
+    assert.equal(topo.corpo.plano_sugerido, null); assert.ok(/Fale com a gente/.test(topo.corpo.erro));
+    assert.equal(U.ilimitado(0) && U.ilimitado(-1) && !U.ilimitado(1), true);
+    let corpo = null; const res = { status(s) { this.s = s; return this; }, json(c) { corpo = c; } };
+    assert.equal(U.responder(res, new Error('comum')), false); assert.equal(U.responder(res, e), true);
+    assert.equal(res.s, 402); assert.equal(corpo.codigo, 'limite');
   });
 
   // ---- dashboard comercial ----

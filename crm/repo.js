@@ -240,7 +240,7 @@ const Tenants = {
     if (!email.includes('@')) throw new Error('E-mail inválido.');
     if (db.prepare('SELECT 1 FROM tenant_users WHERE lower(email) = ?').get(email)) throw new Error('Já existe um usuário com este e-mail.');
     const lim = dentroLimite(tenantId, 'usuarios');
-    if (!lim.ok) throw new Error(`Limite de usuários do plano atingido (${lim.limite}). Faça upgrade.`);
+    if (!lim.ok) throw erroLimite(tenantId, 'usuarios', 'usuários');
     const papel = PAPEIS.includes(d.papel) ? d.papel : 'vendedor';
     const id = novoId();
     db.prepare('INSERT INTO tenant_users (id, tenant_id, nome, email, papel, ativo, criado_em) VALUES (?,?,?,?,?,1,?)')
@@ -304,6 +304,30 @@ function dentroLimite(tenantId, metrica, incremento = 1) {
   if (limite <= 0) return { ok: true, limite: 0, usado };
   return { ok: (usado + incremento) <= limite, limite, usado };
 }
+// ---- Erro de plano padrão (402 + plano que resolve) — ver nucleo/upgrade.js ----
+const Upgrade = require('../nucleo/upgrade');
+function erroPlano(tenantId, o) {
+  const e = entitlements(tenantId);
+  const planos = Planos.listar().map(p => ({ slug: p.slug, nome: p.nome, preco_centavos: p.preco_centavos, preco_anual_centavos: p.preco_anual_centavos, limites: p.limites, modulos: p.modulos, flags: p.flags }));
+  return Upgrade.erroDePlano({ ...o, planos, atualSlug: e && e.plano });
+}
+/** Estourou o limite `metrica`: sugere o menor plano que a comporta (e que tenha o `modulo`, se informado). */
+function erroLimite(tenantId, metrica, rotulo, { modulo } = {}) {
+  const lim = dentroLimite(tenantId, metrica);
+  return erroPlano(tenantId, {
+    codigo: 'limite', recurso: metrica, rotulo, usado: lim.usado, limite: lim.limite,
+    atende: (p) => (!modulo || p.modulos.includes(modulo)) && (Upgrade.ilimitado(p.limites[metrica]) || Number(p.limites[metrica]) > lim.usado),
+    valorNoPlano: (p) => p.limites[metrica],
+  });
+}
+function erroModulo(tenantId, modulo, rotulo) {
+  const m = MODULOS.find(x => x[0] === modulo);
+  return erroPlano(tenantId, { codigo: 'modulo', recurso: modulo, rotulo: rotulo || (m ? 'O módulo ' + m[1] : 'Este recurso'), atende: (p) => p.modulos.includes(modulo) });
+}
+function erroFlag(tenantId, flag, rotulo) {
+  return erroPlano(tenantId, { codigo: 'recurso', recurso: flag, rotulo, atende: (p) => !!(p.flags && p.flags[flag]) });
+}
+
 function flag(tenantId, chave) {
   const e = entitlements(tenantId);
   if (e && chave in e.flags) return !!e.flags[chave];
@@ -444,6 +468,6 @@ const Dashboard = {
 
 module.exports = {
   semear, slugify, MODULOS, MODULOS_KEYS, LIMITES, DIAS_TRIAL, PAPEIS, podePapel,
-  Planos, Tenants, salvarSettings, entitlements, podeModulo, dentroLimite, flag,
+  Planos, Tenants, salvarSettings, entitlements, podeModulo, dentroLimite, flag, erroPlano, erroLimite, erroModulo, erroFlag,
   Uso, Tickets, Flags, SaasLeads, evento, Eventos, Auditoria, Dashboard,
 };

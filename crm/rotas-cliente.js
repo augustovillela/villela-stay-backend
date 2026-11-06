@@ -23,7 +23,7 @@ const SENHA_MIN = 8;
 function registrarRotasCliente(app, { jwtSecret, enviarEmail }) {
   const seguro = process.env.NODE_ENV !== 'development';
   const ipDe = (req) => String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'ip').split(',')[0].trim();
-  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => res.status(400).json({ erro: e.message }));
+  const h = (fn) => (req, res) => Promise.resolve(fn(req, res)).catch(e => { if (require('../nucleo/upgrade').responder(res, e)) return; res.status(400).json({ erro: e.message }); });
 
   // rate limit login
   const tentativas = new Map();
