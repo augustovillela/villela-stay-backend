@@ -1168,6 +1168,33 @@ async function rodar() {
     assert.equal(m.uso.cobrado_milesimos, 0);
   });
 
+  await t('Apify: tempo esgotado aproveita o que a execução já coletou; região que falha não derruba as outras', async () => {
+    fontesMod.trocarTransporte(async (url) => {
+      if (/run-sync/.test(url)) return { ok: false, status: 400, text: async () => '{"error":{"type":"run-failed","message":"Actor run did not succeed (run ID: g40BLhgUW7mjvlBlA, status: TIMED-OUT)."}}', json: async () => ({}) };
+      if (/actor-runs\/g40BLhgUW7mjvlBlA/.test(url)) return { ok: true, status: 200, json: async () => ({ data: { defaultDatasetId: 'DS9' } }), text: async () => '' };
+      if (/datasets\/DS9\/items/.test(url)) return { ok: true, status: 200, json: async () => itensApify, text: async () => '' };
+      return { ok: false, status: 404, text: async () => 'x', json: async () => ({}) };
+    });
+    const lista = await fontesMod.fonte('apify').buscar({ termos: ['x'], max_resultados: 5, local_texto: 'Asa Sul' }, { token: 'apify_api_tokenqualquer1234' });
+    assert.equal(lista.length, 2); assert.equal(lista.parcial, true, 'marcado como parcial');
+    fontesMod.trocarTransporte(async () => ({ ok: false, status: 400, text: async () => 'outro erro qualquer', json: async () => ({}) }));
+    await assert.rejects(() => fontesMod.fonte('apify').buscar({ termos: ['x'], max_resultados: 5, local_texto: 'Asa Sul' }, { token: 'apify_api_tokenqualquer1234' }), /Apify respondeu 400/);
+    fontesMod.trocarTransporte();
+    // varredura em 3 regiões: a do meio falha, as outras entram, o motivo fica registrado
+    const tid = await tidDoTenant();
+    const b = buscasMod.criar(tid, { termos: ['tecnologia'], locais: ['Asa Sul, Brasília - DF', 'Asa Norte, Brasília - DF', 'Sudoeste, Brasília - DF'], max_resultados: 5, frequencia_dias: 30, nome: 'Tecnologia no DF' });
+    buscasMod.aprovar(tid, b.id, { aceite: true, por: 'teste' });
+    const prov = { async buscar(q) {
+      if (q.local_texto.startsWith('Asa Norte')) throw new Error('Apify respondeu 400: Actor run did not succeed (status: TIMED-OUT)');
+      const k = q.local_texto.slice(0, 4);
+      return [{ place_id: 'T-' + k, nome: 'Tech ' + k, categoria: 'Software', endereco: 'x', cidade: 'Brasília', estado: 'DF', telefone: '', site: '' }];
+    } };
+    const r = await buscasMod.executar(tid, b.id, { provedor: prov, obter: obterFake });
+    assert.equal(r.lugares, 2, 'Asa Sul e Sudoeste entraram'); assert.equal(r.novos, 2);
+    assert.match(r.erro, /Asa Norte/); assert.ok(!/Asa Sul|Sudoeste/.test(r.erro));
+    const ex = buscasMod.execucoes(tid, b.id)[0]; assert.equal(ex.status, 'ok'); assert.match(ex.erro, /Asa Norte/);
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

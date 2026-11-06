@@ -95,7 +95,22 @@ const apify = {
     });
     if (!r.ok) {
       const corpo = await r.text().catch(() => '');
-      throw new Error(`Apify respondeu ${r.status}${r.status === 402 ? ' (sem crédito/limite do plano)' : ''}: ${corpo.slice(0, 160)}`);
+      // Estourou o tempo da chamada (muitos lugares de uma vez): o Apify JÁ coletou uma parte e já cobra por ela.
+      // Em vez de jogar fora, busca o que a execução guardou e segue (marcado como parcial).
+      const run = /TIMED-OUT/.test(corpo) && corpo.match(/run ID:\s*([A-Za-z0-9]{8,30})/);
+      if (run) {
+        try {
+          const lim = busca.max_resultados * Math.max(1, (busca.termos || []).length || 1);
+          const h = { Authorization: 'Bearer ' + token };
+          const info = await (await _http(`https://api.apify.com/v2/actor-runs/${run[1]}`, { headers: h })).json();
+          const ds = info && info.data && info.data.defaultDatasetId;
+          if (ds) {
+            const parcial = await (await _http(`https://api.apify.com/v2/datasets/${ds}/items?clean=true&format=json&limit=${lim}`, { headers: h })).json();
+            if (Array.isArray(parcial)) { const lista = parcial.slice(0, lim).map(normalizarApify).filter(Boolean); lista.parcial = true; return lista; }
+          }
+        } catch (_) { /* cai no erro original */ }
+      }
+      throw new Error(`Apify respondeu ${r.status}${r.status === 402 ? ' (sem crédito/limite do plano)' : ''}${/TIMED-OUT/.test(corpo) ? ' (tempo esgotado: peça menos lugares por região)' : ''}: ${corpo.slice(0, 160)}`);
     }
     const itens = await r.json();
     if (!Array.isArray(itens)) throw new Error('Resposta inesperada do Apify.');

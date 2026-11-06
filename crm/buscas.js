@@ -218,7 +218,7 @@ const Buscas = {
     db.prepare('INSERT INTO crm_busca_execucoes (id, tenant_id, busca_id, iniciada_em, gatilho, custo_estimado_centavos) VALUES (?,?,?,?,?,?)')
       .run(exId, T(tid), b.id, nowISO(), gatilho, est.brl_centavos);
     const r = { lugares: 0, novos: 0, existentes: 0, enriquecidos: 0, canais_novos: 0 };
-    let erro = '';
+    let erro = ''; const falhas = [];
     try {
       // uma chamada à fonte por região (bairro); as categorias vão juntas na mesma chamada
       const termos = termosDe(b);
@@ -227,7 +227,16 @@ const Buscas = {
         const sobra = restante - r.lugares;
         if (sobra <= 0) { erro = erro || `Teto mensal de ${tetoMes()} lugares atingido no meio da varredura.`; break; }
         const porTermo = Math.max(1, Math.min(b.max_resultados, Math.floor(sobra / termos.length)));
-        const achados = await f.buscar({ ...b, termos, local_texto: regiao || b.local_texto, max_resultados: porTermo }, { token: cob && cob.token });
+        // uma região que falha NÃO derruba as outras (antes, o 1º tempo esgotado pulava as regiões restantes e o enriquecimento)
+        let achados;
+        try { achados = await f.buscar({ ...b, termos, local_texto: regiao || b.local_texto, max_resultados: porTermo }, { token: cob && cob.token }); }
+        catch (e) {
+          const m = require('./cofre').limpar(e.message, T(tid));
+          falhas.push(`${String(regiao || '').split(',')[0]}: ${m.slice(0, 140)}`);
+          if (/respondeu (401|402|403)\b/.test(m)) break; // sem crédito/token recusado: tentar as outras só repete o erro
+          continue;
+        }
+        if (achados.parcial) falhas.push(`${String(regiao || '').split(',')[0]}: tempo esgotado — vieram ${achados.length} lugares (parcial). Use menos lugares por região para completar.`);
         r.lugares += achados.length;
         db.prepare('UPDATE crm_busca_execucoes SET lugares = ? WHERE id = ?').run(r.lugares, exId); // o que a fonte cobrou fica gravado mesmo se algo falhar depois
         for (const l of achados) {
@@ -246,6 +255,7 @@ const Buscas = {
         r.canais_novos += e.canais_novos;
       }
     } catch (e) { erro = require('./cofre').limpar(e.message, T(tid)); }
+    if (falhas.length) erro = [erro, ...falhas].filter(Boolean).join(' · ');
     // fecha a conta: cobra só o que a fonte devolveu (0 lugares = estorno total)
     let cobrado = 0;
     if (cob) { try { cobrado = cob.fechar(r.lugares).cobrado_milesimos || 0; } catch (_) { /* a reserva órfã volta sozinha */ } }
