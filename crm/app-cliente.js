@@ -992,6 +992,7 @@ async function vBuscas() {
         ${b.status === 'ativa' ? `<button class="btn peq bu-rodar" data-id="${b.id}" data-custo="${b.custo.brl_centavos}">▶ Rodar agora</button> <button class="btn peq secund bu-st" data-id="${b.id}" data-st="pausada">⏸ Pausar</button>` : ''}
         ${b.status === 'pausada' ? `<button class="btn peq secund bu-st" data-id="${b.id}" data-st="ativa">▶ Retomar</button>` : ''}
         ${b.tags_extra.length ? `<button class="btn peq secund bu-camp" data-tag="${esc(b.tags_extra[0])}">📋 Preparar campanha (rascunho)</button>` : ''}
+        ${b.rodando_desde ? '' : `<button class="btn peq secund bu-editar" data-id="${b.id}">✏️ Editar</button>`}
         <button class="btn peq secund bu-ver" data-id="${b.id}">O que entrou</button>
         <button class="btn peq secund bu-st" data-id="${b.id}" data-st="arquivada">Arquivar</button></div>`).join('') || '<div class="card">Nenhuma busca criada.</div>'}</div>
       <div id="bu-lugares"></div>`;
@@ -1008,6 +1009,7 @@ async function vBuscas() {
       if (x.dataset.st === 'arquivada' && !confirm('Arquivar esta busca? Os contatos já capturados continuam no CRM.')) return;
       api('POST', `/app/buscas/${x.dataset.id}/status`, { status: x.dataset.st }).then(vBuscas).catch(e => avisar(e));
     });
+    document.querySelectorAll('.bu-editar').forEach(x => x.onclick = () => dlgBusca(d, d.buscas.find(y => y.id === x.dataset.id)));
     document.querySelectorAll('.bu-ver').forEach(x => x.onclick = () => verLugaresBusca(x.dataset.id));
     document.querySelectorAll('.bu-camp').forEach(x => x.onclick = async () => {
       if (!confirm(`Montar a campanha dos contatos com a tag "${x.dataset.tag}" (e-mail e WhatsApp)?\n\nEla nasce em RASCUNHO e NADA é enviado: a lista passa pela sua aprovação e cada envio é manual.`)) return;
@@ -1039,9 +1041,9 @@ async function verLugaresBusca(id) {
     document.querySelectorAll('.bu-contato').forEach(x => x.onclick = (ev) => { ev.preventDefault(); navegar('contatos'); setTimeout(() => abrirContato(x.dataset.id), 300); });
   } catch (e) { box.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
-function dlgBusca(d) {
+function dlgBusca(d, edit) {
   const dlg = document.createElement('dialog');
-  dlg.innerHTML = `<h3>Nova busca no Google Maps</h3>
+  dlg.innerHTML = `<h3>${edit ? 'Editar busca' : 'Nova busca no Google Maps'}</h3>
     <button class="btn peq secund" type="button" id="bu-preset">🎄 Preencher: confraternização de fim de ano (DF)</button>
     <label>O que buscar (uma categoria por linha) <textarea id="bu-termo" rows="3" placeholder="ex.: clínica odontológica"></textarea></label>
     <label>Regiões / bairros — <b>um por linha</b> <textarea id="bu-local" rows="4" placeholder="Asa Sul&#10;Asa Norte&#10;Águas Claras"></textarea></label>
@@ -1053,8 +1055,8 @@ function dlgBusca(d) {
     <div class="hi-grid"><label>Repetir a cada <select id="bu-freq">${d.frequencias.map(f => `<option value="${f}"${f === 7 ? ' selected' : ''}>${f} dia(s)</option>`).join('')}</select></label>
       <label>Máx. de lugares por varredura <input id="bu-max" type="number" min="1" max="${d.max_por_busca}" value="60"></label></div>
     <label>Nome da busca (opcional) <input id="bu-nome"></label>
-    <p class="sub" style="text-align:left">Ao criar, a busca fica <b>aguardando aprovação</b>: você verá a estimativa de custo e confirma. Nada é cobrado antes disso.</p>
-    <button class="btn" id="bu-salvar">Criar busca</button> <button class="btn secund" id="bu-fechar">Cancelar</button><p id="bu-msg" class="erro"></p>`;
+    <p class="sub" style="text-align:left">${edit ? 'Se você mudar categorias, regiões, quantidade ou frequência, o custo muda e a busca volta a <b>aguardar a sua aprovação</b>. Os contatos já capturados continuam no CRM.' : 'Ao criar, a busca fica <b>aguardando aprovação</b>: você verá a estimativa de custo e confirma. Nada é cobrado antes disso.'}</p>
+    <button class="btn" id="bu-salvar">${edit ? 'Salvar alterações' : 'Criar busca'}</button> <button class="btn secund" id="bu-fechar">Cancelar</button><p id="bu-msg" class="erro"></p>`;
   document.body.appendChild(dlg); dlg.showModal();
   $('#bu-fechar').onclick = () => dlg.remove();
   let tagsPreset;
@@ -1065,7 +1067,14 @@ function dlgBusca(d) {
     const nt = Math.max(1, linhas('#bu-termo').length), nl = Math.max(1, regioes().length), mx = Number($('#bu-max').value) || 0;
     $('#bu-conta').textContent = `${nt} categoria(s) × ${nl} região(ões) × até ${mx} = até ${nt * nl * mx} lugares por varredura (a estimativa em R$ aparece depois de criar).`;
   };
-  ['#bu-termo', '#bu-local', '#bu-max'].forEach(id => $(id).oninput = contar); contar();
+  ['#bu-termo', '#bu-local', '#bu-max'].forEach(id => $(id).oninput = contar);
+  if (edit) {
+    $('#bu-termo').value = (edit.termos || []).join('\n'); $('#bu-local').value = (edit.locais || []).join('\n');
+    $('#bu-freq').value = String(edit.frequencia_dias); $('#bu-max').value = edit.max_resultados; $('#bu-nome').value = edit.nome || '';
+    if (edit.lat != null) { $('#bu-lat').value = edit.lat; $('#bu-lng').value = edit.lng; $('#bu-raio').value = edit.raio_m; $('#bu-local').value = ''; }
+    $('#bu-preset').style.display = 'none';
+  }
+  contar();
   $('#bu-preset').onclick = () => {
     $('#bu-termo').value = ['escritório', 'clínica', 'escola', 'escritório de advocacia', 'empresa de tecnologia', 'agência de marketing'].join('\n');
     $('#bu-local').value = ['Lago Sul', 'Lago Norte', 'Asa Sul', 'Asa Norte', 'Sudoeste', 'Noroeste', 'Park Way', 'Jardim Botânico', 'Águas Claras'].map(b => b + ', Brasília - DF').join('\n');
@@ -1076,9 +1085,14 @@ function dlgBusca(d) {
     try {
       const lat = $('#bu-lat').value.trim(), lng = $('#bu-lng').value.trim();
       const termos = linhas('#bu-termo'), locais = lat && lng ? [] : regioes();
-      await api('POST', '/app/buscas', { termos, locais: locais.length ? locais : undefined, local_texto: locais.length ? undefined : (regioes()[0] || ''), tags: tagsPreset, lat: lat || undefined, lng: lng || undefined,
-        raio_m: lat && lng ? $('#bu-raio').value : undefined, frequencia_dias: $('#bu-freq').value, max_resultados: $('#bu-max').value, nome: $('#bu-nome').value.trim() });
-      dlg.remove(); vBuscas();
+      const corpoBusca = { termos, locais: locais.length ? locais : undefined, local_texto: locais.length ? undefined : (regioes()[0] || ''), tags: tagsPreset, lat: lat || undefined, lng: lng || undefined,
+        raio_m: lat && lng ? $('#bu-raio').value : undefined, frequencia_dias: $('#bu-freq').value, max_resultados: $('#bu-max').value, nome: $('#bu-nome').value.trim() };
+      if (edit) {
+        if (lat && lng) corpoBusca.locais = []; // trocou para círculo: a lista de regiões sai
+        const r = await api('PATCH', `/app/buscas/${edit.id}`, corpoBusca);
+        dlg.remove(); await vBuscas();
+        if (r.reaprovar) alert('Você mudou o que a busca faz (e o custo). Ela voltou para "aguardando aprovação": confira a estimativa e aprove de novo.');
+      } else { await api('POST', '/app/buscas', corpoBusca); dlg.remove(); vBuscas(); }
     } catch (e) { $('#bu-msg').textContent = e.message; }
   };
 }
