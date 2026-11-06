@@ -331,7 +331,7 @@ function planoBanda() {
   } catch (_) { return { vagas: 5, desconto: 30, preco: 'R$ 875,00', porPessoa: 'R$ 175,00' }; }
 }
 function diasDeTeste() {
-  try { return require('./assinatura').plano().teste_dias; } catch (_) { return 14; }
+  try { return require('./assinatura').plano().teste_dias; } catch (_) { return 15; }
 }
 function precoAssinatura() {
   let c = 25000;

@@ -89,7 +89,7 @@ function telaLogin() {
     <button class="vx-btn" id="lg-btn" style="margin-top:8px">Entrar</button>
     <p id="lg-msg" class="erro" role="alert"></p>
     <p class="sub" style="margin-top:10px;text-align:left"><a href="#" id="lg-esqueci">Esqueci minha senha</a></p>
-    <p class="sub" style="margin-top:14px;text-align:left">Ainda não tem conta? <a href="/crm/assinar?plano=trial">Teste grátis por 14 dias</a>.</p></div>`;
+    <p class="sub" style="margin-top:14px;text-align:left">Ainda não tem conta? <a href="/crm/assinar?plano=trial">Teste grátis por 15 dias</a>.</p></div>`;
   const entrar = async () => {
     $('#lg-msg').textContent = '';
     try {

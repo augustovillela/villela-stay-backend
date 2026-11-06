@@ -10,7 +10,7 @@ Clique em **Teste grátis** na página do produto e preencha os dados da empresa
 
 ### O teste grátis pede cartão de crédito?
 
-Não. O trial dura **14 dias**, com todos os módulos liberados, sem cartão. Ao final, é só assinar um plano no painel para continuar — se não assinar, o acesso é bloqueado, mas seus dados não são apagados.
+Não. O trial dura **15 dias**, com todos os módulos liberados, sem cartão. Ao final, é só assinar um plano no painel para continuar — se não assinar, o acesso é bloqueado, mas seus dados não são apagados.
 
 ### Quanto custa?
 

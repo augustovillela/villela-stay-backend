@@ -36,7 +36,7 @@ e painel do cliente em `/gestao/app`.
    senha** (o link vale por 7 dias).
 4. Defina a senha e entre no painel em `/gestao/app` com seu e-mail e senha.
 
-O período de teste (trial) dura **14 dias, sem cartão de crédito**, com todos os módulos
+O período de teste (trial) dura **15 dias, sem cartão de crédito**, com todos os módulos
 liberados dentro dos limites do trial.
 
 ### 2. Conhecer o painel
@@ -156,7 +156,7 @@ lançamento publicados são:
 
 | Plano | Preço | Indicado para |
 |---|---|---|
-| Trial (14 dias) | Grátis, sem cartão | Avaliação completa por 14 dias |
+| Trial (15 dias) | Grátis, sem cartão | Avaliação completa por 15 dias |
 | Starter | R$ 99/mês | Anfitrião com poucos imóveis começando a profissionalizar |
 | Pro | R$ 249/mês | Operação em crescimento (inclui IA, precificação e contratos) |
 | Business | R$ 599/mês | Gestora estabelecida (tudo liberado, API e marca própria) |

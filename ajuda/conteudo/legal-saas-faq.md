@@ -14,7 +14,7 @@ inscrito(a) na OAB. Prazos calculados pelo sistema também só avançam após va
 
 ### Como funciona o teste grátis?
 
-O trial dura 14 dias, com todos os módulos liberados dentro dos limites do plano de teste, e
+O trial dura 15 dias, com todos os módulos liberados dentro dos limites do plano de teste, e
 não pede cartão de crédito. Ao final, escolha um plano para continuar — os dados do escritório
 são preservados.
 

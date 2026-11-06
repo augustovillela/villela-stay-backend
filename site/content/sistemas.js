@@ -108,9 +108,9 @@ const SISTEMAS = [
     preco: { valor: 79, modelo: 'assinatura' },
     faq: [
       [T('O Villela CRM importa meus contatos atuais?', 'Does Villela CRM import my current contacts?', '¿Villela CRM importa mis contactos actuales?'),
-       T('Sim. Você sobe uma planilha de contatos e escolhe qual coluna é nome, telefone, e-mail e origem. Os 14 dias de teste servem justamente para migrar sem pressa.',
-         'Yes. You upload a contact spreadsheet and map which column is name, phone, email and source. The 14-day trial exists precisely so you can migrate without rushing.',
-         'Sí. Subes una hoja de contactos y eliges qué columna es nombre, teléfono, correo y origen. Los 14 días de prueba existen justamente para migrar sin prisa.')],
+       T('Sim. Você sobe uma planilha de contatos e escolhe qual coluna é nome, telefone, e-mail e origem. Os 15 dias de teste servem justamente para migrar sem pressa.',
+         'Yes. You upload a contact spreadsheet and map which column is name, phone, email and source. The 15-day trial exists precisely so you can migrate without rushing.',
+         'Sí. Subes una hoja de contactos y eliges qué columna es nombre, teléfono, correo y origen. Los 15 días de prueba existen justamente para migrar sin prisa.')],
       [T('Qual a diferença entre o Villela CRM e o Villela Growth OS?', 'What is the difference between Villela CRM and Villela Growth OS?', '¿Cuál es la diferencia entre Villela CRM y Villela Growth OS?'),
        T('O Growth OS é a evolução do CRM, no mesmo sistema e no mesmo login: o CRM cuida do lead até a venda; o Growth OS acrescenta a camada de receita — organizações, metas, previsão e os números que o dono olha.',
          'Growth OS is the CRM’s evolution, in the same system and the same login: the CRM handles the lead up to the sale; Growth OS adds the revenue layer — organisations, targets, forecast and the numbers the owner looks at.',
@@ -683,9 +683,9 @@ const SISTEMAS = [
     preco: { valor: 250, modelo: 'assinatura' },
     faq: [
       [T('Como funciona o teste e o que a assinatura inclui?', 'How does the trial work and what does the subscription include?', '¿Cómo funciona la prueba y qué incluye la suscripción?'),
-       T('São 14 dias grátis, sem cartão, com tudo liberado. Depois, o Musique custa R$ 250 por mês e inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail enquanto a assinatura estiver ativa.',
+       T('São 15 dias grátis, sem cartão, com tudo liberado. Depois, o Musique custa R$ 250 por mês e inclui todos os cursos de música da Academia Villela, que chegam na conta da Academia com o mesmo e-mail enquanto a assinatura estiver ativa.',
          'You get 14 free days, no card, with everything unlocked. After that, Musique costs R$250 a month and includes every music course at Villela Academy, delivered to the Academy account with the same email while the subscription is active.',
-         'Son 14 días gratis, sin tarjeta, con todo liberado. Después, Musique cuesta R$ 250 al mes e incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo mientras la suscripción esté activa.')],
+         'Son 15 días gratis, sin tarjeta, con todo liberado. Después, Musique cuesta R$ 250 al mes e incluye todos los cursos de música de la Academia Villela, que llegan a la cuenta de la Academia con el mismo correo mientras la suscripción esté activa.')],
       [T('Tem plano para banda?', 'Is there a plan for bands?', '¿Hay plan para bandas?'),
        T('Tem. Contratando 5 assinaturas de uma vez, a banda tem 30% de desconto: R$ 875 por mês (R$ 175 por pessoa). Quem contrata escolhe quem ocupa as vagas e troca quando quiser.',
          'Yes. Buying 5 subscriptions at once gives the band a 30% discount: R$875 a month (R$175 per person). Whoever buys chooses who takes the seats and can swap them anytime.',
@@ -705,7 +705,7 @@ const SISTEMAS = [
 // ---------------------------------------------------------------------
 // EM DESENVOLVIMENTO — no ar e funcionando, mas antes do lançamento
 // comercial. Entram na página numa seção própria, em cartão, sem preço e
-// sem "teste 14 dias": não se vende o que ainda não está à venda.
+// sem "teste 15 dias": não se vende o que ainda não está à venda.
 //
 // "Em desenvolvimento" aqui é ESTÁGIO COMERCIAL, não técnico — os três
 // respondem 200 em produção e têm suíte de testes. O que falta em cada um

@@ -127,7 +127,7 @@ INSERT INTO config (chave, valor, descricao) VALUES
    'Cotação usada para converter os custos em dólar (R2 e IA) — atualizar quando mudar'),
   ('custo_r2_usd_gb_mes', '0.015',
    'Custo do Cloudflare R2 por GB-mês, em dólar. Egress é zero'),
-  ('trial_dias', '14',
+  ('trial_dias', '15',
    'Dias de teste do plano pago, sem cartão. 0 desliga o teste'),
   ('precos_definidos_em', '2026-08-09',
    'Quando os preços foram definidos. Q7 respondida: partida, não decisão final')

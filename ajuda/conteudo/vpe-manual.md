@@ -22,7 +22,7 @@ Cada empresa (workspace) tem seus dados isolados das demais, com papéis, permis
 
 1. Na página inicial, clique em **Teste grátis**.
 2. Informe o nome da empresa, seu nome, e-mail e uma senha (mínimo 8 caracteres).
-3. Sua empresa entra no **período de teste de 14 dias**, no nível do plano Professional, **sem cartão de crédito**.
+3. Sua empresa entra no **período de teste de 15 dias**, no nível do plano Professional, **sem cartão de crédito**.
 
 ### Entrar (login)
 
@@ -130,7 +130,7 @@ Na tela **🔌 Integrações & API** (planos **Business** e **Enterprise**):
 
 ## Planos e pagamento
 
-Todos os planos começam com **14 dias grátis** no nível Professional, sem cartão de crédito.
+Todos os planos começam com **15 dias grátis** no nível Professional, sem cartão de crédito.
 
 | | Starter | Professional | Business | Enterprise |
 |---|---|---|---|---|

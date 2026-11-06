@@ -298,7 +298,7 @@ function music() {
       natureza: naturezaDeAssinatura(a.status, pg, { cortesia }), mensalidade_centavos: cortesia ? null : a.preco_cents,
       pagamentos: pg, origem_id: a.id, interna: a.origem === 'dono' });
   });
-  // Quem está nos 14 dias de teste ainda não tem assinatura: aparece como "em teste".
+  // Quem está nos 15 dias de teste ainda não tem assinatura: aparece como "em teste".
   const comAssinatura = new Set(subs.filter((a) => a.status !== 'cancelada').map((a) => String(a.conta_id)));
   const { teste } = require('../music/assinatura');
   for (const c of db.prepare("SELECT id, nome, email, telefone, criado_em FROM contas_music WHERE status = 'ativo'").all()) {

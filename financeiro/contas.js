@@ -44,7 +44,7 @@ function provisionar({ nome, slug, documento = '', planoSlug = 'trial', contatoE
     const tenant = repo.criarTenant({
       slug: chave, nome, documento, planoId: plano ? plano.id : '',
       status: interno ? 'ativa' : 'trial',
-      trialAte: interno ? '' : new Date(Date.now() + 14 * 86400_000).toISOString().slice(0, 10),
+      trialAte: interno ? '' : new Date(Date.now() + 15 * 86400_000).toISOString().slice(0, 10),
       contatoEmail, contatoNome, interno,
       criadoPor: tenancy.userAtual() || 'provisionamento',
     });

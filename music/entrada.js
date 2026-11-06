@@ -137,7 +137,7 @@ function paginaEntrar(layout) {
     <label>Celular (opcional)<input id="ct" type="tel" autocomplete="tel"></label>
     <label class="check"><input id="ac" type="checkbox"><span>Li e aceito os <a href="/music/termos" target="_blank">Termos de uso</a> e a <a href="/music/privacidade" target="_blank">Política de Privacidade</a> do Musique.</span></label>
     <label class="check"><input id="mk" type="checkbox"><span>Quero receber novidades do Musique por e-mail (opcional).</span></label>
-    <p class="sub" style="margin:0">14 dias grátis, sem cartão. Depois, o Musique é por assinatura mensal, com os cursos de música da Academia incluídos.</p>
+    <p class="sub" style="margin:0">15 dias grátis, sem cartão. Depois, o Musique é por assinatura mensal, com os cursos de música da Academia incluídos.</p>
     <button class="btn" id="b-criar" type="submit">Criar conta e começar o teste</button>
   </form>
   <p id="msg" role="alert"></p>

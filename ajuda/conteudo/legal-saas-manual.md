@@ -35,7 +35,7 @@ e painel do assinante em `/juridico/app`.
    (válido por 7 dias);
 4. Defina a senha e entre em `/juridico/app`.
 
-O período de teste dura **14 dias**, com todos os módulos liberados dentro dos limites do
+O período de teste dura **15 dias**, com todos os módulos liberados dentro dos limites do
 trial, **sem cartão de crédito**.
 
 ### 2. Conhecer o painel do assinante
@@ -118,7 +118,7 @@ Os planos vigentes estão sempre em `/juridico#planos`. Os valores de lançament
 
 | Plano | Preço | Indicado para |
 |---|---|---|
-| Trial (14 dias) | Grátis, sem cartão | Avaliação completa |
+| Trial (15 dias) | Grátis, sem cartão | Avaliação completa |
 | Essencial | R$ 149/mês | Advogado autônomo e bancas pequenas |
 | Profissional | R$ 349/mês | Escritório em crescimento, com IA e portal do cliente |
 | Escritório | R$ 799/mês | Banca estabelecida: tudo liberado, API e marca própria |

@@ -482,7 +482,7 @@ function registrar(app) {
 
   <div class="nota" style="margin-bottom:40px">
     O afinador, o metrônomo e o gerador de tons são grátis, sem cadastro. Acervo de cifras, banda,
-    palco e academia estão no Musique: <a href="/music/entrar#criar">teste grátis por 14 dias</a>.
+    palco e academia estão no Musique: <a href="/music/entrar#criar">teste grátis por 15 dias</a>.
   </div>
 </div>
 <script src="/music/audio.js"></script>

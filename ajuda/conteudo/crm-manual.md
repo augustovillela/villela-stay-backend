@@ -20,7 +20,7 @@ Cada empresa assinante tem seu próprio ambiente, com dados isolados das demais.
 ### Criar a conta da empresa
 
 1. Na página do produto, clique em **Teste grátis** (ou escolha um plano na seção Planos).
-2. Preencha os dados da empresa e do responsável. O teste gratuito dura **14 dias**, com todos os módulos e **sem cartão de crédito**.
+2. Preencha os dados da empresa e do responsável. O teste gratuito dura **15 dias**, com todos os módulos e **sem cartão de crédito**.
 3. Você recebe por e-mail um link para **definir sua senha** (mínimo de 8 caracteres) e acessar o painel.
 4. Faça login no painel com e-mail e senha.
 
@@ -98,7 +98,7 @@ O dashboard comercial mostra a visão do momento; os planos superiores incluem *
 
 ## Planos e pagamento
 
-O teste gratuito de 14 dias dá acesso a todos os módulos, sem cartão. Os planos pagos são mensais:
+O teste gratuito de 15 dias dá acesso a todos os módulos, sem cartão. Os planos pagos são mensais:
 
 | Plano | Indicado para | Referência |
 |---|---|---|

@@ -130,7 +130,7 @@ function criarTenantComDono({ empresa, nome, email, senha, ip, cortesia, status_
   if (!plano) throw new Error('Planos não configurados.');
   return transacao(() => {
     const agora = nowISO();
-    const trialFim = new Date(Date.now() + 14 * 24 * 3600 * 1000).toISOString();
+    const trialFim = new Date(Date.now() + 15 * 24 * 3600 * 1000).toISOString();
     const tenant = { id: novoId(), slug: slugDisponivel(empresa), nome: s(empresa, 120) };
     const statusIni = ehCortesia ? 'cortesia' : 'trial';
     const subStatus = ehCortesia ? 'ativa' : 'trial'; // cortesia: assinatura ativa p/ liberar limites/plano

@@ -46,7 +46,7 @@ const FLAGS_SEED = [
 // ---- PLANOS (seed; preços PROVISÓRIOS, editáveis no painel) ----
 const PLANOS_SEED = [
   {
-    slug: 'trial', nome: 'Teste grátis (14 dias)', descricao: 'Avaliação completa por 14 dias, sem cartão.',
+    slug: 'trial', nome: 'Teste grátis (15 dias)', descricao: 'Avaliação completa por 15 dias, sem cartão.',
     preco_centavos: 0, ordem: 0,
     limites: { contatos: 500, usuarios: 3, funis: 5, campanhas_mes: 3, ia_mes: 30, templates: 30 },
     modulos: MODULOS_KEYS, flags: { automacoes: true, ia: true, api_publica: false, whatsapp_api: false, white_label: false },
@@ -141,7 +141,7 @@ function hidratarPlano(p) {
 // =====================================================================
 // TENANTS (empresas assinantes do CRM)
 // =====================================================================
-const DIAS_TRIAL = parseInt(process.env.CRM_TRIAL_DIAS, 10) || 14;
+const DIAS_TRIAL = parseInt(process.env.CRM_TRIAL_DIAS, 10) || 15;
 const Tenants = {
   listar({ status = '', busca = '', limite = 200, cortesia = false } = {}) {
     let sql = `SELECT t.*, p.nome AS plano_nome, p.preco_centavos,

@@ -53,7 +53,7 @@ const FLAGS_SEED = [
 // ---- PLANOS (seed; preços FINAIS desde 11/07/2026 — seguem editáveis no painel) ----
 const PLANOS_SEED = [
   {
-    slug: 'trial', nome: 'Trial (14 dias)', descricao: 'Avaliação completa por 14 dias, sem cartão.',
+    slug: 'trial', nome: 'Trial (15 dias)', descricao: 'Avaliação completa por 15 dias, sem cartão.',
     preco_centavos: 0, ordem: 0,
     limites: { imoveis: 3, usuarios: 2, reservas_mes: 30, ia_consultas_mes: 30, armazenamento_mb: 500, workspaces: 1 },
     modulos: MODULOS_KEYS, flags: { ia_direta: false, api_publica: false, white_label: false, canais_ilimitados: false, dominio_proprio: false },
@@ -140,7 +140,7 @@ function hidratarPlano(p) {
 // =====================================================================
 // TENANTS (operações / empresas de hospedagem)
 // =====================================================================
-const DIAS_TRIAL = parseInt(process.env.VSM_TRIAL_DIAS, 10) || 14;
+const DIAS_TRIAL = parseInt(process.env.VSM_TRIAL_DIAS, 10) || 15;
 const Tenants = {
   listar({ status = '', busca = '', limite = 200, cortesia = false } = {}) {
     let sql = `SELECT t.*, p.nome AS plano_nome, p.preco_centavos,

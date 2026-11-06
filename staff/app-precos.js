@@ -60,7 +60,7 @@ const PRC = {
   async abrir() {
     conteudo().innerHTML = cabecalho('💳 Preços dos sistemas',
       'Todas as mensalidades num lugar só. Mude o valor em R$ e clique em Salvar — vale na hora para quem assinar depois. Plano com R$ 0,00 é teste grátis, plano gratuito ou "sob consulta".')
-      + '<div id="prc-corpo"><p class="sub">Carregando os planos de cada sistema…</p></div>';
+      + '<style>#prc-corpo .card{max-width:70%;min-width:520px}#prc-corpo table{width:100%;table-layout:fixed}#prc-corpo th,#prc-corpo td{vertical-align:middle}#prc-corpo th:nth-child(1){width:38%}#prc-corpo th:nth-child(2){width:20%}#prc-corpo th:nth-child(3){width:20%}#prc-corpo th:nth-child(4){width:22%}#prc-corpo th:nth-child(2),#prc-corpo th:nth-child(3){text-align:right}#prc-corpo td:nth-child(2),#prc-corpo td:nth-child(3){text-align:right}#prc-corpo input{width:100%;max-width:110px;text-align:right;box-sizing:border-box}#prc-corpo td:nth-child(4){white-space:nowrap}@media (max-width:760px){#prc-corpo .card{max-width:100%;min-width:0}}</style><div id="prc-corpo"><p class="sub">Carregando os planos de cada sistema…</p></div>';
     PRC.cache = {};
     // Em paralelo: um sistema fora do ar não derruba a tela inteira.
     const lidos = await Promise.all(PRC.sistemas.map(async (s) => {
@@ -76,19 +76,17 @@ const PRC = {
     if (!corpo) return;
     corpo.innerHTML = PRC.sistemas.map((s) => {
       const r = PRC.cache[s.id] || {};
-      const tem = !!(r.linhas && r.linhas.some(l => l.anual !== undefined));
       let miolo;
       if (r.erro) miolo = `<p class="erro">Não consegui ler os planos: ${esc(r.erro)}</p>`;
       else if (!r.linhas || !r.linhas.length) miolo = '<p class="vazio">Nenhum plano cadastrado.</p>';
       else miolo = `<div class="vx-tabela-wrap"><table class="vx-tabela--cards"><thead><tr>
-          <th>Plano</th><th>Preço/mês (R$)</th>${tem ? '<th>Anual (R$)</th>' : ''}<th></th></tr></thead><tbody>
+          <th>Plano</th><th>Preço/mês (R$)</th><th>Anual (R$)</th><th></th></tr></thead><tbody>
           ${r.linhas.map((l, i) => `<tr>
             <td data-rot="Plano"><b>${esc(l.nome)}</b> <span class="tag">${esc(l.slug || '')}</span>
               ${l.ativo ? '' : '<span class="chip">inativo</span>'}${l.oculto ? ' <span class="chip">oculto</span>' : ''}</td>
             <td data-rot="Preço/mês (R$)"><input type="text" inputmode="decimal" id="prc-${s.id}-${i}" style="max-width:120px"
                 value="${(l.centavos / 100).toFixed(2).replace('.', ',')}"></td>
-            ${tem ? `<td data-rot="Anual (R$)"><input type="text" inputmode="decimal" id="prc-${s.id}-${i}-a" style="max-width:120px"
-                value="${l.anual == null ? '' : (l.anual / 100).toFixed(2).replace('.', ',')}"></td>` : ''}
+            <td data-rot="Anual (R$)">${l.anual === undefined ? '<span class="sub">—</span>' : `<input type="text" inputmode="decimal" id="prc-${s.id}-${i}-a" value="${l.anual == null ? '' : (l.anual / 100).toFixed(2).replace('.', ',')}">`}</td>
             <td data-rot=""><button class="btn peq" onclick="PRC.salvar('${s.id}',${i})">Salvar</button>
               <span class="sub" id="prc-${s.id}-${i}-m"></span></td></tr>`).join('')}
           </tbody></table></div>`;

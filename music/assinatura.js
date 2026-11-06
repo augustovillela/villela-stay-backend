@@ -30,11 +30,11 @@ const webhookMP = require('../nucleo/webhook-mp');
 const { montarAviso, pessoa, reais } = require('../nucleo/aviso');
 
 // O Musique é PAGO (Augusto, 28/09/2026): R$ 250/mês, com teste grátis de
-// 14 dias para conta nova — e para as contas que já existiam no lançamento
+// 15 dias para conta nova — e para as contas que já existiam no lançamento
 // da cobrança, contados a partir dele. Nada de graça depois do teste.
 // PLANO BANDA (Augusto, 28/09/2026): 5 assinaturas contratadas de uma vez
 // saem com 30% de desconto — 5 × R$ 250 × 0,7 = R$ 875/mês.
-const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 14, nome: 'Musique — assinatura mensal',
+const PLANO_PADRAO = { preco_cents: 25000, carencia_dias: 5, teste_dias: 15, nome: 'Musique — assinatura mensal',
   banda_vagas: 5, banda_desconto_pct: 30 };
 const precoBanda = (p = plano()) => Math.round(p.preco_cents * p.banda_vagas * (1 - p.banda_desconto_pct / 100));
 const s = (v, max = 500) => String(v == null ? '' : v).trim().slice(0, max);
@@ -67,6 +67,10 @@ function configurar({ mpFetch, cortesia, avisar, baseApi, baseSite } = {}) {
   // o teste a partir DELA (ninguém é bloqueado de surpresa). Gravada uma vez.
   const cfg = repo.Config.get('assinatura', {}) || {};
   if (!cfg.pago_desde) repo.Config.set('assinatura', { ...cfg, pago_desde: nowISO() });
+  // Teste grátis padronizado em 15 dias (Augusto, 05/11/2026): quem ainda estava no
+  // padrão antigo (14) passa para 15, uma vez. Valor que o Augusto definiu diferente fica.
+  const cfg2 = repo.Config.get('assinatura', {}) || {};
+  if (!cfg2.teste_15_aplicado) repo.Config.set('assinatura', { ...cfg2, ...(cfg2.teste_dias === 14 ? { teste_dias: 15 } : {}), teste_15_aplicado: true });
   return { cobranca: cobrancaLigada(), cortesia: !!_academia.conceder };
 }
 

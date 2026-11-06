@@ -8,7 +8,7 @@ SaaS (legal-saas/vdocs/vpe/vsm/academy).
 
 | URL | O quê |
 |---|---|
-| `/crm` | Landing comercial + preços + signup (trial 14 dias sem cartão) |
+| `/crm` | Landing comercial + preços + signup (trial 15 dias sem cartão) |
 | `/crm/app` | Painel do assinante (SPA `app-cliente.js`, cookie `crm_sess` restrito a /crm) |
 | `/crm/p/:token` | Proposta pública (visualização registrada + aceite/recusa) |
 | `/crm/webhook/:token` | Entrada de leads (formulários, Make/n8n/Zapier) |

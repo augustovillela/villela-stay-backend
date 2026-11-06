@@ -21,7 +21,10 @@ db.exec('PRAGMA busy_timeout = 4000;');
 db.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
 
 // ---- migrações (ALTERs futuros; roda uma vez cada) ----
-const MIGRACOES = [];
+const MIGRACOES = [
+  // teste grátis padronizado em 15 dias (Augusto, 05/11/2026): corrige só o texto do plano 'trial' já gravado
+  { nome: '2026-11-05-trial-15-dias', sql: "UPDATE plans SET nome = replace(nome, '14 dias', '15 dias'), descricao = replace(descricao, '14 dias', '15 dias') WHERE slug = 'trial';" },
+];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;
   db.exec(m.sql);

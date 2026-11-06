@@ -543,7 +543,7 @@ ${cabecalho({ atual: 'cifras' })}
 <main><h1>Cifras públicas</h1><p class="s">Cifras que os músicos do Musique abriram para todo mundo.</p>
 <form method="get"><input name="q" value="${esc(q)}" placeholder="Buscar por música ou artista" aria-label="Buscar"><button>Buscar</button></form>
 ${itens ? `<div class="g">${itens}</div>` : `<p class="v">${q ? 'Nada encontrado para essa busca.' : 'Ainda não há cifras públicas. Quando um músico abrir uma cifra para todos, ela aparece aqui.'}</p>`}
-<div class="cta"><b>Quer transpor, ver o acorde no seu instrumento e tocar com a banda?</b> Teste o Musique grátis por 14 dias. <a href="/music/entrar#criar">Começar</a></div>
+<div class="cta"><b>Quer transpor, ver o acorde no seu instrumento e tocar com a banda?</b> Teste o Musique grátis por 15 dias. <a href="/music/entrar#criar">Começar</a></div>
 </main></body></html>`);
   });
   app.get('/music/p/:obraId', (req, res) => {

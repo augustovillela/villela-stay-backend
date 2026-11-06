@@ -89,7 +89,7 @@ function landing() {
   <div class="eyebrow">Gestão de projetos e eventos com IA</div>
   <h1>Da ideia ao lançamento — e do briefing ao pós-evento — em um só lugar.</h1>
   <p class="sub">Projetos, processos e automações em um só lugar: o Villela Projects organiza seu portfólio de negócios (ideia → viabilidade → plano → execução → operação) e sua operação de eventos (briefing, proposta, fornecedores, equipe, financeiro), com agentes de IA trabalhando como parte do time.</p>
-  <p style="margin-top:22px"><a class="btn" style="background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Começar teste grátis de 14 dias</a>
+  <p style="margin-top:22px"><a class="btn" style="background:#DDD3F7;color:#2E1065!important" href="/vpe/cadastro">Começar teste grátis de 15 dias</a>
   <a class="btn btn-ghost" style="margin-left:8px;border-color:#4A5A85;color:#C7D0E2!important" href="#demo">Pedir demonstração</a></p>
   <p style="font-size:13px;color:#A9B4CC">Sem cartão de crédito · Cancele quando quiser · LGPD</p>
 </div></div>
@@ -160,7 +160,7 @@ function landing() {
 </div></section>`;
   return pagina({
     titulo: 'Villela Projects — Projetos, processos e automações em um só lugar',
-    descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 14 dias.',
+    descricao: 'Portfólio de ideias, projetos por fases, eventos de ponta a ponta e agentes de IA. Teste grátis 15 dias.',
     corpo, og: true,
     extraHead: `<link rel="canonical" href="https://projetos.villelastay.com.br/vpe">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Projects","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Projetos, processos e automações em um só lugar: portfólio, Kanban, eventos, financeiro e IA.","offers":{"@type":"Offer","price":"149.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
@@ -173,7 +173,7 @@ const formPagina = (titulo, inner) => pagina({
   corpo: `<section class="alt" style="min-height:60vh"><div class="wrap-sm"><div class="card" style="padding:28px"><h2 style="margin-top:0">${esc(titulo)}</h2>${inner}</div></div></section>`,
 });
 
-const cadastro = () => formPagina('Criar conta — teste grátis 14 dias', `
+const cadastro = () => formPagina('Criar conta — teste grátis 15 dias', `
   <div id="erro"></div>
   <form onsubmit="return enviar(event)">
     <label>Nome da empresa</label><input id="f-empresa" required>
@@ -198,7 +198,7 @@ const login = () => formPagina('Entrar', `
     <label>Senha</label><input id="f-senha" type="password" required>
     <p><button class="btn" type="submit" style="width:100%">Entrar</button></p>
   </form>
-  <p style="font-size:13px;color:var(--suave)">Ainda não tem conta? <a href="/vpe/cadastro">Teste grátis 14 dias</a></p>
+  <p style="font-size:13px;color:var(--suave)">Ainda não tem conta? <a href="/vpe/cadastro">Teste grátis 15 dias</a></p>
   <script>
   async function enviar(ev){ev.preventDefault();const v=id=>document.getElementById(id).value;
     const r=await fetch('/vpe/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:v('f-email'),senha:v('f-senha')})});

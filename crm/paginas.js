@@ -105,9 +105,9 @@ function landingHTML() {
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela CRM — CRM inteligente multicanal para vender mais</title>
-    <meta name="description" content="CRM inteligente multicanal: leads com origem e UTM, funis Kanban, follow-ups automáticos, lead scoring, propostas com link, campanhas e agentes de IA. Teste grátis 14 dias.">
+    <meta name="description" content="CRM inteligente multicanal: leads com origem e UTM, funis Kanban, follow-ups automáticos, lead scoring, propostas com link, campanhas e agentes de IA. Teste grátis 15 dias.">
     <meta property="og:title" content="Villela CRM — CRM inteligente multicanal">
-    <meta property="og:description" content="Capte, organize, converta: funis Kanban, follow-up automático, scoring, propostas e campanhas em um só lugar. Teste grátis por 14 dias.">
+    <meta property="og:description" content="Capte, organize, converta: funis Kanban, follow-up automático, scoring, propostas e campanhas em um só lugar. Teste grátis por 15 dias.">
     <meta property="og:image" content="https://crm.villelastay.com.br${BRAND}/og-image.png">
     <meta property="og:type" content="website"><meta property="og:url" content="https://crm.villelastay.com.br/crm">
     <link rel="canonical" href="https://crm.villelastay.com.br/crm">
@@ -125,7 +125,7 @@ function landingHTML() {
         <span class="cp-eyebrow">CRM inteligente multicanal</span>
         <h1>Pare de perder leads. <em>Comece a fechar mais.</em></h1>
         <p class="cp-lead">Captação com origem e UTM, funis Kanban, follow-up que se cobra sozinho, propostas com link rastreável e agentes de IA — tudo num painel feito para times comerciais brasileiros.</p>
-        <div class="cp-cta-row"><a class="btn lg" href="/crm/assinar?plano=trial">Testar 14 dias grátis ${ic('arrow')}</a><a class="btn lg cp-ghost-d" href="/crm/app">Já sou cliente</a></div>
+        <div class="cp-cta-row"><a class="btn lg" href="/crm/assinar?plano=trial">Testar 15 dias grátis ${ic('arrow')}</a><a class="btn lg cp-ghost-d" href="/crm/app">Já sou cliente</a></div>
         <div class="cp-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('shield')} LGPD: consentimento e opt-out</span><span>${ic('star')} Usado todos os dias pelo Grupo Villela Stay</span></div>
       </div>
       <div class="cp-stage" aria-hidden="true">
@@ -204,7 +204,7 @@ function landingHTML() {
     <section class="cp-sec cp-sec--alt" id="faq"><div class="cp-wrap">
       <div class="cp-center"><div class="cp-sec-eyebrow">Dúvidas</div><h2>Perguntas frequentes</h2><p class="cp-sec-sub">O que mais perguntam antes de começar.</p></div>
       <div class="cp-faq">
-        <details><summary>Preciso de cartão para testar?</summary><p>Não. O teste dura 14 dias, com todos os módulos, e a cobrança só começa se você assinar um plano.</p></details>
+        <details><summary>Preciso de cartão para testar?</summary><p>Não. O teste dura 15 dias, com todos os módulos, e a cobrança só começa se você assinar um plano.</p></details>
         <details><summary>Posso trazer meus contatos de outro CRM ou planilha?</summary><p>Sim. Há importação e exportação em CSV, com detecção de duplicados por telefone e e-mail, e um webhook para receber leads de formulários e páginas.</p></details>
         <details><summary>A IA manda mensagens sozinha?</summary><p>Não. Os agentes de qualificação, follow-up e reativação só fazem sugestões, todas registradas, e a pessoa do seu time revisa antes de qualquer envio.</p></details>
         <details><summary>Meus dados estão protegidos?</summary><p>A conexão é HTTPS, os dados de cada empresa ficam isolados e há controle de consentimento, opt-out e exclusão definitiva para atender à LGPD. Cada pessoa do time entra com o papel certo (vendedor, gestor, leitura…).</p></details>
@@ -221,7 +221,7 @@ function landingHTML() {
       </form>
     </div></section>
 
-    <section class="cp-end"><div class="cp-wrap"><h2>Relacionamento que aproxima. Processos que convertem.</h2><p style="margin:0 0 24px">Comece hoje: 14 dias grátis, sem cartão.</p><a class="btn lg cp-gold" href="/crm/assinar?plano=trial">Criar minha conta ${ic('arrow')}</a></div></section>
+    <section class="cp-end"><div class="cp-wrap"><h2>Relacionamento que aproxima. Processos que convertem.</h2><p style="margin:0 0 24px">Comece hoje: 15 dias grátis, sem cartão.</p><a class="btn lg cp-gold" href="/crm/assinar?plano=trial">Criar minha conta ${ic('arrow')}</a></div></section>
 
     <footer class="cp-foot"><div class="cp-wrap">Villela CRM · <a href="/crm/app">Painel do cliente</a> · <a href="/crm/ajuda">Ajuda</a> · <a href="/crm/ajuda/manual">Instalar como app no celular</a>
       <br>Uma empresa do Grupo Villela Stay · CNPJ 56.776.526/0001-12</div>
@@ -242,7 +242,7 @@ function shell(corpo, script, titulo = 'Villela CRM — Painel') {
 
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
-  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '14 dias grátis, sem cartão' : 'Sob consulta');
+  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
   return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-emp" placeholder="Nome da empresa *" required>

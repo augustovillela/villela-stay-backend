@@ -64,7 +64,7 @@ async function rodar() {
 
   await t('landing pública renderiza com planos', async () => {
     const r = await req('GET', '/gestao');
-    assert.ok(r.texto.includes('Villela Stay Manager') && r.texto.includes('Pro') && r.texto.includes('Testar 14 dias'));
+    assert.ok(r.texto.includes('Villela Stay Manager') && r.texto.includes('Pro') && r.texto.includes('Testar 15 dias'));
   });
   await t('dashboard só admin (operador → 403)', async () => {
     assert.equal((await req('GET', '/staff/api/vsm/dashboard', { user: 'op' })).st, 403);

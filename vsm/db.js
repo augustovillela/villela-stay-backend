@@ -34,6 +34,8 @@ const MIGRACOES = [
   // preços FINAIS dos planos (autorização do Augusto 11/07/2026) — só troca quem ainda
   // está no preço-semente provisório (edição manual no painel é preservada)
   { nome: '2026-07-11-precos-finais', sql: "UPDATE plans SET preco_centavos = 12900 WHERE slug = 'starter' AND preco_centavos = 9900; UPDATE plans SET preco_centavos = 29900 WHERE slug = 'pro' AND preco_centavos = 24900; UPDATE plans SET preco_centavos = 69900 WHERE slug = 'business' AND preco_centavos = 59900;" },
+  // teste grátis padronizado em 15 dias (Augusto, 05/11/2026): corrige só o texto do plano 'trial' já gravado
+  { nome: '2026-11-05-trial-15-dias', sql: "UPDATE plans SET nome = replace(nome, '14 dias', '15 dias'), descricao = replace(descricao, '14 dias', '15 dias') WHERE slug = 'trial';" },
 ];
 for (const m of MIGRACOES) {
   if (db.prepare('SELECT 1 FROM migrations WHERE nome = ?').get(m.nome)) continue;

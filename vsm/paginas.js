@@ -89,9 +89,9 @@ function landingHTML() {
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Stay Manager — sistema de gestão para aluguel por temporada</title>
-    <meta name="description" content="Gestão profissional para aluguel por temporada: imóveis, reservas, canais/OTAs, limpeza, financeiro e IA para anfitriões e gestores. Teste grátis por 14 dias.">
+    <meta name="description" content="Gestão profissional para aluguel por temporada: imóveis, reservas, canais/OTAs, limpeza, financeiro e IA para anfitriões e gestores. Teste grátis por 15 dias.">
     <meta property="og:title" content="Villela Stay Manager — Gestão profissional para aluguel por temporada">
-    <meta property="og:description" content="Imóveis, reservas, canais/OTAs, limpeza, financeiro e IA em um só lugar. Gestão testada na operação real da Villela Stay. Teste grátis por 14 dias.">
+    <meta property="og:description" content="Imóveis, reservas, canais/OTAs, limpeza, financeiro e IA em um só lugar. Gestão testada na operação real da Villela Stay. Teste grátis por 15 dias.">
     <meta property="og:image" content="https://manager.villelastay.com.br${BRAND}/og-image.png">
     <meta property="og:type" content="website"><meta property="og:url" content="https://manager.villelastay.com.br/gestao">
     <link rel="canonical" href="https://manager.villelastay.com.br/gestao">
@@ -106,7 +106,7 @@ function landingHTML() {
       <span class="badge">Sistema de gestão de hospedagem</span>
       <h1>Toda a sua operação de temporada em um só lugar.</h1>
       <p>Gestão profissional para aluguel por temporada: imóveis, reservas, canais, limpeza, financeiro e IA — para anfitriões e gestores brasileiros.</p>
-      <p style="margin-top:26px"><a class="btn" href="/gestao/assinar?plano=trial">Testar 14 dias grátis</a>
+      <p style="margin-top:26px"><a class="btn" href="/gestao/assinar?plano=trial">Testar 15 dias grátis</a>
       &nbsp;<a class="btn o" href="/gestao/app">Já sou cliente</a></p>
       <p style="font-size:.95rem;margin-top:18px;color:#cfd8e6"><span style="color:var(--villela-gold)">★</span> Gestão testada na operação real da Villela Stay</p>
     </div></div>
@@ -159,7 +159,7 @@ function shell(corpo, script) {
 
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
-  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '14 dias grátis, sem cartão' : 'Sob consulta');
+  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
   return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-esc" placeholder="Nome da operação / empresa *" required>

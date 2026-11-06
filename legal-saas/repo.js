@@ -55,7 +55,7 @@ const FLAGS_SEED = [
 // ---- PLANOS (seed; preços PROVISÓRIOS, editáveis no painel) ----
 const PLANOS_SEED = [
   {
-    slug: 'trial', nome: 'Trial (14 dias)', descricao: 'Avaliação completa por 14 dias.',
+    slug: 'trial', nome: 'Trial (15 dias)', descricao: 'Avaliação completa por 15 dias.',
     preco_centavos: 0, ordem: 0,
     limites: { advogados: 2, processos_ativos: 20, ia_consultas_mes: 30, armazenamento_mb: 500, clientes_portal: 5 },
     modulos: MODULOS_KEYS, flags: { ia_direta: false, api_publica: false, white_label: false, coleta_automatica: true },
@@ -143,7 +143,7 @@ function hidratarPlano(p) {
 // =====================================================================
 // TENANTS (escritórios)
 // =====================================================================
-const DIAS_TRIAL = parseInt(process.env.LEGALSAAS_TRIAL_DIAS, 10) || 14;
+const DIAS_TRIAL = parseInt(process.env.LEGALSAAS_TRIAL_DIAS, 10) || 15;
 const Tenants = {
   listar({ status = '', busca = '', limite = 200, cortesia = false } = {}) {
     let sql = `SELECT t.*, p.nome AS plano_nome, p.preco_centavos,

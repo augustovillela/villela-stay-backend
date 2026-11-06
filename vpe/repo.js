@@ -114,7 +114,7 @@ function slugDisponivel(base) {
 const obterTenant = (id) => db.prepare('SELECT * FROM tenants WHERE id = ?').get(String(id));
 const tenantPorSlug = (slug) => db.prepare('SELECT * FROM tenants WHERE slug = ?').get(String(slug));
 
-function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, cortesia = false, planoSlug = 'professional', trialDias = 14 }) {
+function criarTenantComDono({ empresa, nome, email, senha, ip, interno = false, cortesia = false, planoSlug = 'professional', trialDias = 15 }) {
   const em = emailNorm(email);
   if (!s(empresa, 120)) throw new Error('Informe o nome da empresa.');
   if (!s(nome, 120)) throw new Error('Informe o seu nome.');

@@ -69,7 +69,7 @@ async function rodar() {
     // entrada levam a marca "Villela CRM" e os completos, "Villela Growth".
     assert.ok(r.texto.includes('Villela CRM — Profissional'), 'landing sem o plano Villela CRM — Profissional');
     assert.ok(r.texto.includes('Villela Growth — Completo'), 'landing sem o plano Villela Growth — Completo');
-    assert.ok(r.texto.includes('Testar 14 dias'), 'landing sem o CTA do teste');
+    assert.ok(r.texto.includes('Testar 15 dias'), 'landing sem o CTA do teste');
   });
   await t('dashboard da plataforma só admin (operador → 403)', async () => {
     assert.equal((await req('GET', '/staff/api/vcrm/dashboard', { user: 'op' })).st, 403);

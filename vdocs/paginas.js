@@ -147,7 +147,7 @@ function landing() {
       <h1>Todos os documentos da sua empresa <span class="hx-grad">organizados, seguros e com respostas em segundos.</span></h1>
       <p class="hx-lead">O Villela Docs centraliza contratos, notas, faturas e processos num só lugar, com busca inteligente, aprovações, controle de versão, trilha de auditoria e uma IA que responde citando o documento.</p>
       <div class="hx-cta">
-        <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis de 14 dias ${ic('arrow')}</a>
+        <a class="btn btn-ciano lg" href="/vdocs/cadastro">Começar teste grátis de 15 dias ${ic('arrow')}</a>
         <a class="hx-ghost" href="#demo">Pedir demonstração</a>
       </div>
       <div class="hx-micro"><span>${ic('check')} Sem cartão de crédito</span><span>${ic('check')} Cancele quando quiser</span><span>${ic('check')} Dados no Brasil, adequado à LGPD</span></div>
@@ -250,7 +250,7 @@ function landing() {
 </div></section>
 
 <section class="hx-sec hx-sec-mist" id="planos"><div class="dx-wrap">
-  <div class="hx-head"><div class="hx-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 14 dias grátis no nível Professional, sem cartão de crédito.</p></div>
+  <div class="hx-head"><div class="hx-eyebrow">Planos</div><h2>Comece pequeno, cresça sem trocar de ferramenta</h2><p>Todos os planos começam com 15 dias grátis no nível Professional, sem cartão de crédito.</p></div>
   <div class="dx-plans">
     ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
       <h3>${esc(p.nome)}</h3><div class="dx-preco">${brl(p.preco_centavos)}${Number(p.preco_centavos) ? ' <small>/mês</small>' : ''}</div>
@@ -309,7 +309,7 @@ function landing() {
 </div></section>`;
   return pagina({
     titulo: 'Villela Docs — Document Intelligence: gestão de documentos com IA para empresas',
-    descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 14 dias.',
+    descricao: 'Inteligência documental para empresas: centralize, organize e encontre os documentos da sua empresa com busca inteligente, workflows de aprovação, auditoria e IA que cita as fontes. Teste grátis 15 dias.',
     canonical: 'https://docs.villelastay.com.br/vdocs',
     corpo: `<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Docs","applicationCategory":"BusinessApplication","operatingSystem":"Web","description":"Inteligência documental para empresas: busca inteligente, workflows, auditoria e IA que responde citando as fontes.","offers":{"@type":"Offer","price":"99.00","priceCurrency":"BRL"},"publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>` + corpo,
   });
@@ -344,7 +344,7 @@ function precos() {
   const corpo = `<section class="dx-sec"><div class="dx-wrap">
   <div class="dx-sec-eyebrow">Planos e preços</div>
   <h2>Escolha o tamanho da sua operação</h2>
-  <p style="color:var(--suave)">Todos os planos começam com <b>14 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
+  <p style="color:var(--suave)">Todos os planos começam com <b>15 dias grátis</b> no nível Professional — sem cartão de crédito.</p>
   <div style="overflow-x:auto"><table>
     <tr><th></th>${planos.map(p => `<th style="font-size:15px;color:var(--indigo2)">${esc(p.nome)}<br><span style="font-weight:400;color:var(--suave)">${brl(p.preco_centavos)}</span></th>`).join('')}</tr>
     ${linhas.map(([rot, fn]) => `<tr><td><b>${rot}</b></td>${planos.map(p => `<td>${fn(p)}</td>`).join('')}</tr>`).join('')}
@@ -352,7 +352,7 @@ function precos() {
   </table></div>
   <div class="aviso">Precisa de volumes maiores, SSO ou contrato personalizado? <a href="/vdocs#demo">Fale com a gente</a> — o plano Enterprise é sob medida.</div>
 </div></section>`;
-  return pagina({ titulo: 'Planos e preços — Villela Docs', descricao: 'Planos Starter, Professional, Business e Enterprise. Teste grátis 14 dias, sem cartão.', corpo });
+  return pagina({ titulo: 'Planos e preços — Villela Docs', descricao: 'Planos Starter, Professional, Business e Enterprise. Teste grátis 15 dias, sem cartão.', corpo });
 }
 
 // ------------------------------------------------------------ cadastro / login / convite
@@ -363,14 +363,14 @@ const formPagina = (titulo, inner) => pagina({
     <span class="hx-pill"><i></i> Inteligência documental para empresas</span>
     <h2>Seus documentos, organizados e com respostas em segundos.</h2>
     <p>Centralize contratos, notas e processos num só lugar, com busca inteligente e uma IA que cita a fonte.</p>
-    <ul><li>${ic('check')} 14 dias grátis, sem cartão de crédito</li><li>${ic('lock')} Dados no Brasil, isolados por empresa, adequado à LGPD</li><li>${ic('spark')} IA que responde citando o documento</li></ul>
+    <ul><li>${ic('check')} 15 dias grátis, sem cartão de crédito</li><li>${ic('lock')} Dados no Brasil, isolados por empresa, adequado à LGPD</li><li>${ic('spark')} IA que responde citando o documento</li></ul>
     <div class="au-mini"><span class="dx-cat dx-cat-nota_fiscal">Nota fiscal</span><span class="dx-cat dx-cat-contrato">Contrato</span><span class="dx-cat dx-cat-fatura">Fatura</span><span class="dx-cat dx-cat-extrato_bancario">Extrato</span></div>
   </aside>
   <div class="au-form"><div class="au-card"><h2>${esc(titulo)}</h2>${inner}</div></div>
 </div></section>`,
 });
 
-const cadastro = () => formPagina('Criar conta — teste grátis 14 dias', `
+const cadastro = () => formPagina('Criar conta — teste grátis 15 dias', `
   <p style="color:var(--suave)">Crie a conta da sua empresa. Você será o <b>Dono da conta</b> e poderá convidar a equipe em seguida.</p>
   <div id="erro"></div>
   <form onsubmit="return enviar(event)">
@@ -396,7 +396,7 @@ const login = () => formPagina('Entrar', `
     <label>Senha</label><input id="f-senha" type="password" required>
     <p><button class="btn" type="submit" style="width:100%">Entrar</button></p>
   </form>
-  <p style="font-size:13px;color:var(--suave)">Ainda não tem conta? <a href="/vdocs/cadastro">Teste grátis 14 dias</a></p>
+  <p style="font-size:13px;color:var(--suave)">Ainda não tem conta? <a href="/vdocs/cadastro">Teste grátis 15 dias</a></p>
   <div id="tfa" style="display:none">
     <p style="color:var(--suave)">Sua conta tem verificação em duas etapas. Digite o código do app autenticador (ou um código de recuperação).</p>
     <label>Código</label><input id="f-codigo" inputmode="numeric" autocomplete="one-time-code">

@@ -3058,7 +3058,7 @@ conferirCobertura(PRODUTOS_GRUPO);
   // mensalidade. Dizer "a partir de R$ X/mês" na Academy (comissão por
   // venda) ou no Alta Vista (por projeto) seria mentira de vitrine.
   // 'freemium' (Musique): o app é grátis de verdade e a assinatura é opcional —
-  // prometer "14 dias de teste" ali seria vender um teste que não existe.
+  // prometer "15 dias de teste" ali seria vender um teste que não existe.
   const precoTexto = s => s.preco.modelo === 'assinatura'
     ? `<b>${real(s.preco.valor)}<small>${t('/mês', '/mo', '/mes')}</small></b><span>${t('por mês, no plano de entrada', 'per month, on the entry plan', 'al mes, en el plan de entrada')}</span>`
     : s.preco.modelo === 'freemium'
@@ -3102,7 +3102,7 @@ conferirCobertura(PRODUTOS_GRUPO);
           <div class="sx-preco">${precoTexto(s)}</div>
           <a class="sx-btn sx-btn-cheio" href="${s.urlTeste}" target="_blank" rel="noopener"
              data-sx-cta="${s.id}">${temTeste(s)
-               ? t('Testar 14 dias grátis', 'Start a 14-day free trial', 'Probar 14 días gratis')
+               ? t('Testar 15 dias grátis', 'Start a 15-day free trial', 'Probar 15 días gratis')
                : (s.preco.modelo === 'comissao' || s.preco.modelo === 'freemium' ? t('Criar conta grátis', 'Create a free account', 'Crear cuenta gratis') : t('Pedir orçamento', 'Request a quote', 'Pedir presupuesto'))}</a>
           <a class="sx-btn sx-btn-vazio" href="${s.url}" target="_blank" rel="noopener">${t('Ver o sistema', 'See the system', 'Ver el sistema')}</a>
         </div>
@@ -3135,9 +3135,9 @@ conferirCobertura(PRODUTOS_GRUPO);
        'It is the Brazilian company Augusto Villela Ltda (tax ID 56.776.526/0001-12), based in Brasília, Brazil, which runs short-stay accommodation in Lago Sul and develops the management systems on this page. Each system was built to solve a problem in its own operation before being sold to anyone else.',
        'Es la empresa brasileña Augusto Villela Ltda (CNPJ 56.776.526/0001-12), de Brasília, que opera alojamiento por temporada en Lago Sul y desarrolla los sistemas de gestión de esta página. Cada sistema nació para resolver un problema de la propia operación antes de venderse a terceros.')],
     [t('Preciso de cartão de crédito para testar?', 'Do I need a credit card to try it?', '¿Necesito tarjeta de crédito para probar?'),
-     t('Não. Os sistemas por assinatura têm 14 dias de teste sem cartão. Você cadastra, usa tudo e decide no fim — se não assinar, nada é cobrado.',
-       'No. The subscription systems come with a 14-day trial and no card required. You sign up, use everything and decide at the end — if you do not subscribe, nothing is charged.',
-       'No. Los sistemas por suscripción tienen 14 días de prueba sin tarjeta. Te registras, usas todo y decides al final — si no te suscribes, no se cobra nada.')],
+     t('Não. Os sistemas por assinatura têm 15 dias de teste sem cartão. Você cadastra, usa tudo e decide no fim — se não assinar, nada é cobrado.',
+       'No. The subscription systems come with a 15-day trial and no card required. You sign up, use everything and decide at the end — if you do not subscribe, nothing is charged.',
+       'No. Los sistemas por suscripción tienen 15 días de prueba sin tarjeta. Te registras, usas todo y decides al final — si no te suscribes, no se cobra nada.')],
     [t('Posso cancelar quando quiser?', 'Can I cancel whenever I want?', '¿Puedo cancelar cuando quiera?'),
      t('Pode. Não há fidelidade nem multa de cancelamento, e você pode exportar seus dados antes de sair.',
        'You can. There is no lock-in and no cancellation penalty, and you can export your data before leaving.',
@@ -3159,9 +3159,9 @@ conferirCobertura(PRODUTOS_GRUPO);
        `Three platforms already run in production and have not yet launched commercially: ${EM_DESENVOLVIMENTO.map(d => `${d.nome} (${String(d.categoria[1]).toLowerCase()})`).join(', ')}. Each one lists on this page what is still missing before launch — usually legal review, inventory or payment credentials, not code.`,
        `Tres plataformas ya funcionan en producción y aún no se han lanzado comercialmente: ${EM_DESENVOLVIMENTO.map(d => `${d.nome} (${String(d.categoria[2]).toLowerCase()})`).join(', ')}. Cada una indica en esta página lo que aún falta para el lanzamiento — en general revisión jurídica, acervo o credencial de pago, no código.`)],
     [t('As telas mostradas nesta página são reais?', 'Are the screens shown on this page real?', '¿Las pantallas mostradas en esta página son reales?'),
-     t('São reproduções fiéis das telas dos sistemas, desenhadas com a mesma interface e os mesmos módulos — com dados inventados. Painel de verdade contém nome de cliente e de hóspede, e isso não se publica. Para ver o sistema real, use os 14 dias de teste.',
-       'They are faithful reproductions of the systems’ screens, built with the same interface and the same modules — with invented data. A real panel contains client and guest names, and that is not something you publish. To see the real system, use the 14-day trial.',
-       'Son reproducciones fieles de las pantallas de los sistemas, hechas con la misma interfaz y los mismos módulos — con datos inventados. Un panel real contiene nombres de clientes y huéspedes, y eso no se publica. Para ver el sistema real, usa los 14 días de prueba.')]
+     t('São reproduções fiéis das telas dos sistemas, desenhadas com a mesma interface e os mesmos módulos — com dados inventados. Painel de verdade contém nome de cliente e de hóspede, e isso não se publica. Para ver o sistema real, use os 15 dias de teste.',
+       'They are faithful reproductions of the systems’ screens, built with the same interface and the same modules — with invented data. A real panel contains client and guest names, and that is not something you publish. To see the real system, use the 15-day trial.',
+       'Son reproducciones fieles de las pantallas de los sistemas, hechas con la misma interfaz y los mismos módulos — con datos inventados. Un panel real contiene nombres de clientes y huéspedes, y eso no se publica. Para ver el sistema real, usa los 15 días de prueba.')]
   ];
   const faqTudo = faqGrupo.concat(SISTEMAS.flatMap(s => s.faq.map(([q, a]) => [t(...q), t(...a)])));
   const faqHtml = faqTudo.map(([q, a]) =>
@@ -3207,9 +3207,9 @@ conferirCobertura(PRODUTOS_GRUPO);
     t('Sistemas de gestão do Grupo Villela Stay — CRM, jurídico, documentos, hospedagem, projetos, música',
       'Grupo Villela Stay management software — CRM, legal, documents, hospitality, projects, music',
       'Sistemas de gestión del Grupo Villela Stay — CRM, jurídico, documentos, alojamiento, proyectos, música'),
-    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online, conteúdo visual 360° e academia musical com cifras. A partir de R$ 79 por mês, 14 dias grátis sem cartão.`,
-      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses, 360° visual content and a music academy with chord charts. From R$79 a month, 14 days free, no card required.`,
-      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online, contenido visual 360° y academia musical con cifrados. Desde R$ 79 al mes, 14 días gratis sin tarjeta.`),
+    t(`${SISTEMAS.length} sistemas brasileiros de gestão em nuvem — CRM, software jurídico, gestão documental com IA, gestão de hospedagem, projetos e eventos, cursos online, conteúdo visual 360° e academia musical com cifras. A partir de R$ 79 por mês, 15 dias grátis sem cartão.`,
+      `${SISTEMAS.length} Brazilian cloud management systems — CRM, legal software, AI document management, hospitality management, projects and events, online courses, 360° visual content and a music academy with chord charts. From R$79 a month, 15 days free, no card required.`,
+      `${SISTEMAS.length} sistemas brasileños de gestión en la nube — CRM, software jurídico, gestión documental con IA, gestión de alojamiento, proyectos y eventos, cursos online, contenido visual 360° y academia musical con cifrados. Desde R$ 79 al mes, 15 días gratis sin tarjeta.`),
     `
 <section class="sx-hero">
   <div class="sx-wrap">
@@ -3326,7 +3326,7 @@ ${blocos}
       'Most management software is written by people who never ran the business the software promises to organise. These are the opposite: the Lago Sul accommodation, the law practice, the project portfolio and the group’s own sales pipeline run on these systems every day. When something breaks, we are the ones who feel it first.',
       'La mayoría del software de gestión lo escribe quien nunca operó el negocio que el software promete organizar. Estos son lo contrario: el alojamiento en Lago Sul, el despacho de abogados, el portafolio de proyectos y el embudo comercial del propio grupo funcionan en estos sistemas todos los días. Cuando algo falla, los primeros en sentirlo somos nosotros.')}</p>
     <ul class="sx-garantias">
-      <li><b>${t('14 dias grátis, sem cartão', '14 days free, no card', '14 días gratis, sin tarjeta')}</b><span>${t('Você usa tudo antes de decidir. Não pedimos cartão para começar o teste.', 'You use everything before deciding. We do not ask for a card to start the trial.', 'Usas todo antes de decidir. No pedimos tarjeta para empezar la prueba.')}</span></li>
+      <li><b>${t('15 dias grátis, sem cartão', '15 days free, no card', '15 días gratis, sin tarjeta')}</b><span>${t('Você usa tudo antes de decidir. Não pedimos cartão para começar o teste.', 'You use everything before deciding. We do not ask for a card to start the trial.', 'Usas todo antes de decidir. No pedimos tarjeta para empezar la prueba.')}</span></li>
       <li><b>${t('Sem fidelidade', 'No lock-in', 'Sin permanencia')}</b><span>${t('Cancela quando quiser, sem multa, e leva seus dados na exportação.', 'Cancel whenever you like, no penalty, and take your data with you on export.', 'Cancela cuando quieras, sin multa, y llévate tus datos en la exportación.')}</span></li>
       <li><b>${t('Suporte com quem constrói', 'Support from the people who build it', 'Soporte con quien lo construye')}</b><span>${t('Em português, direto com a equipe que escreve o sistema — sem camada terceirizada.', 'In Portuguese, straight to the team that writes the system — no outsourced layer.', 'En portugués, directo con el equipo que escribe el sistema — sin capa tercerizada.')}</span></li>
       <li><b>${t('Adequado à LGPD', 'Data-protection compliant', 'Cumple la protección de datos')}</b><span>${t('Base isolada por assinante, permissão por papel, trilha de auditoria e exportação sob demanda.', 'A database isolated per subscriber, role-based permissions, audit trail and export on demand.', 'Base aislada por suscriptor, permisos por rol, rastro de auditoría y exportación bajo demanda.')}</span></li>
@@ -3816,9 +3816,9 @@ ${blocos}
        'No. A course is a one-time purchase with lifetime access to the content and to updates of the same edition. The monthly subscription applies to the management software, which is a different thing.',
        'No. El curso es compra única, con acceso de por vida al contenido y a las actualizaciones de la misma edición. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
     [t('Os sistemas têm teste grátis?', 'Is there a free trial for the software?', '¿Los sistemas tienen prueba gratis?'),
-     t(`Os que são vendidos por assinatura têm 14 dias grátis, sem cartão de crédito e sem fidelidade. Dos ${TODOS_SIS.length}, ${SISTEMAS.length} estão à venda; ${EM_DESENVOLVIMENTO.length} já funcionam em produção e ainda não foram lançados comercialmente — a página dos sistemas diz o que falta em cada um.`,
-       `Those sold by subscription come with 14 days free, no credit card and no lock-in. Of the ${TODOS_SIS.length}, ${SISTEMAS.length} are for sale; ${EM_DESENVOLVIMENTO.length} already run in production and have not launched commercially yet — the systems page says what each one is still missing.`,
-       `Los vendidos por suscripción tienen 14 días gratis, sin tarjeta y sin permanencia. De los ${TODOS_SIS.length}, ${SISTEMAS.length} están a la venta; ${EM_DESENVOLVIMENTO.length} ya funcionan en producción y aún no se lanzaron comercialmente.`)],
+     t(`Os que são vendidos por assinatura têm 15 dias grátis, sem cartão de crédito e sem fidelidade. Dos ${TODOS_SIS.length}, ${SISTEMAS.length} estão à venda; ${EM_DESENVOLVIMENTO.length} já funcionam em produção e ainda não foram lançados comercialmente — a página dos sistemas diz o que falta em cada um.`,
+       `Those sold by subscription come with 15 days free, no credit card and no lock-in. Of the ${TODOS_SIS.length}, ${SISTEMAS.length} are for sale; ${EM_DESENVOLVIMENTO.length} already run in production and have not launched commercially yet — the systems page says what each one is still missing.`,
+       `Los vendidos por suscripción tienen 15 días gratis, sin tarjeta y sin permanencia. De los ${TODOS_SIS.length}, ${SISTEMAS.length} están a la venta; ${EM_DESENVOLVIMENTO.length} ya funcionan en producción y aún no se lanzaron comercialmente.`)],
     [t('Quem é Augusto Villela?', 'Who is Augusto Villela?', '¿Quién es Augusto Villela?'),
      t('Advogado e empresário em Brasília, autor dos livros desta página e fundador do Grupo Villela Stay, que opera hospedagem por temporada no Lago Sul e desenvolve os sistemas de gestão listados aqui. Os exemplos dos livros e dos cursos saem dessa operação — não são casos hipotéticos.',
        'A lawyer and entrepreneur in Brasília, author of the books on this page and founder of Grupo Villela Stay, which runs vacation rentals in Lago Sul and builds the management software listed here. The examples in the books and courses come from that operation — they are not hypothetical cases.',
@@ -3961,9 +3961,9 @@ ${blocos}
              `${TODOS_SIS.length} platforms already running a real business`,
              `${TODOS_SIS.length} plataformas que ya operan un negocio de verdad`)}</h2>
     <p class="tx-sub">${t(
-      `Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa operação e só depois virou produto. ${SISTEMAS.length} estão à venda, com 14 dias grátis; ${EM_DESENVOLVIMENTO.length} já estão no ar e ainda não foram lançados. A página dos sistemas mostra cada painel funcionando, animado.`,
-      `None of them was built to be sold: each one first solved a problem in our own operation and only then became a product. ${SISTEMAS.length} are for sale, with 14 days free; ${EM_DESENVOLVIMENTO.length} are already live and not yet launched. The systems page shows each dashboard working, animated.`,
-      `Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra operación y solo después se volvió producto. ${SISTEMAS.length} están a la venta, con 14 días gratis; ${EM_DESENVOLVIMENTO.length} ya están en el aire y aún no se lanzaron. La página de sistemas muestra cada panel funcionando, animado.`)}</p>
+      `Nenhum deles foi feito para vender: cada um resolveu primeiro um problema da nossa operação e só depois virou produto. ${SISTEMAS.length} estão à venda, com 15 dias grátis; ${EM_DESENVOLVIMENTO.length} já estão no ar e ainda não foram lançados. A página dos sistemas mostra cada painel funcionando, animado.`,
+      `None of them was built to be sold: each one first solved a problem in our own operation and only then became a product. ${SISTEMAS.length} are for sale, with 15 days free; ${EM_DESENVOLVIMENTO.length} are already live and not yet launched. The systems page shows each dashboard working, animated.`,
+      `Ninguno fue hecho para vender: cada uno resolvió primero un problema de nuestra operación y solo después se volvió producto. ${SISTEMAS.length} están a la venta, con 15 días gratis; ${EM_DESENVOLVIMENTO.length} ya están en el aire y aún no se lanzaron. La página de sistemas muestra cada panel funcionando, animado.`)}</p>
     <div class="mq" data-vertical="${destaqueSis.vertical}" style="--acento:${destaqueSis.cor};margin-bottom:28px">${TELAS[destaqueSis.tela](t)}</div>
     <div class="tx-grade-sis">${blocosSistemas}</div>
     <p style="margin-top:30px"><a class="tx-btn tx-btn-lago" href="${L('/sistemas.html')}" data-tx-cta="hub-sistemas">${t('Ver os sistemas funcionando', 'See the software working', 'Ver los sistemas funcionando')} →</a></p>
@@ -4003,9 +4003,9 @@ ${blocos}
       </div>
       <div class="tx-porta">
         <b>${t('Sistemas', 'Software', 'Sistemas')}</b>
-        <p>${t(`${TODOS_SIS.length} plataformas em nuvem, com as telas animadas e 14 dias grátis.`,
-               `${TODOS_SIS.length} cloud platforms, with animated screens and 14 days free.`,
-               `${TODOS_SIS.length} plataformas en la nube, con pantallas animadas y 14 días gratis.`)}</p>
+        <p>${t(`${TODOS_SIS.length} plataformas em nuvem, com as telas animadas e 15 dias grátis.`,
+               `${TODOS_SIS.length} cloud platforms, with animated screens and 15 days free.`,
+               `${TODOS_SIS.length} plataformas en la nube, con pantallas animadas y 15 días gratis.`)}</p>
         <a class="tx-btn tx-btn-ouro" href="${L('/sistemas.html')}" data-tx-cta="porta-sistemas">villelastay.com.br/sistemas.html</a>
       </div>
     </div>
@@ -9887,7 +9887,7 @@ VERIFICACOES_GOOGLE.forEach((nome) => {
 // nunca desatualiza em relação a ela.
 const linhaSistema = s => {
   const preco = s.preco.modelo === 'assinatura'
-    ? `a partir de R$ ${s.preco.valor}/mês, 14 dias de teste grátis sem cartão`
+    ? `a partir de R$ ${s.preco.valor}/mês, 15 dias de teste grátis sem cartão`
     : s.preco.texto[0];
   return `- [${s.nome}](${s.url}): ${s.promessa[0]} ${s.virada[0]} Categoria: ${s.categoria[0]}. ` +
          `Para: ${s.paraQuem.map(q => q[0]).join(', ')}. Preço: ${preco}.`;
@@ -9913,7 +9913,7 @@ ${EM_DESENVOLVIMENTO.map(d =>
   `- [${d.nome}](${d.url}): ${d.promessa[0]} ${d.oQueE[0].replace(/<\/?b>/g, '')} ` +
   `Categoria: ${d.categoria[0]}. Estado: ${d.estado[0]}. Falta para lançar: ${d.falta[0]}`).join('\n')}
 
-Fatos comuns a todos os sistemas por assinatura: 14 dias de teste sem cartão de
+Fatos comuns a todos os sistemas por assinatura: 15 dias de teste sem cartão de
 crédito; sem fidelidade nem multa de cancelamento; base de dados isolada por
 assinante; adequação à LGPD; pagamento pelo Mercado Pago (Pix e cartão); suporte
 em português feito pela própria equipe que desenvolve. Não existe login único

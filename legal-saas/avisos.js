@@ -62,7 +62,7 @@ function novoLead(d = {}) {
 const leadDoGuia = (nome, email) => montarAviso({
   titulo: `📘 ${SISTEMA}: lead do guia visual`,
   campos: [['Nome', nome], ['E-mail', email], ['Interesse', 'baixou o guia gratuito Claude AI para Advogados']],
-  fazer: 'Responder o lead em até 24h pelo e-mail acima e oferecer o teste grátis de 14 dias: o guia já foi entregue automaticamente.',
+  fazer: 'Responder o lead em até 24h pelo e-mail acima e oferecer o teste grátis de 15 dias: o guia já foi entregue automaticamente.',
 });
 
 const novoEscritorio = (t) => {

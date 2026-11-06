@@ -124,12 +124,12 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
     assert.equal(CORTESIA.revogadas.length, antes + 1, 'fim do mês pago: a cortesia sai da Academia');
   });
 
-  await t('MUSIQUE PAGO: teste grátis de 14 dias; depois, 402 em tudo — menos conta, assinar e levar os próprios dados', async () => {
+  await t('MUSIQUE PAGO: teste grátis de 15 dias; depois, 402 em tudo — menos conta, assinar e levar os próprios dados', async () => {
     const r = await req('POST', '/music/api/conta/cadastrar', { corpo: { nome: 'Teste Pago', email: 'testepago@t', senha: 'senha-boa-123', aceite_termos: true } });
     const ck = { Cookie: (r.setCookie || []).find((x) => x.startsWith(contas.COOKIE + '=')).split(';')[0] };
     const st = await req('GET', '/music/api/assinatura', { headers: ck });
     assert.equal(st.json.uso.motivo, 'teste');
-    assert.equal(st.json.uso.teste.dias_restantes, 14);
+    assert.equal(st.json.uso.teste.dias_restantes, 15);
     assert.equal((await req('GET', '/music/api/estudo', { headers: ck })).status, 200, 'no teste, tudo liberado');
     // O teste NÃO dá curso da Academia: eles também são vendidos lá.
     const c = contas.Contas.porEmail('testepago@t');
@@ -151,7 +151,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
       // Conta ANTIGA (criada antes da cobrança) ganha o teste a partir do lançamento, não da criação.
       require('./repo').Config.set('assinatura', { ...cfg, pago_desde: new Date(Date.now() - 2 * 864e5).toISOString() });
       const st3 = await req('GET', '/music/api/assinatura', { headers: ck });
-      assert.equal(st3.json.uso.motivo, 'teste'); assert.equal(st3.json.uso.teste.dias_restantes, 12);
+      assert.equal(st3.json.uso.motivo, 'teste'); assert.equal(st3.json.uso.teste.dias_restantes, 13);
       // O dono, cortesia vitalícia, nunca é bloqueado.
       const dono = db.prepare("SELECT id FROM contas_music WHERE origem = 'dono'").get();
       assert.equal(assinatura.acessoDaConta(dono.id).acesso, true);

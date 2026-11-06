@@ -14,7 +14,7 @@ banco SQLite próprio em `DATA_DIR/legal-saas/`, montado no `server.js`.
 | workspaces | `workspaces` (filiais/núcleos por escritório) |
 | planos | `plans` (5 seed: Trial, Essencial, Profissional, Escritório, Enterprise) editáveis no painel |
 | limites | `plans.limites` (JSON) + `usage_records` + enforcement `dentroLimite()` |
-| trial | 14 dias (`LEGALSAAS_TRIAL_DIAS`); trial→inadimplente no vencimento |
+| trial | 15 dias (`LEGALSAAS_TRIAL_DIAS`); trial→inadimplente no vencimento |
 | cobrança recorrente | Mercado Pago **preapproval** (`billing.js`), reusa `mpFetch` do server |
 | upgrade / downgrade | `billing.trocarPlano()` — detecta up/down e se exige reassinar no MP |
 | suspensão por inadimplência | webhook MP `paused`/`cancelled` + dunning (inadimplente 7d → suspensa) |

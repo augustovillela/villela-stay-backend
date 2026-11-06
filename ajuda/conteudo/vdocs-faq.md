@@ -6,7 +6,7 @@
 
 ### Como crio uma conta?
 
-Clique em **Teste grátis** na página inicial, informe o nome da empresa, seu nome, e-mail e uma senha de pelo menos 8 caracteres. Sua empresa começa automaticamente um teste de **14 dias** no nível do plano Professional, **sem cartão de crédito**.
+Clique em **Teste grátis** na página inicial, informe o nome da empresa, seu nome, e-mail e uma senha de pelo menos 8 caracteres. Sua empresa começa automaticamente um teste de **15 dias** no nível do plano Professional, **sem cartão de crédito**.
 
 ### O que acontece quando o período de teste termina?
 

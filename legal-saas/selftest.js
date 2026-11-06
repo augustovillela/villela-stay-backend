@@ -61,7 +61,7 @@ async function rodar() {
 
   await t('landing pública renderiza com planos', async () => {
     const r = await req('GET', '/juridico');
-    assert.ok(r.texto.includes('Villela Legal') && r.texto.includes('Profissional') && r.texto.includes('Testar 14 dias'));
+    assert.ok(r.texto.includes('Villela Legal') && r.texto.includes('Profissional') && r.texto.includes('Testar 15 dias'));
   });
   await t('dashboard só admin (operador → 403)', async () => {
     assert.equal((await req('GET', '/staff/api/legal-saas/dashboard', { user: 'op' })).st, 403);

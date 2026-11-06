@@ -14,7 +14,7 @@ Não. O sistema roda inteiramente no navegador, no computador ou no celular. Bas
 
 ### Como funciona o teste grátis?
 
-O trial dura 14 dias, com todos os módulos liberados dentro dos limites do plano de teste, e
+O trial dura 15 dias, com todos os módulos liberados dentro dos limites do plano de teste, e
 **não pede cartão de crédito**. Ao final, você escolhe um plano para continuar — seus dados
 são preservados.
 

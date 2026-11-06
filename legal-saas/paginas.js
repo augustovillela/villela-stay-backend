@@ -203,9 +203,9 @@ function landingHTML() {
   ];
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Villela Legal — software jurídico para escritórios de advocacia</title>
-    <meta name="description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
+    <meta name="description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 15 dias.">
     <meta property="og:title" content="Villela Legal — software jurídico para escritórios de advocacia">
-    <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 14 dias.">
+    <meta property="og:description" content="Gestão de processos, prazos, publicações, IA jurídica, peças, contratos e portal do cliente. Teste grátis por 15 dias.">
     <meta property="og:image" content="https://juridico.villelastay.com.br${BRAND_DIR}/og-image.png">
     <link rel="canonical" href="https://juridico.villelastay.com.br/juridico">
     ${BRAND_HEAD}<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7">${GA}
@@ -222,7 +222,7 @@ function landingHTML() {
       controladoria, compliance e portal do cliente. Feito por quem advoga, para escritórios brasileiros.</p>
       <p style="margin-top:16px"><a href="/juridico#livro" style="color:var(--vx-gold);font-weight:600;text-decoration:none">📘 Leu “Claude AI na Prática Jurídica”? Veja os 12 protótipos do Cap. 47 já implementados →</a></p>
       <div class="hero-acoes">
-        <a class="btn" href="/juridico/assinar?plano=trial">Testar 14 dias grátis</a>
+        <a class="btn" href="/juridico/assinar?plano=trial">Testar 15 dias grátis</a>
         <a class="btn o" href="/juridico/app">Já sou cliente</a>
       </div>
     </div></div>
@@ -244,7 +244,7 @@ function landingHTML() {
       (Cap. 6.10), inventário de dados e bases legais, pedidos de titular com o prazo de 15 dias da LGPD, incidentes de
       segurança, tabela de temporalidade e canal de denúncias. Cada escritório novo já nasce com esses documentos como
       <b>minuta pronta para adaptar e aprovar</b>.</p>
-      <p style="margin-top:22px"><a class="btn" href="/juridico/assinar?plano=trial">Testar o sistema do livro por 14 dias</a>
+      <p style="margin-top:22px"><a class="btn" href="/juridico/assinar?plano=trial">Testar o sistema do livro por 15 dias</a>
       &nbsp;<a class="btn btn-ghost" href="https://livros.villelastay.com.br/livros/claude-ai-na-pratica-juridica" target="_blank" rel="noopener">Conhecer o livro</a></p>
     </div></div>
     <div class="sec" id="guia" style="background:var(--vx-navy)"><div class="wrap" style="text-align:center">
@@ -310,7 +310,7 @@ function shell(corpo, script) {
 
 function assinarHTML(planoSlug) {
   const p = repo.Planos.porSlug(planoSlug) || repo.Planos.porSlug('trial');
-  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '14 dias grátis, sem cartão' : 'Sob consulta');
+  const preco = p.preco_centavos ? `${brl(p.preco_centavos)}/mês` : (p.slug === 'trial' ? '15 dias grátis, sem cartão' : 'Sob consulta');
   return shell(`<div class="card"><h3>Criar conta — plano ${esc(p.nome)}</h3><p class="tag">${esc(preco)}</p>
     <form class="form" id="su" style="margin-top:12px">
       <input id="s-esc" placeholder="Nome do escritório *" required>
@@ -552,7 +552,7 @@ function registrarPaginas(app, { jwtSecret, enviarEmail, notificar }) {
       enviarEmail(email, 'Seu guia gratuito — Claude AI para Advogados',
         `<p>Olá${d.nome ? ', <b>' + esc(s(d.nome, 60)) + '</b>' : ''}! Aqui está o seu guia gratuito <b>Claude AI para Advogados – Guia Visual</b> (7 dias).</p>
          <p><a href="${url}">Baixar o guia (PDF)</a> — o link vale por 7 dias.</p>
-         <p>Quando quiser ver o método funcionando de verdade, teste o Villela Legal grátis por 14 dias: <a href="${proto}://${req.get('host')}/juridico">${req.get('host')}/juridico</a>.</p>`).catch(() => {});
+         <p>Quando quiser ver o método funcionando de verdade, teste o Villela Legal grátis por 15 dias: <a href="${proto}://${req.get('host')}/juridico">${req.get('host')}/juridico</a>.</p>`).catch(() => {});
     }
     if (notificar) notificar(avisos.leadDoGuia(s(d.nome, 60), email)).catch(() => {});
     res.json({ ok: true, url });
