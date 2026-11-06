@@ -254,7 +254,7 @@ function landing() {
   <div class="dx-plans">
     ${planos.map(p => `<div class="dx-plan${p.slug === 'professional' ? ' dest' : ''}">${p.slug === 'professional' ? '<span class="dx-badge">Mais escolhido</span>' : ''}
       <h3>${esc(p.nome)}</h3><div class="dx-preco">${p.slug === 'trial' ? '15 dias grátis <small>sem cartão</small>' : brl(p.preco_centavos) + (Number(p.preco_centavos) ? ' <small>/mês</small>' : '')}</div>
-      ${Number(p.preco_anual_centavos) > 0 ? `<div class="dx-anual" style="font-size:13px;color:var(--suave);margin:-4px 0 10px">ou <b>${brl(p.preco_anual_centavos)}/ano</b> (2 meses grátis)</div>` : ''}
+      ${Number(p.preco_anual_centavos) > 0 ? `<div class="dx-anual" style="font-size:13px;color:var(--suave);margin:-4px 0 10px">ou <b>${brl(p.preco_anual_centavos).replace('/mês', '')}/ano</b> (2 meses grátis)</div>` : ''}
       <ul>${planoBullets(p)}</ul>
       <a class="btn${p.slug === 'professional' ? '' : ' btn-ghost'}" href="/vdocs/cadastro">Testar grátis</a></div>`).join('')}
   </div>
