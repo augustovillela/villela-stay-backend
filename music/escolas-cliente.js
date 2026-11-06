@@ -30,6 +30,8 @@ const JS = `
 (function () {
   'use strict';
   var U = window.MusiqueUI;
+  function marcar(tipo, id) { if (U.marcarItem) U.marcarItem(tipo, id); }
+  function marcarAba(aba) { if (U.marcarAba) U.marcarAba(aba); }
   var $ = U.$, el = U.el, api = U.api, erro = U.erro, aviso = U.aviso, carregando = U.carregando;
 
   var ESTADOS = [['presente', 'Presente'], ['falta', 'Falta'], ['justificada', 'Justificada']];
@@ -56,6 +58,7 @@ const JS = `
   // ESCOLA — a lista de escolas em que a pessoa trabalha
   // =================================================================
   function verEscolas() {
+    marcarAba('escola');
     carregando();
     api('GET', '/escolas').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
@@ -101,6 +104,7 @@ const JS = `
 
   // ---- uma escola: equipe e turmas ----
   function verEscola(id) {
+    marcar('escola', id);
     carregando();
     api('GET', '/escolas/' + id).then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
@@ -180,6 +184,7 @@ const JS = `
   // TURMA — alunos, aulas, material e boletim
   // =================================================================
   function verTurma(id) {
+    marcar('turma', id);
     carregando();
     api('GET', '/turmas/' + id).then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
@@ -442,6 +447,7 @@ const JS = `
   // MINHAS TURMAS — a porta do aluno e do responsavel
   // =================================================================
   function verMinhasTurmas() {
+    marcarAba('minhas_turmas');
     carregando();
     api('GET', '/minhas-turmas').then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';

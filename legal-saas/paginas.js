@@ -9,6 +9,7 @@ const path = require('path');
 const fs = require('fs');
 const repo = require('./repo');
 const avisos = require('./avisos');
+const rotaApp = require('./rota-app');
 
 const esc = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 });
@@ -348,20 +349,28 @@ function appHTML() {
     const esc=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     const brl=c=>'R$ '+(Number(c||0)/100).toLocaleString('pt-BR',{minimumFractionDigits:2});
     const dt=t=>t?String(t).slice(0,10).split('-').reverse().join('/'):'—';
+    ${rotaApp.fonte}
+    const TELAS_VALIDAS=${JSON.stringify(rotaApp.TELAS)};let LIB=false,popLigado=false;
+    function gravarHash(t,modo){const a='#'+t;if(modo==='nenhum'||location.hash===a)return;try{history[modo==='replace'?'replaceState':'pushState'](null,'',location.pathname+location.search+a)}catch(_){location.hash=a}}
+    // abre uma tela e põe o nome dela no endereço (clique = pushState; boot = replaceState; Voltar = não grava)
+    function ir(t,modo){gravarHash(t,modo||'push');const v={plano:()=>vPlano(),uso:()=>vUso(),equipe:()=>vEquipe(),ia:()=>vIA(),suporte:()=>vSup()}[t];if(v)v()}
+    window.ir=ir;
+    function ligarVoltar(){if(popLigado)return;popLigado=true;window.addEventListener('popstate',()=>{if(!lerHash(location.hash))return;ir(resolverTela(location.hash,'',LIB,TELAS_VALIDAS),'nenhum')})}
     async function entrar(){const m=document.getElementById('msg');m.textContent='';try{await api('POST','/login',{email:em.value,senha:sn.value});home()}catch(e){m.textContent=e.message}}
     window.entrar=entrar;
     async function home(){let me;try{me=await api('GET','/me')}catch(_){return}
       const ent=me.entitlements;
       const alerta=!(ent&&ent.acesso_liberado)?'<div class="aviso">⚠️ Sua conta está <b>'+esc(me.escritorio.status)+'</b>. Regularize a cobrança para reativar o acesso.</div>':(me.escritorio.status==='trial'?'<div class="aviso">🎁 Você está no <b>período de teste</b> até '+dt(ent.trial_expira_em)+'. Assine para continuar sem interrupção.</div>':'');
       app.innerHTML='<div class="card"><h3>'+esc(me.escritorio.nome)+' <span class="tag">'+esc(ent.plano||'—')+'</span></h3>'+alerta
-        +'<div class="menu"><button class="btn g" onclick="vPlano()">💳 Plano</button><button class="btn g" onclick="vUso()">📊 Uso</button><button class="btn g" onclick="vEquipe()">👥 Equipe</button><button class="btn g" onclick="vIA()">🤖 Créditos de IA</button><button class="btn g" onclick="vSup()">🎧 Suporte</button>'
+        +'<div class="menu"><button class="btn g" data-t="plano" onclick="ir(this.dataset.t)">💳 Plano</button><button class="btn g" data-t="uso" onclick="ir(this.dataset.t)">📊 Uso</button><button class="btn g" data-t="equipe" onclick="ir(this.dataset.t)">👥 Equipe</button><button class="btn g" data-t="ia" onclick="ir(this.dataset.t)">🤖 Créditos de IA</button><button class="btn g" data-t="suporte" onclick="ir(this.dataset.t)">🎧 Suporte</button>'
         +((ent&&ent.acesso_liberado)?'<a class="btn" href="/juridico/app/juridico" style="text-decoration:none">⚖️ Meu Jurídico</a>':'')
         +'<button class="btn g" id="pwa-btn" style="display:none" title="Instalar o Villela Legal como app no celular">📲 Instalar app</button>'
         +'<button class="btn g" id="push-btn" style="display:none" title="Notificações no celular">🔔 Avisos</button></div>'
         +'<p class="sub">Olá, '+esc(me.usuario.nome||me.usuario.email)+' · <a href="#" onclick="sair();return false">sair</a></p></div><div id="c"></div>';
       pintarBotaoInstalar();
       pintarBotaoPush();
-      if(location.search.indexOf('creditos=1')>=0)vIA();else vPlano();}
+      LIB=!!(ent&&ent.acesso_liberado);ligarVoltar();
+      ir(resolverTela(location.hash,location.search,LIB,TELAS_VALIDAS),'replace');}
     window.home=home;const c=()=>document.getElementById('c');
     async function sair(){await api('POST','/logout').catch(()=>{});location.reload()}window.sair=sair;
     async function vPlano(){const d=await api('GET','/cobranca');

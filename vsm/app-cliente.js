@@ -153,9 +153,37 @@
       '<h1>' + c[2] + ' ' + esc(c[3]) + '</h1>';
   }
 
+  // ---- rota no endereço (#<aba>): F5 e Voltar mantêm a tela ----------------
+  // Funções PURAS (testadas em node pelo selftest, via window.VSM._rota).
+  function lerHash(h) { var m = /^#\/?([a-z0-9_-]+)/i.exec(String(h || '')); return m ? m[1].toLowerCase() : ''; }
+  // Qual aba abrir: conta bloqueada → 'plano' (como sempre); hash válido e liberado
+  // pelo plano → ele; qualquer outra coisa → 'painel'.
+  function resolverAba(h, permitidas, liberado) {
+    if (!liberado) return 'plano';
+    var id = lerHash(h);
+    return id && permitidas.indexOf(id) >= 0 ? id : 'painel';
+  }
+  function gravarHash(id, modo) {
+    var alvo = '#' + id;
+    if (modo === 'nenhum' || location.hash === alvo) return;
+    try { history[modo === 'replace' ? 'replaceState' : 'pushState'](null, '', location.pathname + location.search + alvo); } catch (_) { location.hash = alvo; }
+  }
+  var _popLigado = false;
+  function ligarVoltar() {
+    if (_popLigado) return; _popLigado = true;
+    window.addEventListener('popstate', function () {
+      if (!ME || !lerHash(location.hash)) return;   // hash vazio (href="#") não navega
+      var lib = !!(ME.entitlements && ME.entitlements.acesso_liberado);
+      var id = resolverAba(location.hash, itensDoMenu(ME).map(function (i) { return i[0]; }), lib);
+      if (id !== ABA) irPara(id, ME, 'nenhum');
+    });
+  }
+
   // troca de aba: marca a ativa, atualiza o cabeçalho e chama a view
-  function irPara(id, me) {
+  // modo: 'push' (clique, padrão) | 'replace' (boot) | 'nenhum' (Voltar/Avançar)
+  function irPara(id, me, modo) {
     ABA = id;
+    gravarHash(id, modo || 'push');
     var nav = el('vsm-nav');
     if (nav) {
       Array.prototype.forEach.call(nav.querySelectorAll('[data-nav]'), function (b) {
@@ -184,7 +212,7 @@
 
     MAPA_VIEWS = { painel: vPainel, plano: vPlano, uso: vUso, suporte: vSuporte, integracoes: vIntegracoes };
     TABS.forEach(function (t) { MAPA_VIEWS[t[0]] = t[3]; });
-    ABA = liberado ? 'painel' : 'plano';
+    ABA = resolverAba(location.hash, itensDoMenu(me).map(function (i) { return i[0]; }), liberado);
 
     root().innerHTML =
       '<div class="vx-app" id="vsm-app" data-nav="' + (NAV_COLAPSADA ? 'colapsada' : 'aberta') + '">' +
@@ -209,7 +237,8 @@
     pintarBotaoPush();
     pintarBotaoInstalar();
     ligarNav(me);
-    irPara(ABA, me);
+    ligarVoltar();
+    irPara(ABA, me, 'replace');
   }
 
   // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -794,6 +823,7 @@
     TABS: TABS, FIXAS: FIXAS, ORDEM_GRUPOS: ORDEM_GRUPOS,
     me: function () { return ME; },
     ir: function (id) { if (ME) irPara(id, ME); },
+    _rota: { lerHash: lerHash, resolverAba: resolverAba },
   };
 
   window.bootGestao = bootGestao;

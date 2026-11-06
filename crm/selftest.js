@@ -71,6 +71,48 @@ async function rodar() {
     for (const p of pagos) assert.equal(p.preco_anual_centavos, p.preco_centavos * 10, p.slug + ': anual deve ser 10x o mensal');
     for (const p of planos.filter(p => p.preco_centavos === 0)) assert.equal(p.preco_anual_centavos, 0, p.slug + ': sem preco mensal => sem anual');
   });
+  await t('F5 mantém a tela: rota no endereço (#tela e #contatos/id), padrão e conta bloqueada', async () => {
+    // O bloco entre <rota> e </rota> do app é código puro: roda aqui no mesmo arquivo que o navegador recebe.
+    const src = fs.readFileSync(path.join(__dirname, 'app-cliente.js'), 'utf8');
+    const bloco = src.slice(src.indexOf('// <rota>'), src.indexOf('// </rota>'));
+    assert.ok(bloco.includes('function rotaDoHash') && bloco.includes('function resolverRota'), 'bloco de rota ausente');
+    const vm = require('vm'); const ctx = {}; vm.createContext(ctx);
+    vm.runInContext(bloco + ';this.rotaDoHash = rotaDoHash; this.hashDaRota = hashDaRota; this.resolverRota = resolverRota;', ctx);
+    const J = (x) => JSON.stringify(x);
+    // hash -> tela
+    assert.equal(J(ctx.rotaDoHash('#contatos')), J({ tela: 'contatos', id: '' }));
+    assert.equal(J(ctx.rotaDoHash('#contatos/abc123')), J({ tela: 'contatos', id: 'abc123' }));
+    assert.equal(J(ctx.rotaDoHash('#/kanban')), J({ tela: 'kanban', id: '' }), 'aceita #/tela');
+    assert.equal(J(ctx.rotaDoHash('#gx_inbox')), J({ tela: 'gx_inbox', id: '' }), 'abas do Growth entram no mesmo mapa');
+    for (const ruim of ['', '#', '#/', null, undefined, '#<script>', '#contatos/%E0%A4%A', '#a b', '#contatos/x y']) {
+      assert.equal(ctx.rotaDoHash(ruim), null, 'deve ignorar ' + ruim);
+    }
+    // tela -> hash (ida e volta)
+    assert.equal(ctx.hashDaRota('contatos', ''), '#contatos');
+    assert.equal(ctx.hashDaRota('contatos', 'abc123'), '#contatos/abc123');
+    assert.equal(J(ctx.rotaDoHash(ctx.hashDaRota('contatos', 'a:b-c.d'))), J({ tela: 'contatos', id: 'a:b-c.d' }));
+    // abertura: válido, sem permissão, inválido, bloqueado
+    const permitidas = ['dash', 'kanban', 'contatos', 'conta', 'gx_inbox'];
+    const ok = { bloqueado: false, permitidas };
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#kanban'), ok)), J({ tela: 'kanban', id: '' }));
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#contatos/77'), ok)), J({ tela: 'contatos', id: '77' }));
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#kanban/77'), ok)), J({ tela: 'kanban', id: '' }), 'só contato leva id');
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#campanhas'), ok)), J({ tela: 'dash', id: '' }), 'sem permissão cai no dashboard');
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#nao-existe'), ok)), J({ tela: 'dash', id: '' }));
+    assert.equal(J(ctx.resolverRota(null, ok)), J({ tela: 'dash', id: '' }), 'sem hash: dashboard como antes');
+    assert.equal(J(ctx.resolverRota(ctx.rotaDoHash('#kanban'), { bloqueado: true, permitidas })), J({ tela: 'conta', id: '' }), 'conta bloqueada vai para Conta');
+    assert.equal(J(ctx.resolverRota(null, { bloqueado: true, permitidas })), J({ tela: 'conta', id: '' }));
+    // o app realmente usa a rota: boot, navegação, popstate e item aberto
+    assert.ok(/resolverRota\(rotaDoHash\(location\.hash\)/.test(src), 'o boot precisa ler o endereço');
+    assert.ok(/marcarRota\(ABA, ''\)/.test(src), 'navegar precisa gravar o endereço');
+    assert.ok(/addEventListener\('popstate'/.test(src), 'Voltar/Avançar precisam funcionar');
+    assert.ok(/async function abrirContato\(id\) \{\s*marcarRota\('contatos', id\)/.test(src), 'contato aberto vai para o endereço');
+    assert.ok(!/ABA = bloq \? 'conta' : 'dash'/.test(src), 'a tela inicial não pode mais ser fixa');
+    // todas as abas do menu base existem no mapa de telas (senão o hash cairia no dashboard)
+    for (const id of ['dash', 'kanban', 'contatos', 'propostas', 'buscas', 'tarefas', 'templates', 'conversas', 'campanhas', 'ia', 'conta']) {
+      assert.ok(new RegExp("\\b" + id + ": v[A-Z]").test(src), 'tela ' + id + ' fora do mapa');
+    }
+  });
   await t('landing pública renderiza com planos e marca', async () => {
     const r = await req('GET', '/crm');
     // Nomes comerciais decididos pelo Augusto em 05/08/2026: os planos de

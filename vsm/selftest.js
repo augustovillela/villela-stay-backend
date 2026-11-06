@@ -458,6 +458,27 @@ async function rodar() {
   console.log('\n  — ONDA LIVRO —');
   await require('./selftest-livro').rodarTestesLivro({ req, t, assert, saas });
 
+  console.log('\n  — F5 MANTÉM A TELA (rota no endereço) —');
+  await t('rota: hash → aba, validada pelo plano; conta bloqueada vai para o plano; hash vazio ou inválido cai no painel', async () => {
+    const vm = require('vm'), fsx = require('fs'), pathx = require('path');
+    const win = { addEventListener() {}, location: { hash: '' } };
+    const sandbox = { window: win, document: { getElementById: () => null, querySelectorAll: () => [], addEventListener() {} },
+      location: win.location, history: { pushState() {}, replaceState() {} }, localStorage: { getItem: () => null, setItem() {} },
+      navigator: {}, console, setTimeout, clearTimeout, URLSearchParams, Date, Math, JSON, Promise, Number, String, Array, Object, RegExp };
+    vm.createContext(sandbox);
+    vm.runInContext(fsx.readFileSync(pathx.join(__dirname, 'app-cliente.js'), 'utf8'), sandbox);
+    const r = sandbox.window.VSM._rota;
+    const permitidas = ['painel', 'imoveis', 'reservas', 'plano', 'uso', 'suporte'];
+    assert.equal(r.lerHash('#reservas'), 'reservas'); assert.equal(r.lerHash('#/Reservas'), 'reservas');
+    assert.equal(r.lerHash(''), ''); assert.equal(r.lerHash('#'), ''); assert.equal(r.lerHash('#<x>'), '');
+    assert.equal(r.resolverAba('#reservas', permitidas, true), 'reservas', 'hash válido mantém a aba no F5');
+    assert.equal(r.resolverAba('#plano', permitidas, true), 'plano');
+    assert.equal(r.resolverAba('#financeiro', permitidas, true), 'painel', 'módulo fora do plano não abre por hash');
+    assert.equal(r.resolverAba('#naoexiste', permitidas, true), 'painel');
+    assert.equal(r.resolverAba('', permitidas, true), 'painel');
+    assert.equal(r.resolverAba('#reservas', permitidas, false), 'plano', 'conta bloqueada sempre cai no plano');
+  });
+
   srv.close(); receptor.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }

@@ -171,6 +171,29 @@ const JS = `
     if (aba === 'cifras' && /^#(cifras|cifra=|musica=|banda=|setlist=|convite=|vivo=)/.test(location.hash)) return;
     try { if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); } catch (_) {}
   }
+  // Item aberto vai para o endereco no mesmo estilo de #cifra=ID:
+  // #obra=ID, #repertorio=ID, #escola=ID, #turma=ID, #retorno=ID. O F5 reabre o item.
+  var ITENS = { obra: 'biblioteca', repertorio: 'repertorios', escola: 'escola', turma: 'minhas_turmas', retorno: 'tarefas' };
+  function itemDoHash(h) {
+    var m = /^#?(obra|repertorio|escola|turma|retorno)=([A-Za-z0-9_-]{1,80})$/.exec(String(h || ''));
+    return m ? { tipo: m[1], id: m[2], aba: ITENS[m[1]] } : null;
+  }
+  function marcarItem(tipo, id) {
+    var h = '#' + tipo + '=' + id;
+    try { if (location.hash !== h) history.replaceState(null, '', location.pathname + location.search + h); } catch (_) {}
+  }
+  // Os scripts da biblioteca e das escolas carregam DEPOIS deste: no F5 o modulo ainda nao existe.
+  function quandoPronto(nome, fn) {
+    if (window[nome]) return fn();
+    window.addEventListener('load', function () { if (window[nome]) fn(); });
+  }
+  function abrirItem(it) {
+    if (it.tipo === 'retorno') return verFeedback(it.id);
+    if (it.tipo === 'obra') return quandoPronto('MusiqueBiblioteca', function () { window.MusiqueBiblioteca.abrirObra(it.id); });
+    if (it.tipo === 'repertorio') return quandoPronto('MusiqueBiblioteca', function () { window.MusiqueBiblioteca.abrirRepertorio(it.id); });
+    if (it.tipo === 'escola') return quandoPronto('MusiqueEscolas', function () { window.MusiqueEscolas.verEscola(it.id); });
+    if (it.tipo === 'turma') return quandoPronto('MusiqueEscolas', function () { window.MusiqueEscolas.verTurma(it.id); });
+  }
   function ir(aba) {
     estado.aba = aba; gravarAba(aba); pintarMenu(); carregando();
     var telas = {
@@ -178,14 +201,14 @@ const JS = `
       progresso: verProgresso, professor: verProfessor,
       // Biblioteca e repertório vivem em /music/biblioteca.js: são a Fase
       // 2 inteira, e caberiam mal num arquivo que já é grande.
-      biblioteca: function () { window.MusiqueBiblioteca.verBiblioteca(); },
-      repertorios: function () { window.MusiqueBiblioteca.verRepertorios(); },
+      biblioteca: function () { quandoPronto('MusiqueBiblioteca', function () { window.MusiqueBiblioteca.verBiblioteca(); }); },
+      repertorios: function () { quandoPronto('MusiqueBiblioteca', function () { window.MusiqueBiblioteca.verRepertorios(); }); },
       // Cifras (28/09/2026) vivem em /music/cifras.js: acervo, editor,
       // setlists de palco, bandas e sessão ao vivo.
       cifras: function () { window.MusiqueCifras.abrir(); },
       // Escola e turma vivem em /music/escolas.js — a Fase 3 inteira.
-      escola: function () { window.MusiqueEscolas.verEscolas(); },
-      minhas_turmas: function () { window.MusiqueEscolas.verMinhasTurmas(); },
+      escola: function () { quandoPronto('MusiqueEscolas', function () { window.MusiqueEscolas.verEscolas(); }); },
+      minhas_turmas: function () { quandoPronto('MusiqueEscolas', function () { window.MusiqueEscolas.verMinhasTurmas(); }); },
       conta: verConta, cursos: verCursos,
     };
     (telas[aba] || verEstudar)();
@@ -958,6 +981,7 @@ const JS = `
   }
 
   function verFeedback(submissaoId) {
+    marcarItem('retorno', submissaoId);
     api('GET', '/submissoes/' + submissaoId).then(function (d) {
       var c = $('#corpo'); c.innerHTML = '';
       c.appendChild(el('h2', { txt: '\u{1F4AC} Retorno do professor' }));
@@ -1221,6 +1245,7 @@ const JS = `
   window.MusiqueUI = {
     $: $, el: el, esc: esc, api: api, erro: erro, aviso: aviso,
     carregando: carregando, ir: ir,
+    marcarItem: marcarItem, marcarAba: gravarAba,
   };
 
   // ---- boot ------------------------------------------------------
@@ -1229,9 +1254,13 @@ const JS = `
   function abaDoHash() {
     var h = String(location.hash || '').replace(/^#/, '');
     if (/^(cifras|cifra=|musica=|banda=|setlist=|convite=|vivo=)/.test(h)) return 'cifras';
+    var it = itemDoHash(location.hash);
+    if (it) return it.aba;
     return ABAS.some(function (a) { return a[0] === h; }) ? h : '';
   }
   function porHash() {
+    var item = itemDoHash(location.hash);
+    if (item) { estado.aba = item.aba; pintarMenu(); carregando(); abrirItem(item); return true; }
     var a = abaDoHash();
     if (!a || a === estado.aba) return false;
     if (a === 'cifras') { estado.aba = 'cifras'; pintarMenu(); if (window.MusiqueCifras) window.MusiqueCifras.abrir(); return true; }
@@ -1240,6 +1269,7 @@ const JS = `
   window.addEventListener('hashchange', porHash);
   var inicial = abaDoHash();
   if (inicial === 'cifras') { estado.aba = 'cifras'; pintarMenu(); carregando(); }  // as Cifras abrem sozinhas pelo endereço
+  else if (itemDoHash(location.hash)) { estado.aba = inicial; pintarMenu(); carregando(); abrirItem(itemDoHash(location.hash)); }  // F5 num item: reabre o item
   else ir(inicial || 'estudar');
   // Professor, escola e turmas só aparecem no menu para quem tem o papel:
   // vindo direto por F5, o papel ainda não foi lido — busca e repinta.

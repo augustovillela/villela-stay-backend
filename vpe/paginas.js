@@ -5,6 +5,10 @@
 // =====================================================================
 'use strict';
 const repo = require('./repo');
+const fs = require('fs');
+const path = require('path');
+// rota por endereço (F5 mantém a tela): o mesmo arquivo roda no navegador e no selftest
+const ROTA_CLIENTE = fs.readFileSync(path.join(__dirname, 'rota-cliente.js'), 'utf8');
 
 const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const brl = (c) => Number(c || 0) === 0 ? 'Sob consulta' : 'R$ ' + (Number(c) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 0 }) + '/mês';
@@ -265,6 +269,7 @@ body{background:var(--fundo)}
 <script>
 'use strict';
 const S={me:null,tela:'dashboard'};
+${ROTA_CLIENTE}
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g, '&#39;');
 const dt=s=>s?new Date(s).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}):'—';
@@ -390,8 +395,9 @@ function erroTela(e){
   $('corpo').innerHTML='<div class="vx-alerta vx-alerta--danger" role="alert"><span class="vx-alerta-ico" aria-hidden="true">⚠️</span>'+
     '<div><b>Não foi possível carregar esta tela</b><p class="vx-mb0">'+esc(e&&e.message?e.message:'Erro inesperado.')+'</p>'+
     '<button class="vx-btn vx-btn--sec vx-btn--sm" style="margin-top:8px" onclick="ir(S.tela)">Tentar novamente</button></div></div>';}
-function ir(t){
+function ir(t,naoMarcar){
   S.tela=t;SEQ++;menu();pintarCabecalho();
+  if(!naoMarcar)marcaHash(hashDe(t),true);
   $('corpo').innerHTML=esqueleto();
   ({dashboard:vDash,portfolio:vPortfolio,tarefas:vTarefas,eventos:vEventos,fornecedores:vFornecedores,crm:vCrm,financeiro:vFinanceiro,ia:vIa,portalcli:vPortalCli,integra:vIntegra,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
@@ -402,7 +408,23 @@ async function boot(){
   pintarBotaoPush();
   pintarBotaoInstalar();
   if(S.me.bloqueado){$('corpo').innerHTML='<div class="erro"><b>Conta bloqueada.</b> '+(S.me.tenant.status==='suspensa'?'Sua conta está suspensa — fale com a Villela.':'Seu período de teste terminou — fale com a gente pela página inicial.')+'</div>';return;}
-  ir('dashboard');
+  // F5, favorito e Voltar/Avançar: a tela (e o projeto/aba abertos) vêm do endereço
+  const rota=rotaDeHash(location.hash,visiveis().map(t=>t[0]));
+  await aplicarRota(rota);
+  marcaHash(hashDe(rota.tela,rota.projeto,rota.aba),false);   // hash vazio/inválido/sem acesso: troca pelo da tela aberta
+  // links "#" que só disparam uma ação não podem navegar nem voltar ao início
+  document.addEventListener('click',e=>{const l=e.target.closest&&e.target.closest('a[href="#"]');if(l)e.preventDefault();});
+  window.addEventListener('popstate',()=>{
+    if(!S.me||S.me.bloqueado)return;
+    if(!(location.hash||'').replace('#',''))return;   // hash vazio = clique em link "#", não navegação
+    aplicarRota(rotaDeHash(location.hash,visiveis().map(t=>t[0])));});
+}
+async function aplicarRota(r){
+  if(r.projeto){
+    S.tela='portfolio';SEQ++;menu();pintarCabecalho();$('corpo').innerHTML=esqueleto();
+    try{await abrirProj(r.projeto,r.aba,true);}
+    catch(e){ir('portfolio',true);marcaHash(hashDe('portfolio'),false);}   // projeto que não existe/sem acesso
+  }else ir(r.tela,true);
 }
 async function vDash(){
   const d=await api('GET','/dashboard');
@@ -479,8 +501,9 @@ async function novoProj(){
   const nome=prompt('Nome da ideia/projeto:');if(!nome)return;
   try{const r=await api('POST','/projetos',{nome});abrirProj(r.projeto.id);}catch(e){alert(e.message);}
 }
-async function abrirProj(id,aba){
+async function abrirProj(id,aba,naoMarcar){
   S.projId=id;S.projAba=aba||\'dados\';
+  if(!naoMarcar)marcaHash(hashDe('portfolio',id,S.projAba),true);
   const {projeto:p}=await api(\'GET\',\'/projetos/\'+id);
   S.proj=p;S.enums=S.enums||(await api(\'GET\',\'/me\')).enums;
   const abas=[[\'dados\',\'📄 Dados\'],[\'plano\',\'📘 Plano de negócio\'],[\'viab\',\'📊 Viabilidade\'],[\'tar\',\'✅ Tarefas\'],[\'risco\',\'⚠️ Riscos\'],[\'dec\',\'⚖️ Decisões\']];

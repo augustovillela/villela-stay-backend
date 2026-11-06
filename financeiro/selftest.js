@@ -4706,6 +4706,78 @@ const F_brl = (c) => 'R$ ' + (Number(c || 0) / 100).toLocaleString('pt-BR', { mi
 
 const semLixoApp = (html, tela) => semLixo(html, tela);
 
+// F5 mantém a tela (05/11/2026): aba, empresa e competência vivem no endereço.
+// O arquivo real roda num sandbox com `location`/`history` falsos.
+function carregarAppComEndereco(hashInicial) {
+  const fonte = fs.readFileSync(path.join(__dirname, 'app-cliente.js'), 'utf8');
+  const hist = { push: [], replace: [] };
+  const sandbox = {
+    location: { hash: hashInicial || '' },
+    history: { pushState: (_a, _b, u) => { hist.push.push(u); sandbox.location.hash = u; }, replaceState: (_a, _b, u) => { hist.replace.push(u); sandbox.location.hash = u; } },
+    document: { getElementById: () => ({ innerHTML: '', value: '' }), addEventListener: () => {} },
+    URLSearchParams, Date, Number, String, Math, JSON, Object, Array, Promise, encodeURIComponent, console,
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(`${fonte}
+;this.F = F;`, sandbox, { filename: 'app-cliente.js' });
+  return { F: sandbox.F, hist, sandbox };
+}
+teste('endereço do app: hashDe/rotaDeHash — aba, empresa e mês', () => {
+  const { F } = carregarAppComEndereco();
+  const abas = ['cockpit', 'extrato', 'lancamentos', 'conta'];
+  const j = (x) => JSON.stringify(x);
+  assert.strictEqual(F.hashDe('lancamentos'), '#lancamentos');
+  assert.strictEqual(F.hashDe('extrato', 'emp_1', '2020-02'), '#extrato?empresa=emp_1&mes=2020-02');
+  assert.strictEqual(F.hashDe('cockpit', '', new Date().toISOString().slice(0, 7)), '#cockpit', 'mês corrente não entra no endereço');
+  assert.strictEqual(j(F.rotaDeHash('#extrato?empresa=emp_1&mes=2020-02', abas)), j({ tab: 'extrato', empresa: 'emp_1', mes: '2020-02' }));
+  assert.strictEqual(F.rotaDeHash('#conta', abas).tab, 'conta');
+});
+teste('endereço do app: aba inexistente/sem acesso, empresa e mês inválidos são ignorados', () => {
+  const { F } = carregarAppComEndereco();
+  const abas = ['cockpit', 'extrato'];
+  assert.strictEqual(F.rotaDeHash('', abas).tab, '');
+  assert.strictEqual(F.rotaDeHash('#investimentos', abas).tab, '', 'aba que o plano/perfil não libera');
+  assert.strictEqual(F.rotaDeHash('#nao-existe', abas).tab, '');
+  assert.strictEqual(F.rotaDeHash('#extrato?mes=2020-13', abas).mes, '');
+  assert.strictEqual(F.rotaDeHash('#extrato?mes=lixo', abas).mes, '');
+  assert.strictEqual(F.rotaDeHash('#extrato?empresa=a b;<x>', abas).empresa, '', 'empresa só aceita id simples');
+});
+teste('endereço do app: aplicarHash só aceita empresa que é da conta e aba liberada', () => {
+  const { F } = carregarAppComEndereco('#lancamentos?empresa=emp_2&mes=2021-05');
+  F.eu = { empresas: [{ id: 'emp_1' }, { id: 'emp_2' }], investimentos: { disponivel: false } };
+  F.aplicarHash();
+  assert.strictEqual(F.tab, 'lancamentos'); assert.strictEqual(F.empresaId, 'emp_2'); assert.strictEqual(F.competencia, '2021-05');
+  const o = carregarAppComEndereco('#investimentos?empresa=de_outra_conta');
+  o.F.eu = { empresas: [{ id: 'emp_1' }], investimentos: { disponivel: false } };
+  o.F.aplicarHash();
+  assert.strictEqual(o.F.tab, 'cockpit', 'investimentos não liberado: abre o painel');
+  assert.strictEqual(o.F.empresaId, undefined, 'empresa que não é da conta não entra');
+  const l = carregarAppComEndereco('#investimentos');
+  l.F.eu = { empresas: [{ id: 'emp_1' }], investimentos: { disponivel: true } };
+  l.F.aplicarHash();
+  assert.strictEqual(l.F.tab, 'investimentos', 'liberado: abre');
+});
+teste('endereço do app: ir() empurra, repintar só troca, e o mesmo endereço não duplica', () => {
+  const { F, hist } = carregarAppComEndereco('');
+  F.eu = { empresas: [], investimentos: {} };
+  F.telaApp = () => {};
+  F.tab = 'cockpit'; F.ir('extrato');
+  assert.deepStrictEqual(hist.push, ['#extrato']);
+  F.marcarHash(false);   // o que pintar() faz: endereço já igual, nada a gravar
+  assert.deepStrictEqual(hist.replace, []);
+  F.empresaId = 'emp_1'; F.marcarHash(false);
+  assert.deepStrictEqual(hist.replace, ['#extrato?empresa=emp_1'], 'empresa escolhida vai para o endereço sem empilhar histórico');
+  F.ir('extrato');
+  assert.strictEqual(hist.push.length, 1, 'repetir a mesma aba não cria entrada de histórico');
+});
+teste('app servido: boot lê o endereço, ir() grava e popstate refaz a tela', () => {
+  const fonte = fs.readFileSync(path.join(__dirname, 'app-cliente.js'), 'utf8');
+  const iniciar = fonte.slice(fonte.indexOf('async iniciar()'), fonte.indexOf('hashDe(tab, empresa, mes)'));
+  assert.ok(iniciar.indexOf('F.aplicarHash()') > 0 && iniciar.indexOf('F.aplicarHash()') < iniciar.indexOf('F.telaApp()'), 'iniciar() não aplica o endereço antes de montar a tela');
+  assert.ok(fonte.includes("ir(t) { F.tab = t; F.marcarHash(true); F.telaApp(); }"));
+  assert.ok(fonte.includes("addEventListener('popstate'"));
+});
+
 testeAsync('app do assinante: sem sessão, cai na tela de login e NÃO vaza dado', async () => {
   const app = carregarAppCliente('');
   await app.F.iniciar();

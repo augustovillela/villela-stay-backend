@@ -72,17 +72,34 @@ function montarAbas() {
   if (EU && EU.papel === 'parceiro') abas.splice(6, 0, ['parceiro', 'Meus serviços']);
   el('abas').innerHTML = abas.map((a) => '<button class="aba" data-id="' + a[0] + '" onclick="location.hash=\'' + a[0] + '\'">' + a[1] + '</button>').join('');
 }
+// Endereço da tela (F5 mantém a tela): `#<aba>`, `#reserva/<id>`, `#peca/<id|novo>`, `#look/<id|novo>`.
+// Agenda da peça e conversa abrem em janela (modal) sobre a lista: o F5 volta à lista da aba.
+const ITENS_HASH = { reserva: 'minhas-reservas', peca: 'pecas', look: 'looks' };
+function rotaDoHash(hash) {
+  const h = String(hash || '#inicio').replace(/^#/, '') || 'inicio';
+  const m = /^(reserva|peca|look)\/([A-Za-z0-9_-]{1,80})$/.exec(h);
+  if (m) return { aba: ITENS_HASH[m[1]], tipo: m[1], id: m[2] === 'novo' ? '' : m[2], novo: m[2] === 'novo' };
+  const aba = (ABAS.some((a) => a[0] === h) || h === 'parceiro') ? h : 'inicio';
+  return { aba, tipo: '', id: '', novo: false };
+}
+// Grava o endereço sem disparar o roteador (replaceState não gera hashchange) e sem empilhar histórico.
+function marcarHash(h) {
+  try { if (location.hash !== '#' + h) history.replaceState(null, '', location.pathname + location.search + '#' + h); } catch (_) { /* sem history: segue sem endereço */ }
+}
 function roteador() {
-  const h = (location.hash || '#inicio').slice(1);
-  if (h.indexOf('reserva/') === 0) { ABA = 'minhas-reservas'; marcarAba(); return verReserva(h.split('/')[1]); }
-  ABA = (ABAS.some((a) => a[0] === h) || h === 'parceiro') ? h : 'inicio';
+  const r = rotaDoHash(location.hash);
+  ABA = r.aba;
   marcarAba();
+  if (r.tipo === 'reserva') return verReserva(r.id);
+  if (r.tipo === 'peca') { carregando(); return formPeca(r.id || undefined).catch(erroNaTela); }
+  if (r.tipo === 'look') { carregando(); return formLook(r.id || undefined).catch(erroNaTela); }
   irPara(ABA);
 }
 function marcarAba() {
   document.querySelectorAll('.aba').forEach((b) => b.classList.toggle('on', b.dataset.id === ABA));
 }
 function irPara(aba) {
+  marcarHash(aba);
   const mapa = {
     inicio: telaInicio, pecas: telaPecas, looks: telaLooks, reservas: telaReservas,
     'minhas-reservas': telaMinhasReservas, financeiro: telaFinanceiro, mensagens: telaMensagens,
@@ -176,6 +193,7 @@ const CATEGORIAS_UI = ['vestido', 'terno', 'saia', 'blazer', 'bolsa', 'sapato', 
 const TAMANHOS_UI = ['PP', 'P', 'M', 'G', 'GG', 'XGG', 'unico', '36', '38', '40', '42', '44', '46'];
 
 async function formPeca(id) {
+  marcarHash('peca/' + (id || 'novo'));
   let p = { ocasioes: [], fotos: [], medidas: {}, modelo: {}, entrega: ['retirada'], min_dias: 1, prep_dias: 1, condicao: 'seminovo', estacao: 'todas', categoria: 'vestido' };
   if (id) { const d = await api('GET', '/app/pecas/' + id); p = d.peca; }
   const campo = (rot, nome, tipo, valor, extra) => '<div><label>' + rot + '</label><input id="p-' + nome + '" type="' + (tipo || 'text') + '" value="' + esc(valor == null ? '' : valor) + '" ' + (extra || '') + '></div>';
@@ -412,6 +430,7 @@ async function telaLooks() {
 }
 
 async function formLook(id) {
+  marcarHash('look/' + (id || 'novo'));
   let l = { itens: [], desconto_pct: 10, status: 'rascunho' };
   if (id) { const d = await api('GET', '/app/looks/' + id); l = d.look; }
   const sel = new Set((l.itens || []).map((i) => i.id));

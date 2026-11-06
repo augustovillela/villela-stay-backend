@@ -65,10 +65,68 @@ const F = {
   async iniciar() {
     try {
       F.eu = await F.api('GET', '/eu');
+      F.aplicarHash();       // F5 e favorito: aba, empresa e competência vêm do endereço
+      F.ouvirHistorico();
       F.telaApp();
     } catch (e) {
       F.telaLogin();
     }
+  },
+
+  // ---------------------------------------------- URL = estado (F5 mantém a tela)
+  // Formato: #<aba>[?empresa=<id>&mes=AAAA-MM]. A empresa só entra quando foi escolhida
+  // e o mês só quando não é o mês corrente. Voltar/Avançar do navegador funcionam.
+  hashDe(tab, empresa, mes) {
+    const q = new URLSearchParams();
+    if (empresa) q.set('empresa', empresa);
+    if (mes && mes !== new Date().toISOString().slice(0, 7)) q.set('mes', mes);
+    const s = q.toString();
+    return '#' + (tab || 'cockpit') + (s ? '?' + s : '');
+  },
+  /** Lê o endereço. Aba desconhecida/sem acesso => '' (o app abre a aba padrão). */
+  rotaDeHash(hash, abasValidas) {
+    let h = String(hash || '');
+    if (h.charAt(0) === '#') h = h.slice(1);
+    const i = h.indexOf('?');
+    const nome = i < 0 ? h : h.slice(0, i);
+    const q = new URLSearchParams(i < 0 ? '' : h.slice(i + 1));
+    const empresa = q.get('empresa') || '';
+    const mes = q.get('mes') || '';
+    return {
+      tab: abasValidas.indexOf(nome) >= 0 ? nome : '',
+      empresa: /^[A-Za-z0-9_-]{1,64}$/.test(empresa) ? empresa : '',
+      mes: /^\d{4}-(0[1-9]|1[0-2])$/.test(mes) ? mes : '',
+    };
+  },
+  /** empurra=true grava entrada nova no histórico (clique na aba); false troca a atual. */
+  marcarHash(empurra) {
+    if (typeof location === 'undefined' || typeof history === 'undefined') return;
+    const novo = F.hashDe(F.tab, F.empresaId, F.competencia);
+    if (location.hash === novo) return;
+    try { history[empurra ? 'pushState' : 'replaceState'](null, '', novo); } catch (_) { /* sem history: segue sem endereço */ }
+  },
+  aplicarHash() {
+    if (typeof location === 'undefined' || !F.eu) return;
+    const r = F.rotaDeHash(location.hash, F.abasDoApp().map((a) => a[0]));
+    if (r.tab) F.tab = r.tab;
+    if (r.mes) F.competencia = r.mes;
+    if (r.empresa && (F.eu.empresas || []).some((x) => x.id === r.empresa)) F.empresaId = r.empresa;
+  },
+  ouvirHistorico() {
+    if (F._ouve || typeof window === 'undefined' || !window.addEventListener) return;
+    F._ouve = true;
+    window.addEventListener('popstate', () => {
+      if (!F.eu) return;
+      if (!(location.hash || '').replace('#', '')) return;   // hash vazio = clique em link "#", não navegação
+      F.aplicarHash();
+      F.telaApp();
+    });
+  },
+  abasDoApp() {
+    const e = F.eu;
+    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['consultas', 'Consultas patrimoniais'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
+    if (e.investimentos && e.investimentos.disponivel) abas.splice(1, 0, ['investimentos', 'Investimentos']);
+    return abas;
   },
 
   // ------------------------------------------------------------ login
@@ -93,6 +151,8 @@ const F = {
       try {
         await F.api('POST', '/login', { email: F.el('f-email').value, senha: F.el('f-senha').value });
         F.eu = await F.api('GET', '/eu');
+        F.aplicarHash();
+        F.ouvirHistorico();
         F.telaApp();
       } catch (e) {
         erro.textContent = e.message;
@@ -104,11 +164,10 @@ const F = {
   // -------------------------------------------------------- moldura
   telaApp() {
     const e = F.eu;
-    const abas = [['cockpit', 'Painel'], ['extrato', 'Extrato'], ['titulos', 'Pagar/Receber'], ['lancamentos', 'Lançamentos'], ['consultas', 'Consultas patrimoniais'], ['fechamento', 'Fechamento'], ['cfo', 'CFO'], ['dre', 'DRE'], ['relatorios', 'Relatórios'], ['razao', 'Razão'], ['conta', 'Minha conta']];
-    if (e.investimentos && e.investimentos.disponivel) abas.splice(1, 0, ['investimentos', 'Investimentos']);
+    const abas = F.abasDoApp();
     const empresas = e.empresas.length > 1
       ? `<select id="f-empresa" style="width:auto;min-width:200px">${e.empresas.map((x) =>
-          `<option value="${F.esc(x.id)}"${x.id === e.empresa.id ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
+          `<option value="${F.esc(x.id)}"${x.id === (F.empresaId || e.empresa.id) ? ' selected' : ''}>${F.esc(x.nome)}</option>`).join('')}</select>`
       : `<span class="sub">${F.esc(e.empresa.nome)}</span>`;
 
     F.raiz().innerHTML = `
@@ -142,7 +201,7 @@ const F = {
       os seus dados contábeis não ficam retidos. Para voltar a lançar, regularize a assinatura.</div>`;
   },
 
-  ir(t) { F.tab = t; F.telaApp(); },
+  ir(t) { F.tab = t; F.marcarHash(true); F.telaApp(); },
   corpo() { return F.el('f-corpo'); },
 
   /**
@@ -160,6 +219,7 @@ const F = {
   },
 
   async pintar() {
+    F.marcarHash(false);   // empresa e competência escolhidas ficam no endereço (sem empilhar histórico)
     const telas = { cockpit: F.vCockpit, investimentos: () => window.FInvestimentos.render(F), extrato: F.vExtrato, titulos: F.vTitulos, lancamentos: F.vLancamentos, consultas: F.vConsultas, fechamento: F.vFechamento, cfo: F.vCfo, dre: F.vDre, relatorios: F.vRelatorios, razao: F.vRazao, conta: F.vConta };
     try { await telas[F.tab](); }
     catch (e) { if (e.message !== 'sessão expirada') F.corpo().innerHTML = `<div class="card"><p class="erro">${F.esc(e.message)}</p></div>`; }
@@ -177,7 +237,7 @@ const F = {
       <input type="month" id="f-comp" value="${F.esc(F.competencia)}" style="width:auto" onchange="${aoMudar}">
     </label>`;
   },
-  lerMes() { const i = F.el('f-comp'); if (i && i.value) F.competencia = i.value; },
+  lerMes() { const i = F.el('f-comp'); if (i && i.value) F.competencia = i.value; F.marcarHash(false); },
 
   // ---------------------------------------------------------- COCKPIT
   async vCockpit() {

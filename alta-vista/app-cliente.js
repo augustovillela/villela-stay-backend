@@ -10,6 +10,24 @@ const AV_BASE = '/alta-vista';
 let AV_ME = null;
 let AV_ABA = 'projetos';
 let AV_ROTULOS = {};
+let AV_SEM_MARCAR = false; // true enquanto o Voltar/Avançar ou o boot reaplicam o endereço (não grava de novo)
+
+// ---- Endereço da tela (F5 mantém a tela): `#<aba>` ou `#projetos/<id>` -------------------
+const AV_ABAS_VALIDAS = ['projetos', 'tours', 'imoveis', 'conta'];
+/** Lê o hash: { aba, id }. Hash vazio ou aba desconhecida → null (quem chama decide o padrão). */
+function avLerHash(h) {
+  const m = /^#([a-z]+)(?:\/([^/?#]+))?/.exec(String(h || ''));
+  if (!m || !AV_ABAS_VALIDAS.includes(m[1])) return null;
+  let id = '';
+  try { id = m[2] ? decodeURIComponent(m[2]) : ''; } catch (_) { id = ''; }
+  return { aba: m[1], id: m[1] === 'projetos' ? id : '' };
+}
+const avHash = (aba, id) => '#' + aba + (id ? '/' + encodeURIComponent(id) : '');
+/** Grava o endereço sem duplicar (pushState no clique, replaceState no boot). */
+function avMarcar(hash, substituir) {
+  if (AV_SEM_MARCAR || location.hash === hash) return;
+  try { history[substituir ? 'replaceState' : 'pushState'](null, '', location.pathname + location.search + hash); } catch (_) { /* sem history: segue sem endereço */ }
+}
 
 const $av = (sel) => document.querySelector(sel);
 const escAv = (t) => String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -43,7 +61,26 @@ async function bootAltaVista() {
   const abas = [['projetos', 'Projetos'], ['tours', 'Tours 360°'], ['imoveis', 'Imóveis'], ['conta', 'Minha conta']];
   $av('#abas').innerHTML = abas.map(([id, rot]) => `<button class="aba" data-aba="${id}">${rot}</button>`).join('');
   document.querySelectorAll('.aba').forEach((b) => { b.onclick = () => { AV_ABA = b.dataset.aba; avTela(); }; });
-  avTela();
+  // Voltar/Avançar do navegador: reaplica a tela do endereço (hash vazio é ignorado)
+  window.addEventListener('popstate', () => { if (location.hash) avAplicarRota(); });
+  // Boot: a tela vem do endereço (F5); hash vazio/inválido cai em Projetos e o endereço é normalizado
+  const r = avLerHash(location.hash);
+  if (!r) avMarcar(avHash('projetos'), true);
+  avAplicarRota(true);
+}
+
+/** Abre a aba (e o projeto, se houver id) que o endereço pede. */
+async function avAplicarRota(boot) {
+  const r = avLerHash(location.hash) || { aba: 'projetos', id: '' };
+  AV_ABA = r.aba;
+  AV_SEM_MARCAR = true; // reaplicar não empilha histórico
+  try {
+    if (r.aba === 'projetos' && r.id) {
+      avAtivarAba();
+      try { await avProjetoDetalhe(r.id); return; } catch (_) { avMarcar(avHash('projetos'), true); }
+    }
+    await avTela();
+  } finally { AV_SEM_MARCAR = false; }
 }
 
 function avAtivarAba() {
@@ -52,6 +89,7 @@ function avAtivarAba() {
 
 async function avTela() {
   avAtivarAba();
+  avMarcar(avHash(AV_ABA), false);
   const t = $av('#tela');
   t.innerHTML = '<p class="vazio">Carregando…</p>';
   try {
@@ -92,6 +130,8 @@ async function avProjetos(t) {
 }
 
 async function avProjetoDetalhe(id) {
+  AV_ABA = 'projetos';
+  avMarcar(avHash('projetos', id), false);
   const t = $av('#tela');
   t.innerHTML = '<p class="vazio">Carregando…</p>';
   const d = await apiAv('GET', '/projetos/' + id);

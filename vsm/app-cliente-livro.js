@@ -48,7 +48,8 @@
   function ligar(id, fn) { var b = el(id); if (b) b.onclick = fn; }
   function ligarTodos(attr, fn) {
     Array.prototype.forEach.call(document.querySelectorAll('[' + attr + ']'), function (b) {
-      b.onclick = function () { fn(b.getAttribute(attr), b); };
+      // <a href="#"> não pode trocar o hash da aba (perderia a tela no F5)
+      b.onclick = function (ev) { if (ev && ev.preventDefault && b.tagName === 'A') ev.preventDefault(); fn(b.getAttribute(attr), b); };
     });
   }
   function falha(e) { alert(e && e.message ? e.message : 'Não foi possível concluir.'); }

@@ -84,6 +84,34 @@ function teste(nome, cond) {
     const html = await (await fetch(BASE + '/vpe')).text();
     teste('landing mostra a linha Avaliação com "15 dias grátis"', html.includes('Avaliação (15 dias)') && html.includes('15 dias grátis'));
   }
+  // ---------- F5 mantém a tela (05/11/2026): rota por endereço ----------
+  {
+    const vm = require('vm');
+    const ctx = vm.createContext({ location: { hash: '' }, history: { pushState() {}, replaceState() {} }, encodeURIComponent, decodeURIComponent, String });
+    vm.runInContext(require('fs').readFileSync(require('path').join(__dirname, 'rota-cliente.js'), 'utf8') + ' ; this.hashDe = hashDe; this.rotaDeHash = rotaDeHash; this.marcaHash = marcaHash;', ctx);
+    const J = (x) => JSON.stringify(x);
+    const todas = ['dashboard', 'portfolio', 'tarefas', 'eventos', 'plano'];
+    teste('rota: #tarefas abre Tarefas', J(ctx.rotaDeHash('#tarefas', todas)) === J({ tela: 'tarefas', projeto: '', aba: '' }));
+    teste('rota: #projeto/ID/plano abre o projeto na aba', J(ctx.rotaDeHash('#projeto/abc/plano', todas)) === J({ tela: 'portfolio', projeto: 'abc', aba: 'plano' }));
+    teste('rota: aba desconhecida cai em dados', ctx.rotaDeHash('#projeto/abc/xyz', todas).aba === 'dados');
+    teste('rota: hash vazio/inválido cai no dashboard', ctx.rotaDeHash('', todas).tela === 'dashboard' && ctx.rotaDeHash('#nao-existe', todas).tela === 'dashboard');
+    teste('rota: tela sem permissão cai no dashboard', ctx.rotaDeHash('#tarefas', ['dashboard']).tela === 'dashboard');
+    teste('rota: projeto sem acesso a Portfólio cai no dashboard', ctx.rotaDeHash('#projeto/abc/dados', ['dashboard']).projeto === '');
+    teste('rota: tela + subcaminho estranho não vira tela', ctx.rotaDeHash('#tarefas/lixo', todas).tela === 'dashboard');
+    teste('rota: hashDe é o inverso de rotaDeHash', ctx.hashDe('tarefas') === '#tarefas' && ctx.hashDe('portfolio', 'abc', 'risco') === '#projeto/abc/risco' && ctx.hashDe('x', 'a b', 'zzz') === '#projeto/a%20b/dados');
+    teste('rota: id com caractere especial volta igual', ctx.rotaDeHash(ctx.hashDe('portfolio', 'a b/c', 'tar'), todas).projeto === 'a b/c');
+    // não grava duas vezes o mesmo endereço
+    let pushes = 0; ctx.location.hash = '#tarefas'; ctx.history.pushState = () => { pushes++; };
+    ctx.marcaHash('#tarefas', true); ctx.marcaHash('#eventos', true);
+    teste('marcaHash não repete o endereço atual', pushes === 1);
+    // o painel servido tem o mesmo código e é JavaScript válido
+    const painel = await (await fetch(BASE + '/vpe/app')).text();
+    const ini = painel.indexOf("const S={me:null,tela:'dashboard'};");
+    const fim = painel.indexOf('</script>', ini);
+    let sintaxeOk = false; try { new Function(painel.slice(ini, fim)); sintaxeOk = true; } catch (e) { console.error('sintaxe do painel:', e.message); }
+    teste('painel servido: script do app é JavaScript válido', ini > 0 && sintaxeOk);
+    teste('painel servido: boot lê o endereço e escuta popstate', painel.includes('rotaDeHash(location.hash') && painel.includes("addEventListener('popstate'") && painel.includes('marcaHash(hashDe(t),true)'));
+  }
   r = await req('POST', '/vpe/api/cadastro', { body: { empresa: 'Construtora Beta', nome: 'Bob', email: 'bob@beta.com', senha: 'senha1234' }, jar: 'bobB' });
   teste('cadastro tenant B', r.status === 200);
   r = await req('GET', '/vpe/api/me', { jar: 'anaA' });

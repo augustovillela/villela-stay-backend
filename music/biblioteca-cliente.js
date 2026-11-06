@@ -25,6 +25,8 @@ const JS = `
 (function () {
   'use strict';
   var U = window.MusiqueUI;
+  function marcar(tipo, id) { if (U.marcarItem) U.marcarItem(tipo, id); }
+  function marcarAba(aba) { if (U.marcarAba) U.marcarAba(aba); }
   var A = window.MusiqueAudio;
   var $ = U.$, el = U.el, esc = U.esc, api = U.api, erro = U.erro, aviso = U.aviso;
 
@@ -35,6 +37,7 @@ const JS = `
   // BIBLIOTECA
   // =================================================================
   function verBiblioteca(filtro) {
+    marcarAba('biblioteca');
     var f = filtro || {};
     var q = [];
     if (f.q) q.push('q=' + encodeURIComponent(f.q));
@@ -152,6 +155,7 @@ const JS = `
   // OBRA
   // =================================================================
   function abrirObra(id) {
+    marcar('obra', id);
     api('GET', '/obras/' + id).then(function (d) {
       estado.obra = d;
       var c = $('#corpo'); c.innerHTML = '';
@@ -442,6 +446,7 @@ const JS = `
   // REPERTORIOS
   // =================================================================
   function verRepertorios() {
+    marcarAba('repertorios');
     Promise.all([api('GET', '/repertorios'), api('GET', '/bandas')]).then(function (rs) {
       var c = $('#corpo'); c.innerHTML = '';
       c.appendChild(el('h2', { txt: '\u{1F5C2}\u{FE0F} Repertórios' }));
@@ -519,6 +524,7 @@ const JS = `
   }
 
   function abrirRepertorio(id) {
+    marcar('repertorio', id);
     Promise.all([api('GET', '/repertorios/' + id), api('GET', '/acervo')]).then(function (rs) {
       var d = rs[0], acervo = rs[1].obras;
       var c = $('#corpo'); c.innerHTML = '';
@@ -773,7 +779,7 @@ const JS = `
 
   window.MusiqueBiblioteca = {
     verBiblioteca: verBiblioteca, verRepertorios: verRepertorios,
-    abrirObra: abrirObra, abrirPalco: abrirPalco,
+    abrirObra: abrirObra, abrirRepertorio: abrirRepertorio, abrirPalco: abrirPalco,
   };
 })();
 `;

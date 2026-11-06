@@ -176,6 +176,39 @@ function ordemGrupos() {
   return ORDEM_GRUPOS_BASE.slice(0, -1).concat(novos, 'Conta');
 }
 let ABA = 'dash';
+
+// <rota> — F5 mantém a tela (05/11/2026). A tela atual mora no endereço: `#<tela>` ou
+// `#<tela>/<id>` (ex.: `#contatos`, `#contatos/123`, `#gx_inbox`). Funções puras aqui
+// (testadas em node no selftest, que extrai este bloco); o que toca `location` fica abaixo.
+function rotaDoHash(hash) {
+  const h = String(hash == null ? '' : hash).replace(/^#\/?/, '');
+  if (!h) return null;                                   // vazio / "#" / "#/": não navega
+  const i = h.indexOf('/');
+  const tela = i < 0 ? h : h.slice(0, i);
+  let id = i < 0 ? '' : h.slice(i + 1);
+  try { id = decodeURIComponent(id); } catch (_) { return null; }
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(tela)) return null;
+  if (id && !/^[\w.:-]{1,80}$/.test(id)) return null;
+  return { tela, id };
+}
+function hashDaRota(tela, id) { return '#' + tela + (id ? '/' + encodeURIComponent(id) : ''); }
+// Decide a tela de abertura. `permitidas` = telas que este plano/papel pode abrir.
+// Conta bloqueada abre sempre "conta"; hash inválido ou sem permissão cai no padrão.
+function resolverRota(rota, { bloqueado, permitidas }) {
+  if (bloqueado) return { tela: 'conta', id: '' };
+  if (rota && permitidas.includes(rota.tela)) return { tela: rota.tela, id: rota.tela === 'contatos' ? rota.id : '' };
+  return { tela: 'dash', id: '' };
+}
+// </rota>
+let ROTA_LIGADA = false;
+// Grava a tela no endereço. pushState quando a pessoa navega (o Voltar funciona);
+// replaceState no boot. Não grava se já for igual. Mantém o `?query` da página.
+function marcarRota(tela, id, substituir) {
+  const alvo = hashDaRota(tela, id);
+  if (location.hash === alvo) return;
+  try { history[substituir ? 'replaceState' : 'pushState'](null, '', location.pathname + location.search + alvo); }
+  catch (_) { location.hash = alvo; }
+}
 let NAV_COLAPSADA = (() => { try { return localStorage.getItem('vx-nav') === 'colapsada'; } catch (_) { return false; } })();
 
 // Ganchos de extensão: o Villela Growth OS acrescenta abas por
@@ -229,7 +262,8 @@ function pintarCabecalho() {
 
 function telaApp() {
   const bloq = ME.entitlements && !ME.entitlements.acesso_liberado;
-  ABA = bloq ? 'conta' : 'dash';
+  const inicial = resolverRota(rotaDoHash(location.hash), { bloqueado: !!bloq, permitidas: telasPermitidas() });
+  ABA = inicial.tela;
   const alerta = bloq
     ? `<div class="vx-alerta vx-alerta--danger"><span class="vx-alerta-ico" aria-hidden="true">${svgIco('alert')}</span><div><b>Acesso bloqueado (${esc(ME.empresa.status)}).</b><p class="vx-mb0">Regularize o plano em Conta e plano.</p></div></div>`
     : (ME.empresa.status === 'trial' && ME.entitlements.trial_expira_em
@@ -257,7 +291,9 @@ function telaApp() {
   ligarNav();
   pintarBotaoPush();
   pintarBotaoInstalar();
-  navegar(ABA);
+  marcarRota(inicial.tela, inicial.id, true);          // normaliza o endereço sem empilhar histórico
+  ligarRota();
+  navegar(ABA, { semHash: true, id: inicial.id });
 }
 
 // ---- instalar como app (PWA) — prompt no Android/Chrome, instrução no iPhone ----
@@ -320,18 +356,45 @@ async function alternarPush() {
   } catch (e) { alert(e.message); }
   pintarBotaoPush();
 }
-function navegar(v) {
-  const mapa = Object.assign(
+function mapaDeTelas() {
+  return Object.assign(
     { dash: vDash, kanban: vKanban, contatos: vContatos, tarefas: vTarefas, templates: vTemplates, propostas: vPropostas, buscas: vBuscas, campanhas: vCampanhas, conversas: vConversas, ia: vIA, conta: vConta },
     (window.GX_EXT && GX_EXT.vistas) || {}   // abas do Villela Growth OS
   );
+}
+// Telas que esta conta pode abrir: toda tela do mapa, menos as do menu que o plano/módulo esconde.
+function telasPermitidas() {
+  const catalogo = new Set(MENU.concat((window.GX_EXT && GX_EXT.menu) || []).map(i => i[0]));
+  const visiveis = new Set(itensDoMenu().map(i => i[0]));
+  return Object.keys(mapaDeTelas()).filter(k => !catalogo.has(k) || visiveis.has(k));
+}
+// opts.semHash: não grava o endereço (boot e Voltar/Avançar). opts.id: abre o item (contato).
+function navegar(v, opts) {
+  opts = opts || {};
+  const mapa = mapaDeTelas();
   ABA = mapa[v] ? v : 'dash';
   SEQ++;
+  if (!opts.semHash) marcarRota(ABA, '');
   document.querySelectorAll('#crm-nav [data-v]').forEach(b => {
     if (b.dataset.v === ABA) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
   pintarCabecalho();
+  if (opts.id && ABA === 'contatos') return abrirContato(opts.id);
   (mapa[ABA] || vDash)();
+}
+// Voltar/Avançar do navegador: relê o endereço e abre a mesma tela, sem gravar de novo.
+function ligarRota() {
+  if (ROTA_LIGADA) return;
+  ROTA_LIGADA = true;
+  window.addEventListener('popstate', () => {
+    if (typeof ME === 'undefined' || !ME) return;       // tela de login: não há o que reabrir
+    const rota = rotaDoHash(location.hash);
+    if (!rota) return;                                   // "#" vazio (links href="#"): ignora
+    const bloq = ME.entitlements && !ME.entitlements.acesso_liberado;
+    const r = resolverRota(rota, { bloqueado: !!bloq, permitidas: telasPermitidas() });
+    marcarRota(r.tela, r.id, true);                      // endereço inválido/sem permissão vira o padrão
+    navegar(r.tela, { semHash: true, id: r.id });
+  });
 }
 const carregando = () => {
   $('#tela').innerHTML = '<div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--linha"></div><div class="vx-skel vx-skel--bloco"></div>';
@@ -634,6 +697,7 @@ async function dlgUnificar() {
 
 // ---- ficha do contato ----
 async function abrirContato(id) {
+  marcarRota('contatos', id);
   try {
     const { contato: c } = await api('GET', '/app/contatos/' + id);
     const tl = (c.atividades || []).map(a => `<div class="lin"><span class="chip">${esc(a.tipo)}</span> ${esc(a.texto)}<br><span class="sub" style="margin:0;text-align:left">${dataBr(a.data)} ${String(a.data).slice(11, 16)} · ${esc(a.autor || '')}</span></div>`).join('') || '<p class="sub" style="text-align:left">Sem atividades.</p>';
@@ -691,7 +755,7 @@ async function abrirContato(id) {
           <div class="card"><b>Linha do tempo</b>${tl}</div>
         </div>
       </div><div id="f-saida"></div>`;
-    $('#f-voltar').onclick = () => vContatos();
+    $('#f-voltar').onclick = () => navegar('contatos');
     $('#cn-add').onclick = async () => {
       try { await api('POST', `/app/contatos/${id}/canais`, { canal: $('#cn-canal').value, identificador: $('#cn-valor').value.trim() }); abrirContato(id); }
       catch (e) { $('#cn-msg').textContent = e.message; }

@@ -501,6 +501,27 @@ async function rodar() {
     assert.ok((await req('GET', '/staff/api/legal-saas/auditoria')).json.eventos.some(e => e.acao === 'tenant.criar'));
   });
 
+  console.log('\n  — F5 MANTÉM A TELA (rota no endereço) —');
+  await t('rota: hash → tela; ?creditos=1 vai para a IA; conta bloqueada e hash inválido caem no plano; o painel serve o roteador e o script é válido', async () => {
+    const rota = require('./rota-app');
+    const v = rota.TELAS;
+    assert.deepEqual(v, ['plano', 'uso', 'equipe', 'ia', 'suporte']);
+    assert.equal(rota.lerHash('#equipe'), 'equipe'); assert.equal(rota.lerHash('#/Uso'), 'uso');
+    assert.equal(rota.lerHash(''), ''); assert.equal(rota.lerHash('#'), ''); assert.equal(rota.lerHash('#<x>'), '');
+    assert.equal(rota.resolverTela('#equipe', '', true, v), 'equipe', 'F5 mantém a tela');
+    assert.equal(rota.resolverTela('#suporte', '', true, v), 'suporte');
+    assert.equal(rota.resolverTela('', '', true, v), 'plano', 'sem hash: tela padrão de antes');
+    assert.equal(rota.resolverTela('#naoexiste', '', true, v), 'plano');
+    assert.equal(rota.resolverTela('#equipe', '', false, v), 'plano', 'conta sem acesso cai no plano');
+    assert.equal(rota.resolverTela('#plano', '?creditos=1', true, v), 'ia', 'volta do pagamento da recarga continua indo para a IA');
+    assert.equal(rota.resolverTela('', '?x=1&creditos=1', false, v), 'ia');
+    assert.equal(rota.resolverTela('', '?creditos=10', true, v), 'plano', 'creditos=10 não é creditos=1');
+    // o painel entrega o roteador e continua um JavaScript válido
+    const html = (await req('GET', '/juridico/app', { cru: true })).texto;
+    assert.ok(html.includes('function ir(') && html.includes('resolverTela') && html.includes('popstate') && html.includes('data-t="suporte"'));
+    for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) new Function(m[1]);
+  });
+
   srv.close();
   console.log(`\n${ok} teste(s) OK, ${falhas.length} falha(s).`);
   if (falhas.length) { falhas.forEach(f => console.log('  ✗', f)); process.exit(1); }
