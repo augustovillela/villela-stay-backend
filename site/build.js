@@ -3135,9 +3135,9 @@ conferirCobertura(PRODUTOS_GRUPO);
        'It is the Brazilian company Augusto Villela Ltda (tax ID 56.776.526/0001-12), based in Brasília, Brazil, which runs short-stay accommodation in Lago Sul and develops the management systems on this page. Each system was built to solve a problem in its own operation before being sold to anyone else.',
        'Es la empresa brasileña Augusto Villela Ltda (CNPJ 56.776.526/0001-12), de Brasília, que opera alojamiento por temporada en Lago Sul y desarrolla los sistemas de gestión de esta página. Cada sistema nació para resolver un problema de la propia operación antes de venderse a terceros.')],
     [t('Preciso de cartão de crédito para testar?', 'Do I need a credit card to try it?', '¿Necesito tarjeta de crédito para probar?'),
-     t('Não. Os sistemas por assinatura têm 15 dias de teste sem cartão. Você cadastra, usa tudo e decide no fim — se não assinar, nada é cobrado.',
-       'No. The subscription systems come with a 15-day trial and no card required. You sign up, use everything and decide at the end — if you do not subscribe, nothing is charged.',
-       'No. Los sistemas por suscripción tienen 15 días de prueba sin tarjeta. Te registras, usas todo y decides al final — si no te suscribes, no se cobra nada.')],
+     t('Não. Os sistemas por assinatura têm 15 dias de teste sem cartão. Você cadastra, usa tudo e decide no fim — se não assinar, nada é cobrado. Quem assina escolhe entre o plano mensal e o anual, que custa o equivalente a 10 mensalidades.',
+       'No. The subscription systems come with a 15-day trial and no card required. You sign up, use everything and decide at the end — if you do not subscribe, nothing is charged. Subscribers choose monthly or annual billing; the annual plan costs the equivalent of 10 monthly fees.',
+       'No. Los sistemas por suscripción tienen 15 días de prueba sin tarjeta. Te registras, usas todo y decides al final — si no te suscribes, no se cobra nada. Quien se suscribe elige entre plan mensual y anual, que cuesta el equivalente a 10 mensualidades.')],
     [t('Posso cancelar quando quiser?', 'Can I cancel whenever I want?', '¿Puedo cancelar cuando quiera?'),
      t('Pode. Não há fidelidade nem multa de cancelamento, e você pode exportar seus dados antes de sair.',
        'You can. There is no lock-in and no cancellation penalty, and you can export your data before leaving.',
@@ -3702,13 +3702,13 @@ ${blocos}
       livros: ['claude-ai-na-pratica-juridica', 'claude-ai-para-advogados-guia-visual'],
       cursos: ['claude-ai-na-pratica-juridica'], sistemas: ['legal'] },
 
-    // Super curso para concursos (ESTUDE), no ar desde 10/2026. Próximos concursos entram aqui, no campo cursos.
+    // Cursos de concurso (ESTUDE), no ar desde 10/2026. Concurso novo entra aqui, no campo cursos.
     { id: 'concursos',
-      nome: t('Concursos públicos e magistratura do trabalho', 'Public service exams and the labour judiciary', 'Oposiciones y magistratura del trabajo'),
-      texto: t('Preparação para concurso pelo programa oficial, e não por apostila genérica: uma aula para cada item do edital, teoria para leitura, questões de provas anteriores e questões autorais comentadas, cards de revisão, mapas mentais, simulados com a regra do concurso e plano de estudo no tempo de quem estuda. O primeiro curso segue o edital do concurso nacional da Magistratura do Trabalho, para quem quer ser juiz do trabalho.',
-        'Exam preparation built on the official syllabus rather than a generic handout: one lesson for each item of the public notice, reading theory, past-paper and original questions with commentary, revision cards, mind maps, mock exams under the real rules and a study plan that fits your schedule. The first course follows the national competition for Brazilian labour judges.',
-        'Preparación para oposiciones por el programa oficial, no por apuntes genéricos: una clase por cada punto de la convocatoria, teoría para lectura, preguntas de exámenes anteriores y originales comentadas, tarjetas de repaso, mapas mentales, simulacros con la regla del concurso y plan de estudio a tu ritmo. El primer curso sigue la convocatoria nacional para jueces del trabajo en Brasil.'),
-      livros: [], cursos: ['juiz-do-trabalho-trt-10a-regiao-concurso-paradigma'], sistemas: [] },
+      nome: t('Concursos públicos: magistratura, Ministério Público e Justiça Federal', 'Public service exams: judiciary, public prosecution and federal courts', 'Oposiciones: magistratura, Ministerio Público y justicia federal'),
+      texto: t('Preparação para concurso pelo programa oficial, e não por apostila genérica: uma aula para cada item do edital, teoria para leitura, questões de provas anteriores e questões autorais comentadas, cards de revisão, mapas mentais, simulados com a regra do concurso e plano de estudo no tempo de quem estuda. Há um curso por concurso, cada um sobre o edital dele: Juiz do Trabalho (TRT da 10ª Região), Procurador do Trabalho (MPT), Juiz de Direito Substituto do TJDFT e a preparação para o concurso do TRF da 3ª Região.',
+        'Exam preparation built on the official syllabus rather than a generic handout: one lesson for each item of the public notice, reading theory, past-paper and original questions with commentary, revision cards, mind maps, mock exams under the real rules and a study plan that fits your schedule. There is one course per competition, each on its own notice: labour judge (10th Regional Labour Court), labour prosecutor (MPT), substitute judge of the Federal District court (TJDFT) and preparation for the 3rd Region Federal Court exam.',
+        'Preparación para oposiciones por el programa oficial, no por apuntes genéricos: una clase por cada punto de la convocatoria, teoría para lectura, preguntas de exámenes anteriores y originales comentadas, tarjetas de repaso, mapas mentales, simulacros con la regla del concurso y plan de estudio a tu ritmo. Hay un curso por concurso, cada uno sobre su convocatoria: juez del trabajo (TRT 10), procurador del trabajo (MPT), juez sustituto del TJDFT y preparación para el concurso del TRF de la 3.ª Región.'),
+      livros: [], cursos: ['juiz-do-trabalho-trt-10a-regiao-concurso-paradigma', 'procurador-do-trabalho-23-concurso-do-mpt', 'curso-preparatorio-para-o-concurso-de-juiz-de-direito-substituto-do-tjdft', 'curso-preparatorio-para-o-concurso-do-trf-da-3-regiao-2026'], sistemas: [] },
 
     { id: 'gestao',
       nome: t('Gestão da empresa: clientes, documentos, projetos e dinheiro', 'Running the company: clients, documents, projects and money', 'Gestión de la empresa: clientes, documentos, proyectos y dinero'),
@@ -3728,10 +3728,10 @@ ${blocos}
     // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros.
     { id: 'chacara',
       nome: t('Chácara, casa de campo e manutenção da propriedade', 'Country house and property maintenance', 'Casa de campo y mantenimiento de la propiedad'),
-      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim e paisagismo, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
-        'How to look after a country property with method: a clean and safe pool, garden and landscaping, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
-        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín y paisajismo, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
-      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica', 'decoracao-de-interiores-na-pratica'], sistemas: [] },
+      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim, paisagismo e irrigação, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
+        'How to look after a country property with method: a clean and safe pool, garden, landscaping and irrigation, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
+        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín, paisajismo y riego, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
+      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica', 'decoracao-de-interiores-na-pratica', 'irrigacao-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -3750,10 +3750,10 @@ ${blocos}
 
     { id: 'pessoa',
       nome: t('Vida, caráter, família e aprendizagem', 'Life, character, family and learning', 'Vida, carácter, familia y aprendizaje'),
-      texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
+      texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música (com o curso de ouvido musical) e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
         'What a father gathers for his children about self-mastery, clarity and purpose — and the platforms for creative learning for children, music study and cooking, born from the same question: how do people really learn.',
         'Lo que un padre reúne para sus hijos sobre dominio de sí, lucidez y propósito — y las plataformas de aprendizaje creativo para niños, estudio de música y cocina.'),
-      livros: ['o-homem-essencial'], cursos: ['o-homem-contemporaneo', 'o-homem-essencial'], sistemas: ['kids', 'music', 'cozinhe'] }
+      livros: ['o-homem-essencial'], cursos: ['o-homem-contemporaneo', 'o-homem-essencial', 'ouvido-de-musico-a-base-que-serve-para-qualquer-instrumento'], sistemas: ['kids', 'music', 'cozinhe'] }
   ];
 
   // A trava: produto fora de todo assunto não some da página — some da BUSCA, que é
@@ -3813,12 +3813,12 @@ ${blocos}
        'Sí. Cada libro de la librería tiene una muestra para hojear en su propia página, y la primera clase de cada curso de la Academy está abierta.')],
     [t('Os cursos têm mensalidade?', 'Do the courses have a monthly fee?', '¿Los cursos tienen mensualidad?'),
      t('Não. O curso é compra única, com acesso de 1 ano a partir da compra, incluindo as atualizações publicadas nesse período. Quem cobra assinatura mensal são os sistemas de gestão, que é outra coisa.',
-       'No. A course is a one-time purchase with lifetime access to the content and to updates of the same edition. The monthly subscription applies to the management software, which is a different thing.',
-       'No. El curso es compra única, con acceso de por vida al contenido y a las actualizaciones de la misma edición. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
+       'No. A course is a one-time purchase with one year of access from the purchase date, including the updates published in that period. The monthly subscription applies to the management software, which is a different thing.',
+       'No. El curso es compra única, con acceso de 1 año desde la compra, incluidas las actualizaciones publicadas en ese período. La suscripción mensual es de los sistemas de gestión, que es otra cosa.')],
     [t('Os sistemas têm teste grátis?', 'Is there a free trial for the software?', '¿Los sistemas tienen prueba gratis?'),
-     t(`Os que são vendidos por assinatura têm 15 dias grátis, sem cartão de crédito e sem fidelidade. Dos ${TODOS_SIS.length}, ${SISTEMAS.length} estão à venda; ${EM_DESENVOLVIMENTO.length} já funcionam em produção e ainda não foram lançados comercialmente — a página dos sistemas diz o que falta em cada um.`,
-       `Those sold by subscription come with 15 days free, no credit card and no lock-in. Of the ${TODOS_SIS.length}, ${SISTEMAS.length} are for sale; ${EM_DESENVOLVIMENTO.length} already run in production and have not launched commercially yet — the systems page says what each one is still missing.`,
-       `Los vendidos por suscripción tienen 15 días gratis, sin tarjeta y sin permanencia. De los ${TODOS_SIS.length}, ${SISTEMAS.length} están a la venta; ${EM_DESENVOLVIMENTO.length} ya funcionan en producción y aún no se lanzaron comercialmente.`)],
+     t(`Os que são vendidos por assinatura têm 15 dias grátis, sem cartão de crédito e sem fidelidade, e há opção de plano anual pelo preço de 10 mensalidades. Dos ${TODOS_SIS.length}, ${SISTEMAS.length} estão à venda; ${EM_DESENVOLVIMENTO.length} já funcionam em produção e ainda não foram lançados comercialmente — a página dos sistemas diz o que falta em cada um.`,
+       `Those sold by subscription come with 15 days free, no credit card and no lock-in, plus an annual option priced at 10 monthly fees. Of the ${TODOS_SIS.length}, ${SISTEMAS.length} are for sale; ${EM_DESENVOLVIMENTO.length} already run in production and have not launched commercially yet — the systems page says what each one is still missing.`,
+       `Los vendidos por suscripción tienen 15 días gratis, sin tarjeta y sin permanencia, y hay plan anual al precio de 10 mensualidades. De los ${TODOS_SIS.length}, ${SISTEMAS.length} están a la venta; ${EM_DESENVOLVIMENTO.length} ya funcionan en producción y aún no se lanzaron comercialmente.`)],
     [t('Quem é Augusto Villela?', 'Who is Augusto Villela?', '¿Quién es Augusto Villela?'),
      t('Advogado e empresário em Brasília, autor dos livros desta página e fundador do Grupo Villela Stay, que opera hospedagem por temporada no Lago Sul e desenvolve os sistemas de gestão listados aqui. Os exemplos dos livros e dos cursos saem dessa operação — não são casos hipotéticos.',
        'A lawyer and entrepreneur in Brasília, author of the books on this page and founder of Grupo Villela Stay, which runs vacation rentals in Lago Sul and builds the management software listed here. The examples in the books and courses come from that operation — they are not hypothetical cases.',
@@ -3884,9 +3884,9 @@ ${blocos}
       'Books and courses on AI, business and management — Villela Stay',
       'Libros y cursos de IA, negocios y gestión — Villela Stay'),
     // 150–160 caracteres: o que o Google mostra inteiro no resultado.
-    t(`${LIVROS.length} livros e ${CURSOS.length} cursos de IA aplicada ao trabalho, advocacia, marketing, finanças e drones — e ${TODOS_SIS.length} sistemas de gestão em nuvem. Tudo em português.`,
-      `${LIVROS.length} books and ${CURSOS.length} courses on AI applied to work, law, marketing, finance and drones — plus ${TODOS_SIS.length} cloud management systems. All in Portuguese.`,
-      `${LIVROS.length} libros y ${CURSOS.length} cursos de IA aplicada al trabajo, abogacía, marketing, finanzas y drones — y ${TODOS_SIS.length} sistemas de gestión en la nube. Todo en portugués.`),
+    t(`${LIVROS.length} livros e ${CURSOS.length} cursos de IA, concursos, chácara, música e gestão — e ${TODOS_SIS.length} sistemas em nuvem. Tudo em português.`,
+      `${LIVROS.length} books and ${CURSOS.length} courses on AI, public exams, country property, music and management — plus ${TODOS_SIS.length} cloud systems. All in Portuguese.`,
+      `${LIVROS.length} libros y ${CURSOS.length} cursos de IA, oposiciones, casa de campo, música y gestión — y ${TODOS_SIS.length} sistemas en la nube. Todo en portugués.`),
     `
 <div class="tx sx">
 <section class="tx-hero">
