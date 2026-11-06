@@ -214,7 +214,7 @@ const Contatos = {
     const buscas = db.prepare('SELECT COUNT(DISTINCT busca_id) n FROM crm_busca_execucoes WHERE tenant_id = ? AND iniciada_em >= ?').get(T(tid), rec.inicio).n;
     return { total, novos, antigos: total - novos, ultimo_dia: rec.dia, buscas_no_dia: buscas };
   },
-  listar(tid, q = {}) {
+  listar(tid, q = {}, teto = 2000) {
     let sql = 'SELECT * FROM crm_contatos WHERE tenant_id = ?';
     const args = [T(tid)];
     if (q.status !== 'todos') { sql += " AND status = ?"; args.push(q.status === 'arquivado' ? 'arquivado' : 'ativo'); }
@@ -250,7 +250,7 @@ const Contatos = {
       sql += " AND (ultima_interacao = '' OR ultima_interacao < ?)"; args.push(corte);
     }
     sql += ' ORDER BY atualizado_em DESC, criado_em DESC LIMIT ?';
-    args.push(Math.min(Number(q.limite) || 500, 2000));
+    args.push(Math.min(Number(q.limite) || 500, teto));   // `teto` só a exportação eleva (a tela segue em 2000); não vem da URL
     return db.prepare(sql).all(...args).map(hidratarContato);
   },
   obter(tid, id) {
@@ -422,7 +422,7 @@ const Contatos = {
       'tipo', 'origem', 'campanha', 'interesse', 'produto_interesse', 'ticket_centavos', 'responsavel', 'prioridade', 'score',
       'proxima_acao', 'proxima_acao_em', 'ultima_interacao', 'criado_em'];
     const esc = (v) => { const t = String(v == null ? '' : v); return /[",;\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
-    const linhas = Contatos.listar(tid, { ...q, limite: 2000 }).map(c => cols.map(k => esc(Array.isArray(c[k]) ? c[k].join('|') : c[k])).join(';'));
+    const linhas = Contatos.listar(tid, { ...q, limite: 200000 }, 200000).map(c => cols.map(k => esc(Array.isArray(c[k]) ? c[k].join('|') : c[k])).join(';'));
     return cols.join(';') + '\n' + linhas.join('\n');
   },
   // importação CSV (separador ; ou ,) com mapeamento por cabeçalho e dedupe
