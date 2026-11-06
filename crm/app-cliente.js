@@ -519,7 +519,9 @@ async function vKanban() {
         <button class="btn peq" id="k-novo">+ Nova oportunidade</button>
         <button class="btn peq secund" id="k-novo-funil">+ Novo funil</button>
       </div>
+      <div id="k-topo" aria-hidden="true" style="overflow-x:auto;overflow-y:hidden;height:16px;margin-bottom:2px"><div style="height:1px"></div></div>
       <div class="kanban">${k.colunas.map(colunaHTML).join('')}</div>`;
+    barraTopoKanban();
     $('#k-funil').onchange = () => { KANBAN_FUNIL = $('#k-funil').value; vKanban(); };
     $('#k-novo').onclick = () => dlgOportunidade();
     $('#k-novo-funil').onclick = async () => {
@@ -528,6 +530,16 @@ async function vKanban() {
     };
     ligaKanban();
   } catch (e) { erroTela(e); }
+}
+// barra de rolagem horizontal TAMBÉM no topo do kanban (com o quadro alto, a de baixo fica longe): as duas andam juntas
+function barraTopoKanban() {
+  const topo = $('#k-topo'), quadro = document.querySelector('.kanban');
+  if (!topo || !quadro) return;
+  const medir = () => { topo.firstElementChild.style.width = quadro.scrollWidth + 'px'; topo.style.display = quadro.scrollWidth > quadro.clientWidth + 2 ? '' : 'none'; };
+  // sem trava de ida e volta: só copia quando as posições diferem (atribuir o mesmo valor não dispara novo evento)
+  topo.onscroll = () => { if (Math.round(quadro.scrollLeft) !== Math.round(topo.scrollLeft)) quadro.scrollLeft = topo.scrollLeft; };
+  quadro.onscroll = () => { if (Math.round(topo.scrollLeft) !== Math.round(quadro.scrollLeft)) topo.scrollLeft = quadro.scrollLeft; };
+  medir(); setTimeout(medir, 300); window.addEventListener('resize', medir);
 }
 function colunaHTML(c) {
   const cards = c.oportunidades.map(o => `
