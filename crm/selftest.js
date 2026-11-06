@@ -1240,6 +1240,16 @@ async function rodar() {
     assert.deepEqual(saas.appRepo.Contatos.resumo(outro), { total: 0, novos: 0, antigos: 0, ultimo_dia: '', buscas_no_dia: 0 });
   });
 
+  await t('busca: fonte devolveu zero lugares vira aviso no card (não "ok" mudo) e não é erro nem cobra', async () => {
+    const tid = await tidDoTenant();
+    const b = buscasMod.criar(tid, { termos: ['empresa de formaturas'], locais: ['DF, Brasília - DF'], max_resultados: 10, frequencia_dias: 30, nome: 'Formaturas vazio' });
+    buscasMod.aprovar(tid, b.id, { aceite: true, por: 'teste' });
+    const r = await buscasMod.executar(tid, b.id, { provedor: { async buscar() { return []; } }, obter: obterFake });
+    assert.equal(r.lugares, 0); assert.equal(r.erro, ''); assert.match(r.aviso, /nenhum lugar/);
+    const ex = buscasMod.execucoes(tid, b.id)[0];
+    assert.equal(ex.status, 'ok'); assert.match(ex.erro, /Asa Sul, Brasília/, 'o card mostra o que tentar');
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

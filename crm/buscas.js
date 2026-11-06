@@ -266,16 +266,18 @@ const Buscas = {
       }
     } catch (e) { erro = require('./cofre').limpar(e.message, T(tid)); }
     if (falhas.length) erro = [erro, ...falhas].filter(Boolean).join(' · ');
+    // rodou sem erro mas a fonte não devolveu NENHUM lugar: avisa (antes o card dizia só "ok — 0 novos")
+    const aviso = !erro && !r.lugares ? 'A fonte não devolveu nenhum lugar para esta combinação de categoria e região. Tente uma região reconhecida pelo Google Maps (ex.: "Asa Sul, Brasília" ou "Brasília, DF"), poucas categorias por vez e categorias mais simples.' : '';
     // fecha a conta: cobra só o que a fonte devolveu (0 lugares = estorno total)
     let cobrado = 0;
     if (cob) { try { cobrado = cob.fechar(r.lugares).cobrado_milesimos || 0; } catch (_) { /* a reserva órfã volta sozinha */ } }
     const fim = nowISO();
     db.prepare('UPDATE crm_busca_execucoes SET concluida_em = ?, status = ?, novos = ?, existentes = ?, enriquecidos = ?, canais_novos = ?, erro = ?, modo_cobranca = ?, cobrado_milesimos = ? WHERE id = ?')
-      .run(fim, erro && !r.lugares ? 'erro' : 'ok', r.novos, r.existentes, r.enriquecidos, r.canais_novos, s(erro, 400), cob ? cob.modo : '', cobrado, exId);
+      .run(fim, erro && !r.lugares ? 'erro' : 'ok', r.novos, r.existentes, r.enriquecidos, r.canais_novos, s(erro || aviso, 400), cob ? cob.modo : '', cobrado, exId);
     db.prepare("UPDATE crm_buscas SET rodando_desde = '', ultima_em = ?, proxima_em = ?, atualizado_em = ? WHERE id = ?")
       .run(fim, somaDias(fim, b.frequencia_dias), fim, b.id);
     if (erro && !r.lugares) throw new Error(erro);
-    return { ...r, erro };
+    return { ...r, erro, aviso };
   },
 
   // roda as buscas vencidas (uma por vez); só com a chave geral CRM_BUSCA_ATIVA=on
