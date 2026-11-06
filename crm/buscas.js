@@ -183,6 +183,14 @@ const Buscas = {
     return { ...r, status: 'rascunho', aviso: 'Campanha em RASCUNHO. Nada foi enviado: revise a lista e a mensagem; cada envio é manual (e o Augusto aprova a lista antes).' };
   },
 
+  // falha que acontece ANTES de a varredura começar (credencial, teto, saldo): vira uma execução com erro, visível no card
+  registrarFalha(tid, id, mensagem) {
+    const b = db.prepare('SELECT id FROM crm_buscas WHERE tenant_id = ? AND id = ?').get(T(tid), T(id)); if (!b) return;
+    const agora = nowISO();
+    db.prepare("INSERT INTO crm_busca_execucoes (id, tenant_id, busca_id, iniciada_em, concluida_em, gatilho, status, erro) VALUES (?,?,?,?,?,?,?,?)")
+      .run(novoId(), T(tid), b.id, agora, agora, 'manual', 'erro', require('./cofre').limpar(s(mensagem, 400), T(tid)));
+  },
+
   lugaresNoMes(tid) {
     const ini = new Date().toISOString().slice(0, 7);
     return db.prepare('SELECT COALESCE(SUM(lugares),0) n FROM crm_busca_execucoes WHERE tenant_id = ? AND iniciada_em >= ?').get(T(tid), ini).n;

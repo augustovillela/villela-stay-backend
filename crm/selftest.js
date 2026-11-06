@@ -1203,6 +1203,20 @@ async function rodar() {
     assert.equal(b.custo.lugares_max, 7 * 20, 'cada categoria × região × máximo');
   });
 
+  await t('busca: teto mensal esgotado avisa na hora (400) em vez de falhar em silêncio; falha antes da varredura vira execução com erro', async () => {
+    const tid = await tidDoTenant();
+    const b = buscasMod.criar(tid, { termos: ['empresa de formaturas'], locais: ['DF'], max_resultados: 10, frequencia_dias: 30, nome: 'Formaturas teto' });
+    await req('POST', `/crm/api/app/buscas/${b.id}/aprovar`, { corpo: { aceite: true }, cookies: true });
+    const antes = process.env.CRM_BUSCA_TETO_LUGARES_MES; process.env.CRM_BUSCA_TETO_LUGARES_MES = '1';
+    try {
+      const r = await req('POST', `/crm/api/app/buscas/${b.id}/rodar`, { cookies: true });
+      assert.equal(r.st, 400); assert.match(r.json.erro, /Teto mensal de 1 lugares atingido/); assert.match(r.json.erro, /CRM_BUSCA_TETO_LUGARES_MES/);
+    } finally { if (antes === undefined) delete process.env.CRM_BUSCA_TETO_LUGARES_MES; else process.env.CRM_BUSCA_TETO_LUGARES_MES = antes; }
+    buscasMod.registrarFalha(tid, b.id, 'Apify respondeu 402 com apify_api_SEGREDOSEGREDO123 no texto');
+    const ex = buscasMod.execucoes(tid, b.id)[0];
+    assert.equal(ex.status, 'erro'); assert.match(ex.erro, /Apify respondeu 402/); assert.ok(!ex.erro.includes('SEGREDOSEGREDO123'), 'sem token no registro');
+  });
+
   await t('enriquecimento: extrai e-mail/wa.me/perfis, filtra lixo e bloqueia rede interna', async () => {
     const x = enriqMod.extrair('<a href="mailto:vendas@loja.com.br?subject=oi">x</a> teste@sentry.io foto@2x.png ana&#64;loja.com.br <a href="https://api.whatsapp.com/send?phone=5561999991111&text=oi">w</a> <a href="https://facebook.com/sharer/sharer.php?u=1">s</a> <a href="https://facebook.com/lojinha.oficial">f</a>', 'loja.com.br');
     assert.deepEqual(x.emails, ['vendas@loja.com.br', 'ana@loja.com.br']);

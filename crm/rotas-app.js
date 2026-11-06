@@ -99,6 +99,9 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
     if (!b) return res.status(404).json({ erro: 'Busca não encontrada.' });
     if (!b.aprovada_em) return res.status(400).json({ erro: 'Aprove a busca (estimativa de custo) antes de rodar.' });
     if (b.status !== 'ativa') return res.status(400).json({ erro: 'A busca está pausada.' });
+    // avisa NA HORA o que impediria de rodar (antes, falhava em silêncio e o card ficava em "ainda não rodou")
+    if (buscas.tetoMes() - buscas.lugaresNoMes(tid(req)) <= 0) return res.status(400).json({ erro: `Teto mensal de ${buscas.tetoMes()} lugares atingido (já usados ${buscas.lugaresNoMes(tid(req))} neste mês). Nada foi executado. O teto reinicia no mês que vem; para ampliar, o administrador da plataforma ajusta CRM_BUSCA_TETO_LUGARES_MES.` });
+    if (b.rodando_desde && Date.parse(b.rodando_desde) > Date.now() - 20 * 60000) return res.status(400).json({ erro: 'Esta busca já está rodando. Aguarde terminar.' });
     // quem paga: conta interna, token do assinante ou créditos — decidido ANTES de gastar (captura.js)
     const Captura = require('./captura');
     const sit = Captura.situacaoExterna(tid(req));
@@ -108,8 +111,8 @@ function registrarRotasApp(server, { requireAssinante, requirePapel }) {
       if ((Number((req.body || {}).aceite_milesimos) || 0) < orc.teto_milesimos) return res.status(409).json({ erro: `Esta busca custa no máximo ${orc.teto}. Confirme o valor para rodar.`, orcamento_milesimos: orc.teto_milesimos, orcamento: orc.teto });
       if (!orc.cobre) return res.status(402).json({ erro: `Saldo insuficiente: o teto é ${orc.teto} e você tem ${orc.saldo}. Recarregue para continuar.`, orcamento_milesimos: orc.teto_milesimos });
     }
-    // roda em segundo plano (pode levar minutos); a tela acompanha pelas execuções
-    buscas.executar(tid(req), req.params.id, { gatilho: 'manual' }).catch((e) => console.warn('[crm] busca manual falhou:', e.message));
+    // roda em segundo plano (pode levar minutos); a tela acompanha pelas execuções; falha vira execução com erro
+    buscas.executar(tid(req), req.params.id, { gatilho: 'manual' }).catch((e) => { console.warn('[crm] busca manual falhou:', e.message); try { buscas.registrarFalha(tid(req), req.params.id, e.message); } catch (_) { /* sem registro */ } });
     res.json({ ok: true, iniciada: true });
   }));
   // campanha de leads de uma tag (ex.: confraternizacao-2026): nasce em RASCUNHO, nada é enviado
