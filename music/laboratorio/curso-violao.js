@@ -28,6 +28,9 @@ const CSS = `<style>
 .cv-corpo .admonition.pratica{border-color:#2f6db5;background:#eaf1fa}.cv-corpo .admonition.sintese{border-color:#1B2A4A;background:#eef0f6}
 .cv-corpo .admonition.exercicio{border-color:#1B2A4A;background:#fff}
 .cv-corpo svg{max-width:100%}
+.cv-corpo .fila{display:flex;justify-content:center;gap:.9rem;flex-wrap:wrap;margin:.8rem 0 1rem}.cv-corpo .fila svg{width:7.6rem;height:auto}
+.cv-corpo .fila.tab svg,.cv-corpo .fila svg.tab{width:auto;max-width:100%}.cv-corpo svg.circ{width:min(26rem,100%)}.cv-corpo svg.tec{width:100%}
+.cv-corpo svg.bat,.cv-corpo svg.tab{max-width:100%;height:auto}.cv-corpo figure.pauta{background:#fff;border:1px solid #dde2ee;padding:.5rem .7rem;border-radius:4px}.cv-corpo figure.pauta svg{width:100%;height:auto;max-width:none}
 .cv-ferr{display:grid;gap:.7rem;grid-template-columns:repeat(auto-fit,minmax(15rem,1fr));margin:1rem 0}
 .cv-ferr a{display:block;border:1px solid #cfd6e6;border-left:4px solid #C9A227;border-radius:6px;padding:.7rem .9rem;text-decoration:none;color:inherit}
 .cv-ferr a strong{display:block}.cv-ferr a span{font-size:.88rem;opacity:.8}
