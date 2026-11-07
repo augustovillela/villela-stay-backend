@@ -56,6 +56,7 @@ const CP = require('./curso-piano');
 const CC = require('./curso-cavaquinho');
 const BM = require('./curso-bandolim');
 const UK = require('./curso-ukulele');
+const CV = require('./curso-violao');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const CC_LIVRO = require('./curso-cavaquinho-conteudo.json');
 const LB = require('./licoes-bateria');
@@ -114,6 +115,7 @@ function registrar(app, { opcional, contextoDe }) {
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
     '/music/criar/curso-violao-livro', '/music/criar/curso-guitarra-edicao',
+    '/music/curso-violao', '/music/curso-violao.json', '/music/curso-violao.pdf',
     '/music/criar/curso-violao-v2', '/music/criar/curso-violao-v2.json', '/music/criar/curso-violao-v2.pdf',
     '/music/criar/curso-guitarra-v2', '/music/criar/curso-guitarra-v2.json', '/music/criar/curso-guitarra-v2.pdf',
     '/music/criar/curso-violao-livro.pdf', '/music/criar/curso-guitarra-edicao.pdf', '/music/criar/curso-guitarra-livro', '/music/criar/curso-guitarra-livro.pdf',
@@ -172,7 +174,7 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   app.get('/music/cursos', (req, res) => {
     const cursos = [
       { nome: 'Teoria musical', icone: '🎓', cor: '#5865a8', resumo: 'Notas, ritmo, escalas, acordes, leitura e ouvido.', url: '/music/curso-teoria', ativo: true },
-      { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/criar/curso-violao-livro', ativo: true },
+      { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/curso-violao', ativo: true },
       { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
       { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
       { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
@@ -410,6 +412,7 @@ ${relacionados(f.slug)}`;
   });
 
   // ------------------------------------------------------------ curso de ukulele
+  CV.registrar(app, { opcional, pagina, esc });
   app.get('/music/curso-ukulele.json', opcional, (req, res) => {
     const documento = { schema: 'musique.course.v1', id: UK.CURSO.id, titulo: UK.CURSO.titulo, subtitulo: UK.CURSO.subtitulo, versao: UK.CURSO.versao, descricao: UK.CURSO.descricao, paginas: UK.CURSO.paginas, trilhas: UK.CURSO.trilhas, partes: UK.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-ukulele', pdf: '/music/curso-ukulele.pdf', markdown: '/music/curso-ukulele.md', progresso: '/music/curso-ukulele/progresso' }, capitulos: UK.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, parte: c.parte, resumo: c.resumo, objetivo: c.objetivo, url: `/music/curso-ukulele/${c.slug}` })) };
     res.type('application/json').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));

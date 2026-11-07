@@ -449,6 +449,24 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
 
+  await t('VIOLÃO (Coleção): 10 capítulos íntegros, com figuras e ferramentas; todas as rotas do curso e as v2 exigem assinatura', async () => {
+    const CV = require('./curso-violao');
+    assert.equal(CV.CAPS.length, 10);
+    CV.CAPS.forEach((c, i) => {
+      assert.equal(c.numero, i + 1, 'numeração contínua');
+      assert.ok(c.html.length > 3000, 'capítulo com conteúdo: ' + c.slug);
+      assert.equal((c.html.match(/�/g) || []).length, 0, 'sem caractere de substituição');
+      assert.ok(c.ferramentas.length >= 1, 'ferramenta ligada: ' + c.slug);
+      assert.ok(c.ferramentas.every((f) => /^\/music\//.test(f.url)), 'ferramenta aponta para o Musique');
+    });
+    assert.ok(CV.CAPS.some((c) => /<svg/.test(c.html)), 'figuras renderizadas em SVG');
+    for (const u of ['/music/curso-violao', '/music/curso-violao.json', '/music/curso-violao.pdf', '/music/curso-violao/' + CV.CAPS[0].slug, '/music/criar/curso-violao-v2.json', '/music/criar/curso-guitarra-v2.json']) {
+      const p = await req('GET', u, { cru: true });
+      assert.equal(p.status, 401, u);
+      assert.match(p.texto, /Conteúdo exclusivo para assinantes/);
+    }
+  });
+
   await t('BANDOLIM: conteúdo, progresso e prática exigem autenticação', async () => {
     for (const u of ['/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim/bandolim-01', '/music/curso-bandolim/progresso.json']) {
       const p = await req('GET', u, { cru: true });

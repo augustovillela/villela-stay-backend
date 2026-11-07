@@ -419,7 +419,7 @@ const JS = `
       c.appendChild(el('p', { class: 'sub', txt: 'Cursos criados e estudados dentro do Musique. Abra um percurso para ler as aulas, praticar e acompanhar o progresso.' }));
       var locais = [
         ['🎓', 'Teoria musical', 'Conceitos, ouvido, harmonia e aplicação.', '/music/curso-teoria', '#5865a8'],
-        ['🪕', 'Violão', 'Acordes, batidas, dedilhados e repertório.', '/music/criar/curso-violao-livro', '#4f7d67'],
+        ['🪕', 'Violão', 'Acordes, batidas, dedilhados e repertório.', '/music/curso-violao', '#4f7d67'],
         ['🎸', 'Guitarra', 'Timbre, riffs, técnica e improvisação.', '/music/criar/curso-guitarra-edicao', '#8a5a72'],
         ['🥁', 'Bateria', 'Pulso, groove, técnica e 40 rudimentos.', '/music/curso-bateria', '#a66b42'],
         ['🎹', 'Piano', 'Teclado, leitura, harmonia, acompanhamento e performance.', '/music/curso-piano', '#536f82'],
