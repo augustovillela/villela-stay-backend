@@ -297,9 +297,9 @@ async function rodar({ t, secao, req, assert }) {
   secao('Laboratório · páginas, SEO, API paga, professor e isolamento');
 
   await t('PÁGINAS PÚBLICAS abrem sem conta (hub, ambientes, ferramentas, atlas, referências, jogos) e os scripts compilam', async () => {
-    const urls = ['/music/laboratorio', '/music/aprender', '/music/explorar', '/music/criar', '/music/praticar', '/music/jogar', '/music/referencia', '/music/escalas', '/music/acordes', '/music/intervalos', '/music/notas', '/music/ensinar',
+    const urls = ['/music/laboratorio', '/music/explorar', '/music/criar', '/music/praticar', '/music/jogar', '/music/referencia', '/music/escalas', '/music/acordes', '/music/intervalos', '/music/notas', '/music/ensinar',
       '/music/escalas/re/dorico', '/music/escalas/sol-sustenido/menor-harmonica', '/music/acordes/sol/7', '/music/acordes/si-bemol/m7b5', '/music/tonalidades/mi-bemol-menor', '/music/tonalidades/do-maior',
-      '/music/intervalos/terca-maior', '/music/notas/do-sustenido', '/music/aprender/som-e-nota', '/music/buscar?q=r%C3%A9%20d%C3%B3rico']
+      '/music/intervalos/terca-maior', '/music/notas/do-sustenido', '/music/buscar?q=r%C3%A9%20d%C3%B3rico']
       .concat(CAT.FERRAMENTAS.filter((f) => !/^curso/.test(f.slug)).map((f) => `/music/${f.ambiente}/${f.slug}`)).concat(CAT.REFERENCIAS.map((r) => '/music/referencia/' + r.slug))
       .concat(CAT.JOGOS.map((j) => '/music/jogar/' + j.slug)).concat(X.LISTA.map((x) => '/music/praticar/' + x.id));
     for (const u of urls) {
@@ -323,7 +323,7 @@ async function rodar({ t, secao, req, assert }) {
     const urls = PG.urlsDoSitemap().map((x) => x.url);
     assert.ok(!urls.includes('/music/escalas/do-sustenido/maior') && urls.includes('/music/escalas/re-bemol/maior'));
     assert.equal(new Set(urls).size, urls.length, 'sem URL repetida');
-    for (const u of ['/music/escalas/xx/maior', '/music/escalas/do/nao-existe', '/music/acordes/do/zz', '/music/tonalidades/h-maior', '/music/intervalos/quinta-roxa', '/music/aprender/nada', '/music/explorar/nada', '/music/escalas/do-dobrado-sustenido/maior']) {
+    for (const u of ['/music/escalas/xx/maior', '/music/escalas/do/nao-existe', '/music/acordes/do/zz', '/music/tonalidades/h-maior', '/music/intervalos/quinta-roxa', '/music/explorar/nada', '/music/escalas/do-dobrado-sustenido/maior']) {
       const x = await req('GET', u, { cru: true }); assert.equal(x.status, 404, u); assert.match(x.texto, /noindex/);
     }
     const b = await req('GET', '/music/buscar?q=%3Cscript%3Ealert(1)%3C%2Fscript%3E', { cru: true });
@@ -332,16 +332,20 @@ async function rodar({ t, secao, req, assert }) {
     assert.deepEqual([st.instrumento, st.afinacao, st.tonica, st.bpm], ['violao', 'padrao', 'do', 300], 'deep link inválido volta ao padrão');
   });
 
-  await t('LIÇÕES: as 3 primeiras são abertas; da 4ª em diante, sem assinatura o conteúdo NÃO vai (só o convite com o motivo)', async () => {
-    const quarta = L.LICOES[3];
-    const anon = await req('GET', '/music/aprender/' + quarta.slug, { cru: true });
-    assert.equal(anon.status, 200); assert.match(anon.texto, /lab-portao/);
-    const trecho = quarta.blocos.filter((b) => b.t === 'p')[1];
-    assert.ok(trecho && !anon.texto.includes(trecho.html.slice(0, 60)), 'o 2º parágrafo não vai para quem não assina');
-    const ana = await req('GET', '/music/aprender/' + quarta.slug, { como: 'ana', cru: true });
-    assert.ok(!/lab-portao/.test(ana.texto) && ana.texto.includes(trecho.html.slice(0, 60)), 'no teste grátis, a lição inteira');
-    const primeira = await req('GET', '/music/aprender/' + L.LICOES[0].slug, { cru: true });
-    assert.ok(!/lab-portao/.test(primeira.texto));
+  await t('SUBSTITUIÇÃO: as aulas e cursos antigos não existem mais — cada endereço antigo leva ao curso novo da Coleção', async () => {
+    const ir = async (u, destino) => { const r = await req('GET', u, { como: 'ana', cru: true }); assert.equal(r.status, 302, u); assert.equal(r.headers.get('location'), destino, u); };
+    await ir('/music/aprender', '/music/curso/teoria');
+    await ir('/music/aprender/' + L.LICOES[3].slug, '/music/curso/teoria');
+    await ir('/music/curso-teoria', '/music/curso/teoria');
+    await ir('/music/curso-bateria', '/music/curso/bateria');
+    await ir('/music/curso-bateria/rudimentos', '/music/curso/bateria');
+    await ir('/music/curso-piano', '/music/curso/piano');
+    await ir('/music/curso-teoria.pdf', '/music/curso/teoria.pdf');
+    await ir('/music/curso-bandolim', '/music/curso/bandolim');
+    await ir('/music/criar/curso-guitarra', '/music/curso/guitarra');
+    await ir('/music/criar/curso-violao-livro', '/music/curso-violao');
+    const urls = PG.urlsDoSitemap().map((x) => x.url);
+    assert.ok(urls.includes('/music/curso/teoria') && !urls.some((u) => /^\/music\/(aprender|curso-(teoria|bateria|piano|bandolim))/.test(u)), 'sitemap só lista o curso novo');
   });
 
   await t('API PAGA: sem conta 401; o servidor corrige DE NOVO (não confia no navegador), grava como lab: e agenda a revisão', async () => {
@@ -535,59 +539,6 @@ async function rodar({ t, secao, req, assert }) {
       assert.ok(c.objetivo && c.roteiro && c.roteiro.length === 3, 'objetivo e roteiro presentes');
     });
   });
-  await t('BANDOLIM: aula expõe blocos editoriais e navegação do curso', async () => {
-    const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno', cru: true });
-    assert.equal(aula.status, 200);
-    assert.match(aula.texto, /curso-livro-conteudo/);
-    assert.match(aula.texto, /curso-livro-bloco-(texto|exercicio|conceito)/);
-    assert.match(aula.texto, /Abrir no livro · PDF página/);
-    assert.match(aula.texto, /Índice e progresso/);
-    assert.match(aula.texto, /data-bandolim-pratica/);
-    assert.match(aula.texto, /data-bandolim-checklist/);
-  });
-  await t('BANDOLIM: curso oferece acesso às tarefas do aluno', async () => {
-    const pagina = await req('GET', '/music/curso-bandolim', { como: 'aluno', cru: true });
-    assert.equal(pagina.status, 200);
-    assert.match(pagina.texto, /href="\/music\/app#tarefas"/);
-    assert.match(pagina.texto, /Minhas tarefas/);
-    assert.match(pagina.texto, /data-bandolim-progresso-servidor/);
-  });
-  await t('BANDOLIM: controles essenciais têm semântica acessível', async () => {
-    const aula = await req('GET', '/music/curso-bandolim/bandolim-01', { como: 'aluno', cru: true });
-    assert.equal(aula.status, 200);
-    assert.match(aula.texto, /<h1[^>]*>/);
-    assert.match(aula.texto, /aria-label="Navegação dos capítulos"/);
-    assert.match(aula.texto, /aria-live="polite"/);
-    assert.match(aula.texto, /<label[^>]*>\s*<span>BPM<\/span>/);
-    assert.match(aula.texto, /data-pratica-status[^>]*aria-live="polite"/);
-    assert.match(aula.texto, /type="checkbox"[^>]*data-bandolim-check/);
-    assert.match(aula.texto, /aria-pressed="false"/);
-  });
-  await t('BANDOLIM: os 43 capítulos têm rotas e dados coerentes', async () => {
-    const curso = await req('GET', '/music/curso-bandolim.json', { como: 'aluno' });
-    assert.equal(curso.status, 200);
-    assert.equal(curso.json.capitulos.length, 43);
-    for (const item of curso.json.capitulos) {
-      const aula = await req('GET', `/music/curso-bandolim/${item.slug}.json`, { como: 'aluno' });
-      assert.equal(aula.status, 200, item.slug);
-      assert.equal(aula.json.numero, item.numero, item.slug);
-      assert.equal(aula.json.url, `/music/curso-bandolim/${item.slug}`, item.slug);
-      assert.ok(aula.json.pdf.includes(`#page=${item.pagina_inicio}`), item.slug);
-    }
-  });
-  await t('BANDOLIM: página de progresso mostra o estado da conta', async () => {
-    const pagina = await req('GET', '/music/curso-bandolim/progresso', { como: 'aluno', cru: true });
-    assert.equal(pagina.status, 200);
-    assert.match(pagina.texto, /data-bandolim-progresso-servidor/);
-  });
-  await t('BANDOLIM: área docente publica os controles de acompanhamento', async () => {
-    const pagina = await req('GET', '/music/curso-bandolim/professor', { como: 'prof', cru: true });
-    assert.equal(pagina.status, 200);
-    assert.match(pagina.texto, /data-bandolim-professor-dashboard/);
-    assert.match(pagina.texto, /Acompanhamento dos alunos/);
-    assert.match(pagina.texto, /Carregando acompanhamento/);
-  });
-
   await t('PIANO: curso editorial exige assinatura para conteúdo, PDF e dados', async () => {
     for (const u of ['/music/curso-piano', '/music/curso-piano.json', '/music/curso-piano/piano-42', '/music/curso-piano.pdf']) {
       const p = await req('GET', u, { cru: true });
@@ -655,8 +606,8 @@ async function rodar({ t, secao, req, assert }) {
       assert.equal(r.status, 402); assert.equal(r.json.codigo, 'ASSINATURA');
       assert.equal((await req('GET', '/music/api/lab/meus-dados', { headers: ck })).status, 200, 'dado pessoal não fica refém');
       assert.equal((await req('GET', '/music/explorar/piano', { headers: ck, cru: true })).status, 200, 'ferramenta continua aberta');
-      const l = await req('GET', '/music/aprender/' + L.LICOES[5].slug, { headers: ck, cru: true });
-      assert.match(l.texto, /lab-portao/); assert.match(l.texto, /Assinar o Musique/, 'o convite diz o caminho certo para quem já tem conta');
+      const l = await req('GET', '/music/curso/teoria', { headers: ck, cru: true });
+      assert.ok([401, 402].includes(l.status), 'o curso fecha para quem não paga'); assert.match(l.texto, /assin/i, 'o convite diz o caminho para quem já tem conta');
       const pr = await req('GET', '/music/praticar/nota-na-pauta', { headers: ck, cru: true });
       assert.match(pr.texto, /Modo demonstração/);
     } finally { require('../repo').Config.set('assinatura', cfg); }
@@ -764,37 +715,11 @@ async function rodar({ t, secao, req, assert }) {
     assert.match(cif, /C\.paineis\.graus = function/); assert.match(cif, /\/music\/laboratorio\/acorde\?c=/); assert.match(cif, /'graus', 'Análise em graus/);
   });
 
-  await t('PÁGINAS NOVAS abrem: 10 ferramentas, 9 lições, solfejo; lições com duas vozes e progressões tocáveis', async () => {
+  await t('PÁGINAS NOVAS abrem: 10 ferramentas e solfejo', async () => {
     const novas = ['explorar/comparar-modos', 'explorar/piano-isomorfico', 'explorar/serie-dodecafonica', 'criar/afinador-cordas', 'criar/extensao-vocal', 'criar/metronomo-progressivo',
       'criar/mini-maquina', 'criar/motivos', 'criar/xilofone', 'criar/gerador-de-bumbo', 'referencia/solfejo'];
     for (const u of novas) { const r = await req('GET', '/music/' + u, { cru: true }); assert.ok([200, 401].includes(r.status), `${u} status=${r.status}`); }
     assert.equal(L.LICOES.length, 97);
-    for (const l of L.LICOES.slice(15)) { const r = await req('GET', '/music/aprender/' + l.slug, { como: 'ana', cru: true }); assert.ok([200, 401].includes(r.status), l.slug); assert.ok(!/undefined|NaN/.test(r.texto.replace(/<script[\s\S]*?<\/script>/g, '')), l.slug); }
-    const cursoSlugs = CT.CURSO.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes));
-    assert.equal(new Set(cursoSlugs).size, cursoSlugs.length, 'curso sem lições duplicadas');
-    assert.ok(cursoSlugs.every((slug) => L.POR_SLUG[slug]), 'toda lição planejada tem conteúdo publicado');
-    const pdf = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'output', 'pdf', 'curso-teoria-musical.pdf'));
-    assert.ok(pdf.length > 100000 && pdf.subarray(0, 5).toString() === '%PDF-', 'livro PDF ilustrado está publicado e válido');
-    const cj = await req('GET', '/music/curso-teoria.json', { como: 'ana', cru: true });
-    assert.ok([200, 401].includes(cj.status));
-    let cursoJson = null;
-    if (cj.status === 200) {
-      cursoJson = JSON.parse(cj.texto);
-      assert.equal(cursoJson.schema, 'musique.course.v1');
-      assert.deepEqual(cursoJson.recursos, { html: '/music/curso-teoria', markdown: '/music/curso-teoria.md', pdf: '/music/curso-teoria.pdf' });
-      assert.ok(cursoJson.formatosDisponiveis.includes('livro-pdf'));
-    } else assert.match(cj.texto, /Conteúdo exclusivo para assinantes/);
-    if (cj.status === 200) {
-      const jsonSlugs = cursoJson.niveis.flatMap((n) => n.modulos.flatMap((m) => m.licoes.map((l) => l.slug)));
-      assert.deepEqual(jsonSlugs.sort(), cursoSlugs.slice().sort(), 'JSON curricular acompanha o catálogo');
-      assert.ok(cursoJson.niveis.every((n) => n.modulos.every((m) => m.licoes.every((l) => l.url === '/music/aprender/' + l.slug))), 'JSON expõe URLs canônicas das lições');
-    }
-    const livro = await req('GET', '/music/curso-teoria.pdf', { cru: true });
-    assert.ok([200, 401].includes(livro.status)); if (livro.status === 200) assert.match(livro.headers.get('content-type') || '', /application\/pdf/); else assert.match(livro.texto, /Conteúdo exclusivo para assinantes/);
-    const hp = await req('GET', '/music/aprender/harmonia-popular', { como: 'ana', cru: true }); assert.match(hp.texto, /data-sequencia=/); assert.match(hp.texto, /Db7/);
-    const ti = await req('GET', '/music/aprender/treino-intervalos', { como: 'ana', cru: true }); assert.match(ti.texto, /\/music\/referencia\/intervalos/);
-    const md = await req('GET', '/music/curso-teoria.md', { como: 'ana', cru: true }); assert.match(md.texto, /\[.*Piano e notas.*\]\(\/music\/explorar\/piano\)/);
-    const cp = await req('GET', '/music/aprender/contraponto', { como: 'ana', cru: true }); assert.match(cp.texto, /class="lab-svg lab-pauta"/);
     const X2 = X.LISTA.map((x) => x.id); ['leitura-primeira-vista', 'ditado-ritmico', 'ditado-duas-vozes', 'cadencia-ouvido', 'transposicao', 'escala-no-braco'].forEach((id) => assert.ok(X2.includes(id), id));
     assert.match(PG.clienteJs(), /Modo aula/);
   });

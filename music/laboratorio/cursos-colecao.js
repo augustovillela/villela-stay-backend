@@ -8,11 +8,11 @@ const path = require('path');
 const PASTA = __dirname;
 const CURSOS = [
   ['guitarra', 'Guitarra', '#8a5a72', 3, 'livro-guitarra-colecao.pdf', 'Power chords, pentatônica, blues, escalas, timbre e improvisação.'],
-  ['contrabaixo', 'Contrabaixo', '#3f7180', 4, null, 'Técnica, groove, leitura, harmonia e performance.'],
-  ['piano', 'Piano', '#536f82', 6, null, 'Teclado, leitura nas duas claves, harmonia, acompanhamento e performance.'],
+  ['contrabaixo', 'Contrabaixo', '#3f7180', 4, 'livro-contrabaixo-colecao.pdf', 'Técnica, groove, leitura, harmonia e performance.'],
+  ['piano', 'Piano', '#536f82', 6, 'livro-piano-colecao.pdf', 'Teclado, leitura nas duas claves, harmonia, acompanhamento e performance.'],
   ['bateria', 'Bateria', '#a66b42', 5, 'livro-bateria-colecao.pdf', 'Kit, grooves, rudimentos, viradas e ritmos brasileiros.'],
-  ['cavaquinho', 'Cavaquinho', '#8b6b48', 7, null, 'Acordes, batidas, samba, pagode, choro e performance.'],
-  ['bandolim', 'Bandolim', '#7d6374', 8, null, 'Palhetada, tremolo, leitura, harmonia e choro.'],
+  ['cavaquinho', 'Cavaquinho', '#8b6b48', 7, 'livro-cavaquinho-colecao.pdf', 'Acordes, batidas, samba, pagode, choro e performance.'],
+  ['bandolim', 'Bandolim', '#7d6374', 8, 'livro-bandolim-colecao.pdf', 'Palhetada, tremolo, leitura, harmonia e choro.'],
   ['ukulele', 'Ukulelê', '#6d8060', 9, 'livro-ukulele-colecao.pdf', 'Acordes, batidas, melodias e repertório.'],
   ['teoria', 'Teoria musical', '#5865a8', 1, 'livro-teoria-colecao.pdf', 'Som, ritmo, escalas, intervalos, harmonia, forma e ouvido.'],
 ];
@@ -59,7 +59,6 @@ function carregar() {
   }
   return out;
 }
-const LEGADO = {"teoria": "/music/curso-teoria", "guitarra": "/music/criar/curso-guitarra-aulas", "bateria": "/music/curso-bateria", "piano": "/music/curso-piano", "contrabaixo": "/music/curso-contrabaixo", "cavaquinho": "/music/curso-cavaquinho", "bandolim": "/music/curso-bandolim", "ukulele": "/music/curso-ukulele"};
 const COLECAO = carregar();
 
 function registrar(app, { opcional, pagina, esc }) {

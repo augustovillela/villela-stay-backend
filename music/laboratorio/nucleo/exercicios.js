@@ -99,7 +99,7 @@
         visual: { tipo: 'progressao', simbolos: etapas.map(function (x) { return rotulos[x]; }), graus: ['1', '2', '3', '4'], legenda: 'Ouvir → entender → praticar → aplicar.' },
         opcoes: opcoes(r, { valor: certa, rotulo: rotulos[certa] }, dis), resposta: certa,
         explicar: function () { return 'O ciclo de estudo segue ' + etapas.map(function (x) { return rotulos[x].toLowerCase(); }).join(' → ') + '. Depois de ' + rotulos[atual].toLowerCase() + ', vem ' + rotulos[certa].toLowerCase() + '.'; },
-        revisar: { rotulo: 'Como estudar música', url: '/music/aprender/como-estudar-musica' },
+        revisar: { rotulo: 'Curso de Teoria Musical', url: '/music/curso/teoria' },
       };
     },
   };
@@ -418,7 +418,7 @@
             + ') e pelo movimento: grau conjunto é a nota vizinha; o salto pula linhas ou espaços.';
         },
         mostrar: { tipo: 'piano', midis: ms },
-        revisar: { rotulo: 'Pauta e claves', url: '/music/aprender/pauta-e-claves' },
+        revisar: { rotulo: 'Curso de Teoria Musical', url: '/music/curso/teoria' },
       };
     },
   };
@@ -492,7 +492,7 @@
         opcoes: opcoes(r, { valor: val(sup, inf), rotulo: rot(sup, inf) }, dis), resposta: val(sup, inf), mede: 'altura', auditivo: true,
         explicar: function () { return 'Eram: ' + rot(sup, inf) + '. Escute primeiro só a voz aguda, depois só a grave, acompanhando o sobe-e-desce de cada uma.'; },
         mostrar: { tipo: 'piano', midis: [].concat.apply([], acordes) },
-        revisar: { rotulo: 'Intervalos', url: '/music/aprender/intervalos' },
+        revisar: { rotulo: 'Curso de Teoria Musical', url: '/music/curso/teoria' },
       };
     },
   };

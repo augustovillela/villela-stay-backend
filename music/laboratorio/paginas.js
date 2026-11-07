@@ -129,6 +129,17 @@ function registrar(app, { opcional, contextoDe }) {
     return res.status(status).set('Cache-Control', 'no-store, private').set('Vary', 'Cookie').send(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Conteúdo exclusivo · Musique</title><style>body{font:16px system-ui,sans-serif;max-width:720px;margin:10vh auto;padding:24px;color:#17344d}a{display:inline-block;margin-top:18px;padding:12px 18px;border-radius:999px;background:#17344d;color:#fff;text-decoration:none;font-weight:700}</style></head><body><p>Musique · Villela Music</p><h1>Conteúdo exclusivo para assinantes</h1><p>${esc(acesso.motivo)}</p><a href="${esc(acao.url)}">${esc(acao.rotulo)}</a></body></html>`);
   });
 
+  // Substituição total (07/11/2026): os cursos, livros e aulas antigos foram trocados pelos da Coleção Musique.
+  // Qualquer endereço antigo leva ao curso novo equivalente (depois do paywall: quem não é assinante ainda recebe 401).
+  const NOVO_CURSO = { teoria: '/music/curso/teoria', bateria: '/music/curso/bateria', piano: '/music/curso/piano', contrabaixo: '/music/curso/contrabaixo', cavaquinho: '/music/curso/cavaquinho', bandolim: '/music/curso/bandolim', ukulele: '/music/curso/ukulele' };
+  const ext = (s) => (/\.pdf$/.test(s) ? '.pdf' : /\.json$/.test(s) ? '.json' : '');
+  app.get(/^\/music\/curso-(teoria|bateria|piano|contrabaixo|cavaquinho|bandolim|ukulele)(\/.*|\.pdf|\.md|\.json|\.academy\.json)?$/, (req, res) => {
+    res.redirect(302, NOVO_CURSO[req.params[0]] + ext(req.params[1] || ''));
+  });
+  app.get(/^\/music\/criar\/curso-violao-(livro|v2)(\.pdf|\.json)?$/, (req, res) => res.redirect(302, '/music/curso-violao' + (req.params[1] || '')));
+  app.get(/^\/music\/criar\/curso-guitarra(-livro|-edicao|-aulas|-v2)?(\.pdf|\.json)?$/, (req, res) => res.redirect(302, '/music/curso/guitarra' + (req.params[1] || '')));
+  app.get(/^\/music\/aprender(\/.*)?$/, (req, res) => res.redirect(302, '/music/curso/teoria'));
+
   app.get('/music/laboratorio-nucleo.js', (req, res) => enviarArquivo(res, 'application/javascript', nucleoJs()));
   app.get('/music/laboratorio.js', (req, res) => enviarArquivo(res, 'application/javascript', clienteJs()));
   app.get('/music/laboratorio.css', (req, res) => enviarArquivo(res, 'text/css', cssLab()));
@@ -146,11 +157,11 @@ function registrar(app, { opcional, contextoDe }) {
 <button class="btn" type="submit">Buscar</button></div><p id="lab-q-dica" class="lab-dica">Aceita nomes em português ou em cifra, com ou sem acento.</p>
 <ul class="lab-sugestoes" id="lab-sugestoes" aria-live="polite"></ul></form></header>
 <p class="lab-destaque-tutor"><a href="/music/curso-teoria"><span aria-hidden="true">🎓</span> <strong>Novo: Curso de teoria musical</strong> — do zero ao avançado, em níveis, módulos e três trilhas de aprendizagem.</a></p>
-<div class="lab-destaque-cursos"><a class="lab-destaque-tutor" href="/music/criar/jornada-guitarra?i=violao"><span aria-hidden="true">🎸</span> <strong>Curso de Violão</strong> — jornada guiada, exercícios recorrentes e repertório.</a><a class="lab-destaque-tutor" href="/music/criar/jornada-guitarra?i=guitarra"><span aria-hidden="true">🎸</span> <strong>Curso de Guitarra</strong> — a mesma base, com trilha própria de prática.</a></div>
+<div class="lab-destaque-cursos"><a class="lab-destaque-tutor" href="/music/curso-violao"><span aria-hidden="true">🎸</span> <strong>Curso de Violão</strong> — a Coleção Musique, do zero ao avançado, com livro em PDF.</a><a class="lab-destaque-tutor" href="/music/curso/guitarra"><span aria-hidden="true">🎸</span> <strong>Curso de Guitarra</strong> — a Coleção Musique, com tablaturas e livro em PDF.</a></div>
 <p class="lab-destaque-tutor"><a href="/music/curso-bateria"><span aria-hidden="true">🥁</span> <strong>Novo: Curso de bateria</strong> — do primeiro pulso à performance, com 40 rudimentos e facilitadores de treino.</a></p>
 <section class="lab-caminhos" aria-labelledby="caminhos"><h2 id="caminhos" class="sr">Três caminhos</h2>
 <a class="lab-caminho" href="/music/explorar"><span class="lab-caminho-ico" aria-hidden="true">⚡</span><strong>Usar agora</strong><span>Afinar, contar BPM, ver um acorde, transpor. Abre direto, sem cadastro.</span></a>
-<a class="lab-caminho" href="/music/aprender"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>Uma trilha na ordem certa, do som ao campo harmônico, com prática em cada lição.</span></a>
+<a class="lab-caminho" href="/music/curso/teoria"><span class="lab-caminho-ico" aria-hidden="true">📘</span><strong>Aprender passo a passo</strong><span>O curso de Teoria na ordem certa, do som ao campo harmônico, com ferramentas em cada capítulo.</span></a>
 <a class="lab-caminho" href="/music/explorar/laboratorio"><span class="lab-caminho-ico" aria-hidden="true">🧪</span><strong>Experimentar livre</strong><span>Tônica, escala e acorde num lugar só: tudo muda junto.</span></a></section>
 ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/music/separar"><span aria-hidden="true">🎚️</span> <strong>Novo: Separar trilhas</strong> — tire a voz, a bateria, o baixo, a guitarra ou o piano de uma música e toque junto.</a></p>\n'}<p class="lab-destaque-tutor"><a href="/music/tutor-braco"><span aria-hidden="true">🎸</span> <strong>Novo: Tutor de braço</strong> — escalas e desenhos no seu instrumento de cordas, com um tutor que toca, escuta e corrige nota e tempo.</a></p>
 <p class="lab-destaque-tutor"><a href="/music/transcrever"><span aria-hidden="true">🎧</span> <strong>Novo: Transcrever música</strong> — acordes por compasso, tom, andamento e melodia de um arquivo de áudio ou do que toca numa aba (YouTube incluso).</a></p>
@@ -826,7 +837,7 @@ ${A.CATALOGO.map((c) => `<tr><th scope="row">${esc(c.nome)}</th>${TE.DOZE.map((p
   // -------------------------------------------------------------- busca
   app.get('/music/buscar', (req, res) => {
     const q = String(req.query.q || '').slice(0, 80);
-    const r = q ? CAT.buscar(q, { licoes: L.LICOES }) : [];
+    const r = q ? CAT.buscar(q, { licoes: [] }) : [];
     const grupos = {};
     r.forEach((x) => { (grupos[x.grupo] = grupos[x.grupo] || []).push(x); });
     const corpo = `<header class="lab-cab"><h1>Buscar</h1>
@@ -887,34 +898,34 @@ function ssrFerramenta(slug, st) {
 
 function relacionados(slug) {
   const mapa = {
-    piano: ['/music/aprender/tons-e-semitons', '/music/praticar/nota-no-teclado', '/music/jogar/teclado-relampago'],
-    pauta: ['/music/aprender/pauta-e-claves', '/music/praticar/nota-na-pauta', '/music/referencia/pauta-e-claves'],
+    piano: ['/music/curso/teoria', '/music/praticar/nota-no-teclado', '/music/jogar/teclado-relampago'],
+    pauta: ['/music/curso/teoria', '/music/praticar/nota-na-pauta', '/music/referencia/pauta-e-claves'],
     braco: ['/music/praticar/nota-no-braco', '/music/jogar/mapa-do-braco', '/music/referencia/afinacoes'],
-    'circulo-de-quintas': ['/music/aprender/armaduras', '/music/praticar/armadura-identificar', '/music/referencia/armaduras'],
-    'identificar-acorde': ['/music/aprender/triades', '/music/praticar/acorde-identificar', '/music/referencia/formulas-de-acordes'],
-    'identificar-escala': ['/music/aprender/escala-maior', '/music/praticar/escala-identificar', '/music/referencia/formulas-de-escalas'],
-    progressoes: ['/music/aprender/campo-harmonico', '/music/praticar/campo-grau', '/music/referencia/cadencias-e-progressoes'],
-    'mapa-harmonia': ['/music/criar/progressoes', '/music/explorar/acordes-vizinhos', '/music/aprender/campo-harmonico'],
+    'circulo-de-quintas': ['/music/curso/teoria', '/music/praticar/armadura-identificar', '/music/referencia/armaduras'],
+    'identificar-acorde': ['/music/curso/teoria', '/music/praticar/acorde-identificar', '/music/referencia/formulas-de-acordes'],
+    'identificar-escala': ['/music/curso/teoria', '/music/praticar/escala-identificar', '/music/referencia/formulas-de-escalas'],
+    progressoes: ['/music/curso/teoria', '/music/praticar/campo-grau', '/music/referencia/cadencias-e-progressoes'],
+    'mapa-harmonia': ['/music/criar/progressoes', '/music/explorar/acordes-vizinhos', '/music/curso/teoria'],
     'acordes-vizinhos': ['/music/criar/mapa-harmonia', '/music/referencia/cadencias-e-progressoes', '/music/referencia/formulas-de-acordes'],
-    'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/aprender/campo-harmonico', '/music/referencia/tonalidades'],
+    'harmonizador-tonalidades': ['/music/criar/mapa-harmonia', '/music/curso/teoria', '/music/referencia/tonalidades'],
     'piano-roll-harmonico': ['/music/criar/progressoes', '/music/criar/mapa-harmonia', '/music/explorar/piano'],
     'mandala-harmonica': ['/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades', '/music/explorar/circulo-de-quintas'],
-    'atlas-harmonia-visual': ['/music/explorar/mandala-harmonica', '/music/aprender/campo-harmonico', '/music/explorar/atlas-escalas'],
+    'atlas-harmonia-visual': ['/music/explorar/mandala-harmonica', '/music/curso/teoria', '/music/explorar/atlas-escalas'],
     'superestruturas-acordes': ['/music/explorar/identificar-acorde', '/music/explorar/acordes-vizinhos', '/music/referencia/extensoes'],
     'intervalos-do-acorde': ['/music/explorar/superestruturas-acordes', '/music/referencia/intervalos', '/music/praticar/intervalo-ouvido'],
     'editor-de-braco': ['/music/explorar/braco', '/music/explorar/acordes-vizinhos', '/music/referencia/afinacoes'],
     'visualizador-frequencia': ['/music/explorar/serie-harmonica', '/music/explorar/intervalos-do-acorde', '/music/referencia/frequencias'],
     policordes: ['/music/explorar/superestruturas-acordes', '/music/explorar/intervalos-do-acorde', '/music/criar/mapa-harmonia'],
     'editor-de-progressao': ['/music/criar/mapa-harmonia', '/music/explorar/acordes-vizinhos', '/music/criar/piano-roll-harmonico'],
-    'compositor-visual': ['/music/criar/editor-de-progressao', '/music/criar/harmonizador-de-melodia', '/music/aprender/campo-harmonico'],
+    'compositor-visual': ['/music/criar/editor-de-progressao', '/music/criar/harmonizador-de-melodia', '/music/curso/teoria'],
     'metronomo-distorcido': ['/music/criar/metronomo-progressivo', '/music/criar/batidas', '/music/referencia/ritmo-e-groove'],
     'atlas-escalas': ['/music/explorar/comparar-modos', '/music/explorar/braco', '/music/referencia/formulas-de-escalas'],
-    'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/aprender/contraponto'],
+    'arranjo-quatro-vozes': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/curso/teoria'],
     'harmonizador-de-melodia': ['/music/criar/arranjo-quatro-vozes', '/music/criar/editor-de-progressao', '/music/referencia/graus-e-funcoes'],
     'gerador-de-progressao': ['/music/criar/editor-de-progressao', '/music/criar/mapa-harmonia', '/music/explorar/harmonizador-tonalidades'],
     'grafo-harmonico': ['/music/criar/mapa-harmonia', '/music/explorar/mandala-harmonica', '/music/explorar/acordes-vizinhos'],
-    'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/aprender/cadencias'],
-    'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/aprender/acordes'],
+    'tendencias-harmonicas': ['/music/criar/compositor-visual', '/music/criar/progressoes', '/music/curso/teoria'],
+    'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/curso/teoria'],
     'professor-piano': ['/music/criar/piano-virtual', '/music/criar/compositor-visual', '/music/praticar/nota-no-teclado'],
     'curso-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
     'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
@@ -940,10 +951,10 @@ function relacionados(slug) {
     'progresso-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/repertorio-checkpoints'],
     'aquecimento-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/troca-acordes', '/music/tutor-braco'],
     'temporizador-estudo-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/aquecimento-guitarra', '/music/criar/checkin-semanal-guitarra'],
-    transpositor: ['/music/aprender/intervalos', '/music/referencia/tonalidades'],
-    bpm: ['/music/aprender/pulso-e-compasso', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
+    transpositor: ['/music/curso/teoria', '/music/referencia/tonalidades'],
+    bpm: ['/music/curso/teoria', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
-    'serie-harmonica': ['/music/aprender/acustica', '/music/referencia/temperamento'],
+    'serie-harmonica': ['/music/curso/teoria', '/music/referencia/temperamento'],
   };
   const links = mapa[slug];
   if (!links) return '';
@@ -960,12 +971,13 @@ function relacionados(slug) {
 
 /** URLs públicas e CANÔNICAS para o sitemap (nunca as enarmônicas). */
 function urlsDoSitemap() {
-  const u = ['/laboratorio', '/aprender', '/curso-teoria', '/curso-bateria', '/curso-bateria.json', '/curso-bateria.md', '/curso-bateria.academy.json', '/curso-bateria/rudimentos', '/curso-bateria/rudimentos.json', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
+  const u = ['/laboratorio', '/explorar', '/criar', '/praticar', '/tutor-braco', '/tocar', '/transcrever'].concat(require('./separar').SUSPENSA ? [] : ['/separar']).concat([ '/jogar', '/referencia', '/ensinar', '/escalas', '/acordes', '/intervalos', '/notas']).map((x) => '/music' + x);
   CAT.FERRAMENTAS.forEach((f) => u.push(`/music/${f.ambiente}/${f.slug}`));
   CAT.REFERENCIAS.forEach((r) => u.push('/music/referencia/' + r.slug));
   CAT.JOGOS.forEach((j) => u.push('/music/jogar/' + j.slug));
   X.LISTA.forEach((x) => u.push('/music/praticar/' + x.id));
-  L.LICOES.forEach((l) => u.push('/music/aprender/' + l.slug));
+  Object.values(CCOL.COLECAO).forEach((C) => { u.push('/music/curso/' + C.slug); C.caps.forEach((c) => u.push('/music/curso/' + C.slug + '/' + c.slug)); });
+  u.push('/music/curso-violao');
   I.USUAIS.forEach((iv) => u.push('/music/intervalos/' + iv.slug));
   const vistos = new Set(u);
   const add = (x) => { if (!vistos.has(x)) { vistos.add(x); u.push(x); } };

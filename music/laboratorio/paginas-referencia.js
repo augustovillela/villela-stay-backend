@@ -32,7 +32,7 @@ ${claves.map((c) => { const cl = D && require('./nucleo/pauta').clave(c); return
 <p>No compasso composto, o pulso é uma figura pontuada dividida em três. <a href="/music/praticar/ritmo-completar">Praticar: complete o compasso</a>.</p>`,
 
   'intervalos': () => tab(['Curto', 'Nome', 'Semitons', 'Inversão', 'Inglês', 'Exemplo (a partir de dó)'], I.USUAIS.map((iv) => { const inv = I.inverter(iv); const b = I.construir('C4', iv); return [`<a href="/music/intervalos/${esc(iv.slug)}">${esc(iv.curto)}</a>`, esc(iv.nome), iv.semitons, inv ? esc(inv.curto) : '', `<span lang="en">${esc(iv.nome_en)}</span>`, b ? esc('dó → ' + ptO(b)) : '']; }))
-    + '<p>Número = letras contadas incluindo as duas pontas. Qualidade = semitons em relação ao intervalo de referência. <a href="/music/aprender/intervalos">Lição sobre intervalos</a>.</p>',
+    + '<p>Número = letras contadas incluindo as duas pontas. Qualidade = semitons em relação ao intervalo de referência. <a href="/music/curso/teoria">Lição sobre intervalos</a>.</p>',
 
   'formulas-de-escalas': () => ['1', '2', '3', '4'].map((nv) => { const lista = E.CATALOGO.filter((e) => String(e.nivel) === nv); return lista.length ? `<h2>${['Iniciante', 'Intermediário', 'Avançado', 'Especialista'][nv - 1]}</h2>` + tab(['Escala', 'Fórmula', 'Passos', 'Em dó'], lista.map((e) => { const ns = E.notas(N.ler('C'), e.id); return [`<a href="${CAT.urlEscala(TE.tonicaCanonica(N.ler('C'), e.id), e.id)}">${esc(e.nome)}</a>`, esc(e.formula), esc(E.passos(e.id).join(' ')), esc(ns ? ns.map(pt).join(' ') : '—')]; })) : ''; }).join(''),
 
@@ -86,7 +86,7 @@ ${tab(['Grau', 'Nota em sol maior', 'Dó fixo', 'Dó móvel', 'Ouvir'], ns.map((
 <h2>Sílabas alteradas (dó móvel)</h2>
 <p>Para as notas cromáticas, muda a vogal: subindo, <strong>di, ri, fi, si, li</strong> (♯1, ♯2, ♯4, ♯5, ♯6); descendo, <strong>ra, me, se, le, te</strong> (♭2, ♭3, ♭5, ♭6, ♭7). No tom menor há duas convenções: menor com base em "lá" (relativa) ou em "dó" (com me, le e te).</p>
 <p>${ouvir(ns.concat([N.comOitava(t, 5)]).map(N.midi), { rotulo: 'Cantar junto: a escala de sol maior' })}</p>
-<p><a href="/music/aprender/escala-maior">Lição: a escala maior</a> · <a href="/music/praticar/intervalo-ouvido">Praticar intervalos de ouvido</a></p>`;
+<p><a href="/music/curso/teoria">Lição: a escala maior</a> · <a href="/music/praticar/intervalo-ouvido">Praticar intervalos de ouvido</a></p>`;
   },
 
   'ritmo-e-groove': () => `<ul><li><strong>Síncope</strong>: ataque num tempo (ou parte) fraco que se prolonga pelo forte — o acento se desloca.</li>
