@@ -4,11 +4,11 @@
   var L = w.MusiqueLab, C = L.cliente, F = C.ferramentas, el = C.el;
   var ABAS = [['visao', 'Visão geral'], ['material', 'Material complementar'], ['quiz', 'Quiz'], ['caderno', 'Caderno de trabalho']];
   var FERRAMENTAS = [
-    ['🎸', 'Minha jornada', '/music/criar/jornada-guitarra', 'Sequência, nível e fundamentos recorrentes.'],
-    ['🗓️', 'Plano de hoje', '/music/criar/plano-estudo-guitarra', 'Sessão dirigida em blocos, com duração e conclusão.'],
-    ['📝', 'Registrar sessão', '/music/criar/registro-sessao-guitarra', 'Guarde BPM, tempo, foco e observações.'],
-    ['📈', 'Histórico de prática', '/music/criar/historico-sessoes-guitarra', 'Veja evolução, tempo acumulado e focos.'],
-    ['🧭', 'Diagnóstico', '/music/criar/diagnostico-habilidades-guitarra', 'Avalie ritmo, acordes, técnica, ouvido e repertório.'],
+    ['🎸', 'Minha jornada', '/music/curso/guitarra', 'Sequência, nível e fundamentos recorrentes.'],
+    ['🗓️', 'Plano de hoje', '/music/curso/guitarra', 'Sessão dirigida em blocos, com duração e conclusão.'],
+    ['📝', 'Registrar sessão', '/music/curso/guitarra', 'Guarde BPM, tempo, foco e observações.'],
+    ['📈', 'Histórico de prática', '/music/curso/guitarra', 'Veja evolução, tempo acumulado e focos.'],
+    ['🧭', 'Diagnóstico', '/music/curso/guitarra', 'Avalie ritmo, acordes, técnica, ouvido e repertório.'],
     ['🧪', 'Musique Lab', '/music/explorar/laboratorio', 'Veja tônica, escala, acorde, pauta e braço juntos.'],
     ['🔥', 'Desafio de 21 dias', '#desafio-21', 'Uma prática curta por dia, com continuidade salva.'],
     ['🎯', 'Simulações', '/music/tocar', 'Aplique a habilidade numa música completa.'],
@@ -29,7 +29,7 @@
     if (st.diagnostico === 'Ainda não feito' || st.diagnostico === 'Começando agora') return { titulo: 'Começar pelo diagnóstico', texto: 'Defina seu ponto de partida para receber uma sequência mais adequada.', url: '#diagnostico', acao: 'Fazer diagnóstico' };
     if (st.diagnostico === 'Já toco acordes') return { titulo: 'Consolidar ritmo', texto: 'A próxima habilidade recomendada é manter a batida durante as trocas.', url: '/music/criar/laboratorio-batidas', acao: 'Abrir laboratório' };
     if (st.diagnostico === 'Intermediário') return { titulo: 'Conectar o braço', texto: 'Mapeie notas e intervalos e aplique-os em uma improvisação curta.', url: '/music/criar/mapa-braco-guitarra', acao: 'Abrir mapa do braço' };
-    return { titulo: 'Aplicar no repertório', texto: 'Escolha uma música, pratique por seções e registre um checkpoint completo.', url: '/music/criar/repertorio-checkpoints', acao: 'Abrir repertório' };
+    return { titulo: 'Aplicar no repertório', texto: 'Escolha uma música, pratique por seções e registre um checkpoint completo.', url: '/music/curso/guitarra', acao: 'Abrir repertório' };
   }
   function render(alvo, st) {
     st.aba = st.aba || 'visao'; st.dias = Number(st.dias) || 0; st.respostas = st.respostas || {}; st.diagnostico = st.diagnostico || 'Ainda não feito'; st.notas = st.notas || '';

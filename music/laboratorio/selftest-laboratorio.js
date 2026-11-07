@@ -493,6 +493,17 @@ async function rodar({ t, secao, req, assert }) {
     }
   });
 
+  await t('CURSOS DA COLEÇÃO: abrem para quem assina (índice, capítulos, .json, violão)', async () => {
+    const CC = require('./cursos-colecao');
+    for (const C of Object.values(CC.COLECAO)) {
+      for (const u of [`/music/curso/${C.slug}`, `/music/curso/${C.slug}.json`, ...C.caps.map((c) => `/music/curso/${C.slug}/${c.slug}`)]) {
+        const r = await req('GET', u, { como: 'ana', cru: true });
+        assert.equal(r.status, 200, u + ' -> ' + r.status + ' ' + String(r.texto).slice(0, 200));
+      }
+    }
+    for (const u of ['/music/curso-violao', '/music/cursos']) { const r = await req('GET', u, { como: 'ana', cru: true }); assert.equal(r.status, 200, u + ' -> ' + r.status); }
+  });
+
   await t('BANDOLIM: conteúdo, progresso e prática exigem autenticação', async () => {
     for (const u of ['/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim/bandolim-01', '/music/curso-bandolim/progresso.json']) {
       const p = await req('GET', u, { cru: true });

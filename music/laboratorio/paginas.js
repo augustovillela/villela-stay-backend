@@ -140,6 +140,7 @@ function registrar(app, { opcional, contextoDe }) {
   app.get(/^\/music\/criar\/curso-guitarra(-livro|-edicao|-aulas|-v2)?(\.pdf|\.json)?$/, (req, res) => res.redirect(302, '/music/curso/guitarra' + (req.params[1] || '')));
   app.get(/^\/music\/aprender(\/.*)?$/, (req, res) => res.redirect(302, '/music/curso/teoria'));
 
+  app.get(/^\/music\/criar\/(jornada-guitarra|painel-estudos-guitarra|diagnostico-habilidades-guitarra|plano-estudo-guitarra|registro-sessao-guitarra|historico-sessoes-guitarra|checkin-semanal-guitarra|repertorio-checkpoints|progresso-guitarra)\/?$/, (req, res) => res.redirect(302, '/music/curso/guitarra'));
   app.get('/music/laboratorio-nucleo.js', (req, res) => enviarArquivo(res, 'application/javascript', nucleoJs()));
   app.get('/music/laboratorio.js', (req, res) => enviarArquivo(res, 'application/javascript', clienteJs()));
   app.get('/music/laboratorio.css', (req, res) => enviarArquivo(res, 'text/css', cssLab()));
@@ -928,29 +929,20 @@ function relacionados(slug) {
     'desafio-acordes': ['/music/explorar/identificar-acorde', '/music/praticar/intervalo-ouvido', '/music/curso/teoria'],
     'professor-piano': ['/music/criar/piano-virtual', '/music/criar/compositor-visual', '/music/praticar/nota-no-teclado'],
     'curso-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/tutor-braco', '/music/criar/batidas', '/music/tocar'],
-    'curso-guitarra-aulas': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
-    'curso-guitarra-livro': ['/music/criar/curso-guitarra-aulas', '/music/criar/jornada-guitarra', '/music/criar/acordes-guitarra', '/music/criar/laboratorio-batidas'],
-    'curso-violao-livro': ['/music/criar/curso-guitarra-livro', '/music/criar/jornada-guitarra', '/music/criar/laboratorio-batidas', '/music/tocar'],
-    'curso-guitarra-edicao': ['/music/criar/curso-guitarra-livro', '/music/criar/jornada-guitarra', '/music/criar/tecnicas-guitarra', '/music/criar/improvisacao-guitarra'],
+    'curso-guitarra-aulas': ['/music/criar/curso-guitarra', '/music/criar/acordes-guitarra', '/music/tutor-braco'],
+    'curso-guitarra-livro': ['/music/criar/curso-guitarra-aulas', '/music/criar/acordes-guitarra', '/music/criar/laboratorio-batidas'],
+    'curso-violao-livro': ['/music/criar/curso-guitarra-livro', '/music/criar/laboratorio-batidas', '/music/tocar'],
+    'curso-guitarra-edicao': ['/music/criar/curso-guitarra-livro', '/music/criar/tecnicas-guitarra', '/music/criar/improvisacao-guitarra'],
     'acordes-guitarra': ['/music/criar/curso-guitarra-aulas', '/music/criar/troca-acordes', '/music/tutor-braco'],
-    'tecnicas-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
-    'improvisacao-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/mapa-braco-guitarra', '/music/tutor-braco'],
+    'tecnicas-guitarra': ['/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
+    'improvisacao-guitarra': ['/music/criar/mapa-braco-guitarra', '/music/tutor-braco'],
     'troca-acordes': ['/music/criar/curso-guitarra', '/music/tocar', '/music/tutor-braco'],
     'laboratorio-batidas': ['/music/criar/troca-acordes', '/music/criar/batidas', '/music/tocar'],
-    'desmontar-musica': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/tocar'],
-    'jornada-guitarra': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/criar/laboratorio-batidas'],
-    'painel-estudos-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/diagnostico-habilidades-guitarra', '/music/criar/curso-guitarra-livro', '/music/criar/checkin-semanal-guitarra', '/music/tutor-braco'],
-    'diagnostico-habilidades-guitarra': ['/music/criar/painel-estudos-guitarra', '/music/criar/jornada-guitarra', '/music/criar/progresso-guitarra'],
-    'plano-estudo-guitarra': ['/music/criar/painel-estudos-guitarra', '/music/criar/diagnostico-habilidades-guitarra', '/music/criar/checkin-semanal-guitarra'],
-    'registro-sessao-guitarra': ['/music/criar/plano-estudo-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/progresso-guitarra'],
-    'historico-sessoes-guitarra': ['/music/criar/registro-sessao-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/progresso-guitarra'],
-    'rotina-ouvido-guitarra': ['/music/criar/jornada-guitarra', '/music/praticar/intervalo-ouvido', '/music/tutor-braco'],
-    'mapa-braco-guitarra': ['/music/criar/jornada-guitarra', '/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
-    'checkin-semanal-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/curso-guitarra', '/music/criar/troca-acordes'],
-    'repertorio-checkpoints': ['/music/criar/jornada-guitarra', '/music/criar/desmontar-musica', '/music/tocar'],
-    'progresso-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/checkin-semanal-guitarra', '/music/criar/repertorio-checkpoints'],
-    'aquecimento-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/troca-acordes', '/music/tutor-braco'],
-    'temporizador-estudo-guitarra': ['/music/criar/jornada-guitarra', '/music/criar/aquecimento-guitarra', '/music/criar/checkin-semanal-guitarra'],
+    'desmontar-musica': ['/music/criar/curso-guitarra', '/music/criar/troca-acordes', '/music/tocar'],
+    'rotina-ouvido-guitarra': ['/music/praticar/intervalo-ouvido', '/music/tutor-braco'],
+    'mapa-braco-guitarra': ['/music/tutor-braco', '/music/criar/rotina-ouvido-guitarra'],
+    'aquecimento-guitarra': ['/music/criar/troca-acordes', '/music/tutor-braco'],
+    'temporizador-estudo-guitarra': ['/music/criar/aquecimento-guitarra', ],
     transpositor: ['/music/curso/teoria', '/music/referencia/tonalidades'],
     bpm: ['/music/curso/teoria', '/music/jogar/mantenha-o-pulso', '/music/ferramentas'],
     batidas: ['/music/referencia/ritmo-e-groove', '/music/criar/polirritmos'],
