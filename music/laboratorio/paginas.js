@@ -114,6 +114,10 @@ function registrar(app, { opcional, contextoDe }) {
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
     '/music/criar/curso-violao-livro', '/music/criar/curso-guitarra-edicao',
+    '/music/criar/curso-violao-v2', '/music/criar/curso-violao-v2.json', '/music/criar/curso-violao-v2.pdf',
+    '/music/criar/curso-guitarra-v2', '/music/criar/curso-guitarra-v2.json', '/music/criar/curso-guitarra-v2.pdf',
+    '/music/criar/curso-violao-livro.pdf', '/music/criar/curso-guitarra-edicao.pdf', '/music/criar/curso-guitarra-livro', '/music/criar/curso-guitarra-livro.pdf',
+    '/music/criar/curso-guitarra-aulas', '/music/criar/curso-guitarra',
   ], opcional, (req, res, next) => {
     const acesso = ACESSO.pode('licoes-completas', ctxDe(req));
     if (acesso.ok) return next();
