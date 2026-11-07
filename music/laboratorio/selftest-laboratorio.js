@@ -467,6 +467,28 @@ async function rodar({ t, secao, req, assert }) {
     }
   });
 
+  await t('CURSOS DA COLEÇÃO: os 8 cursos têm conteúdo íntegro, ferramentas ligadas e exigem assinatura (índice, capítulo, .json, figuras)', async () => {
+    const CC = require('./cursos-colecao');
+    const esperado = { guitarra: 9, bateria: 7, ukulele: 6, teoria: 22 };
+    assert.deepEqual(Object.keys(CC.COLECAO).sort(), ['bandolim', 'bateria', 'cavaquinho', 'contrabaixo', 'guitarra', 'piano', 'teoria', 'ukulele']);
+    for (const C of Object.values(CC.COLECAO)) {
+      if (esperado[C.slug]) assert.equal(C.caps.length, esperado[C.slug], C.slug);
+      assert.ok(C.caps.length >= 6, C.slug);
+      C.caps.forEach((c, i) => {
+        assert.equal(c.numero, i + 1, C.slug + ' numeração');
+        assert.ok(c.html.length > 500, C.slug + ' conteúdo: ' + c.slug);
+        assert.equal((c.html.match(/�/g) || []).length, 0, 'sem caractere de substituição');
+        assert.ok(c.ferramentas.length >= 1 && c.ferramentas.every((f) => /^\/music\//.test(f.url)), C.slug + ' ferramentas');
+        (c.html.match(/src="fig\/([^"]+)"/g) || []).forEach((m) => { const f = m.slice(9, -1); assert.ok(fs.existsSync(path.join(C.figs, f)), C.slug + ' figura existe: ' + f); });
+      });
+      for (const u of [`/music/curso/${C.slug}`, `/music/curso/${C.slug}.json`, `/music/curso/${C.slug}/${C.caps[0].slug}`]) {
+        const p = await req('GET', u, { cru: true });
+        assert.equal(p.status, 401, u);
+        assert.match(p.texto, /Conteúdo exclusivo para assinantes/);
+      }
+    }
+  });
+
   await t('BANDOLIM: conteúdo, progresso e prática exigem autenticação', async () => {
     for (const u of ['/music/curso-bandolim', '/music/curso-bandolim.json', '/music/curso-bandolim/bandolim-01', '/music/curso-bandolim/progresso.json']) {
       const p = await req('GET', u, { cru: true });

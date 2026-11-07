@@ -57,6 +57,7 @@ const CC = require('./curso-cavaquinho');
 const BM = require('./curso-bandolim');
 const UK = require('./curso-ukulele');
 const CV = require('./curso-violao');
+const CCOL = require('./cursos-colecao');
 const CBA_LIVRO = require('./curso-contrabaixo-conteudo.json');
 const CC_LIVRO = require('./curso-cavaquinho-conteudo.json');
 const LB = require('./licoes-bateria');
@@ -115,7 +116,7 @@ function registrar(app, { opcional, contextoDe }) {
     '/music/curso-bateria.json', '/music/curso-bateria.pdf', '/music/curso-bateria.md', '/music/curso-bateria.academy.json',
     '/music/curso-contrabaixo.json', '/music/curso-contrabaixo.pdf',
     '/music/criar/curso-violao-livro', '/music/criar/curso-guitarra-edicao',
-    '/music/curso-violao', '/music/curso-violao.json', '/music/curso-violao.pdf',
+    '/music/curso-violao', '/music/curso-violao.json', '/music/curso-violao.pdf', '/music/curso',
     '/music/criar/curso-violao-v2', '/music/criar/curso-violao-v2.json', '/music/criar/curso-violao-v2.pdf',
     '/music/criar/curso-guitarra-v2', '/music/criar/curso-guitarra-v2.json', '/music/criar/curso-guitarra-v2.pdf',
     '/music/criar/curso-violao-livro.pdf', '/music/criar/curso-guitarra-edicao.pdf', '/music/criar/curso-guitarra-livro', '/music/criar/curso-guitarra-livro.pdf',
@@ -173,15 +174,15 @@ ${require('./separar').SUSPENSA ? '' : '<p class="lab-destaque-tutor"><a href="/
   // -------------------------------------------------------------- cursos
   app.get('/music/cursos', (req, res) => {
     const cursos = [
-      { nome: 'Teoria musical', icone: '🎓', cor: '#5865a8', resumo: 'Notas, ritmo, escalas, acordes, leitura e ouvido.', url: '/music/curso-teoria', ativo: true },
+      { nome: 'Teoria musical', icone: '🎓', cor: '#5865a8', resumo: 'Notas, ritmo, escalas, acordes, leitura e ouvido.', url: '/music/curso/teoria', ativo: true },
       { nome: 'Violão', icone: '🎸', cor: '#4f7d67', resumo: 'Postura, acordes, batidas, repertório e prática guiada.', url: '/music/curso-violao', ativo: true },
-      { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/criar/curso-guitarra-edicao', ativo: true },
-      { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso-bateria', ativo: true },
-      { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso-contrabaixo', ativo: true },
-      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso-piano', ativo: true },
-      { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso-cavaquinho', ativo: true },
-      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Palhetada, tremolo, melodias, choro e improvisação.', url: '/music/curso-bandolim', ativo: true },
-      { nome: 'Ukulele', icone: '🎵', cor: '#4f7f73', resumo: 'Acordes, ritmos, dedilhados, arranjos e performance.', url: '/music/curso-ukulele', ativo: true },
+      { nome: 'Guitarra', icone: '🎸', cor: '#8a5a72', resumo: 'Técnica, timbre, riffs, solos e linguagem de guitarra.', url: '/music/curso/guitarra', ativo: true },
+      { nome: 'Bateria', icone: '🥁', cor: '#a66b42', resumo: 'Groove, coordenação, leitura e trilha dos 40 rudimentos.', url: '/music/curso/bateria', ativo: true },
+      { nome: 'Contrabaixo', icone: '🎸', cor: '#3f7180', resumo: 'Técnica, groove, harmonia, estilos, criação e performance.', url: '/music/curso/contrabaixo', ativo: true },
+      { nome: 'Piano', icone: '🎹', cor: '#536f82', resumo: 'Teclado, leitura, harmonia, acompanhamento e performance.', url: '/music/curso/piano', ativo: true },
+      { nome: 'Cavaquinho', icone: '🪕', cor: '#8b6b48', resumo: 'Acordes, batidas, samba, pagode, choro e performance.', url: '/music/curso/cavaquinho', ativo: true },
+      { nome: 'Bandolim', icone: '🪕', cor: '#7d6374', resumo: 'Palhetada, tremolo, melodias, choro e improvisação.', url: '/music/curso/bandolim', ativo: true },
+      { nome: 'Ukulele', icone: '🎵', cor: '#4f7f73', resumo: 'Acordes, ritmos, dedilhados, arranjos e performance.', url: '/music/curso/ukulele', ativo: true },
     ];
     const cards = cursos.map((c) => { const tag = c.url ? 'a href="' + c.url + '"' : 'div'; return `<${tag} class="curso-card ${c.ativo ? 'curso-card-ativo' : 'curso-card-futuro'}" style="--curso-cor:${c.cor}"><span class="curso-card-icone" aria-hidden="true">${c.icone}</span><span class="curso-card-corpo"><strong>${esc(c.nome)}</strong><span>${esc(c.resumo)}</span></span><small>${c.ativo ? 'Abrir curso →' : 'Em breve →'}</small></${c.url ? 'a' : 'div'}>`; }).join('');
     const corpo = `<header class="lab-cab cursos-hero"><p class="lab-cab-tipo">Formação musical</p><h1>Cursos</h1><p class="lab-lead">Escolha um instrumento ou comece pela teoria. Cada curso tem seu próprio percurso, materiais e práticas.</p></header><section class="cursos-grid" aria-label="Catálogo de cursos">${cards}</section><p class="lab-dica cursos-nota">Novos cursos serão publicados nesta mesma página conforme o conteúdo ficar pronto.</p>`;
@@ -413,6 +414,7 @@ ${relacionados(f.slug)}`;
 
   // ------------------------------------------------------------ curso de ukulele
   CV.registrar(app, { opcional, pagina, esc });
+  CCOL.registrar(app, { opcional, pagina, esc });
   app.get('/music/curso-ukulele.json', opcional, (req, res) => {
     const documento = { schema: 'musique.course.v1', id: UK.CURSO.id, titulo: UK.CURSO.titulo, subtitulo: UK.CURSO.subtitulo, versao: UK.CURSO.versao, descricao: UK.CURSO.descricao, paginas: UK.CURSO.paginas, trilhas: UK.CURSO.trilhas, partes: UK.partes.map(([id, nome, ns]) => ({ id, nome, capitulos: ns })), recursos: { html: '/music/curso-ukulele', pdf: '/music/curso-ukulele.pdf', markdown: '/music/curso-ukulele.md', progresso: '/music/curso-ukulele/progresso' }, capitulos: UK.capitulos.map((c) => ({ numero: c.numero, slug: c.slug, titulo: c.titulo, parte: c.parte, resumo: c.resumo, objetivo: c.objetivo, url: `/music/curso-ukulele/${c.slug}` })) };
     res.type('application/json').set('Cache-Control', 'no-cache').send(JSON.stringify(documento, null, 2));

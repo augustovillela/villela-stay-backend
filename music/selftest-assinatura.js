@@ -269,7 +269,7 @@ async function rodar({ t, secao, req, assert, MP, CORTESIA, AVISOS, contas, SEGR
   await t('as telas: Minha conta mostra a assinatura e Cursos mostra os cursos do Musique', async () => {
     const js = (await req('GET', '/music/app.js', { cru: true })).texto;
     assert.ok(js.includes('cartaoAssinatura') && js.includes('/assinatura/assinar'));
-    assert.ok(js.includes('Cursos do Musique') && js.includes('/music/curso-contrabaixo'));
+    assert.ok(js.includes('Cursos do Musique') && js.includes('/music/curso/contrabaixo'));
     assert.ok(js.includes('Cursos vinculados à Villela Academy'));
     new Function('window', 'document', js);
     const land = (await req('GET', '/music', { cru: true })).texto;
