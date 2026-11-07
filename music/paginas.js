@@ -264,11 +264,11 @@ const CSS_TOPO = `.mq-topo{background:#1B2A4A;color:#fff}.mq-topo *{box-sizing:b
 .mq-topo nav a[aria-current="page"]{background:#fff;color:#1B2A4A;border-color:#fff}
 .mq-cursos{background:#fff;border-bottom:1px solid #e4ebf1}.mq-cursos-w{max-width:1000px;margin:0 auto;display:flex;align-items:center;gap:4px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding:6px 20px}.mq-cursos-w::-webkit-scrollbar{display:none}.mq-cursos a,.mq-cursos span{display:inline-flex;align-items:center;justify-content:center;flex:0 0 102px;width:102px;white-space:nowrap;text-decoration:none;color:#26384d;font:600 11px Inter,system-ui,sans-serif;padding:6px 5px;border-radius:8px;height:32px;box-sizing:border-box}.mq-cursos a:hover,.mq-cursos a:focus-visible{background:#eef5fb}.mq-cursos a:not(.mq-cursos-titulo){background:#e8f1fb;border:1px solid #b8d0ea}.mq-cursos-titulo{font-size:11px!important;letter-spacing:normal;color:#26384d!important;margin-right:0}.mq-curso-botao{background:#e8f1fb;border:1px solid #b8d0ea}.mq-curso-botao:hover,.mq-curso-botao:focus-visible{background:#d7e8f8!important;box-shadow:0 0 0 2px rgba(39,96,153,.15)}.mq-cursos span{opacity:.68}.mq-cursos small{display:none}
 @media (max-width:620px){.mq-topo nav a{padding:8px 14px;font-size:14px}}`;
-  const CURSOS_TOPO = `<nav class="mq-cursos" aria-label="Cursos de música"><div class="mq-cursos-w"><a class="mq-cursos-titulo mq-curso-botao" href="/music/cursos">Cursos</a><a href="/music/curso-teoria">🎓 Teoria</a><a href="/music/criar/curso-violao-livro">🪕 Violão</a><a href="/music/criar/curso-guitarra-edicao">🎸 Guitarra</a><a href="/music/curso-bateria">🥁 Bateria</a><a href="/music/curso-piano">🎹 Piano</a><a href="/music/curso-contrabaixo">🎸 Contrabaixo</a><a href="/music/curso-cavaquinho">🪕 Cavaquinho</a><a href="/music/curso-ukulele">🎵 Ukulele</a><a href="/music/curso-bandolim">🪕 Bandolim</a></div></nav>`;
+  const CURSOS_TOPO = `<nav class="mq-cursos" aria-label="Cursos de música"><div class="mq-cursos-w"><a class="mq-cursos-titulo mq-curso-botao" href="/music/cursos">Cursos</a><a href="/music/curso/teoria">🎓 Teoria</a><a href="/music/curso-violao">🪕 Violão</a><a href="/music/curso/guitarra">🎸 Guitarra</a><a href="/music/curso/bateria">🥁 Bateria</a><a href="/music/curso/piano">🎹 Piano</a><a href="/music/curso/contrabaixo">🎸 Contrabaixo</a><a href="/music/curso/cavaquinho">🪕 Cavaquinho</a><a href="/music/curso/ukulele">🎵 Ukulele</a><a href="/music/curso/bandolim">🪕 Bandolim</a></div></nav>`;
 const LAB_SECOES = /^\/music\/(laboratorio|aprender|explorar|praticar|jogar|criar|referencia|escalas|acordes|tonalidades|intervalos|notas|ensinar|buscar|atividade)(\/|$)/;
 function secaoDe(caminho) {
   const c = String(caminho || '');
-  if (/^\/music\/curso-teoria(\/|$)/.test(c)) return 'teoria';
+  if (/^\/music\/curso(-|\/)teoria(\/|$)/.test(c)) return 'teoria';
   if (LAB_SECOES.test(c)) return 'laboratorio';
   if (/^\/music\/(cifras-publicas|p\/|c\/)/.test(c)) return 'cifras';
   if (/^\/music\/ferramentas/.test(c)) return 'ferramentas';
@@ -278,7 +278,7 @@ function cabecalho({ noApp = false, atual = '' } = {}) {
   const item = (id, url, txt) => `<a href="${url}"${atual === id ? ' aria-current="page"' : ''}>${txt}</a>`;
   return `<style>${CSS_TOPO}.mq-cursos a,.mq-cursos span{flex-basis:90px;width:90px;font-size:10px;padding-left:3px;padding-right:3px}.mq-cursos-titulo{font-size:10px!important}</style><header class="mq-topo"><div class="mq-w">
   <a class="mq-marca" href="/music">Musique<small>por Villela Music</small></a>
-  <nav aria-label="Musique">${item('teoria', '/music/curso-teoria', 'Teoria')} ${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
+  <nav aria-label="Musique">${item('teoria', '/music/curso/teoria', 'Teoria')} ${item('laboratorio', '/music/laboratorio', 'Laboratório')} ${item('cifras', '/music/cifras-publicas', 'Cifras')} ${item('ferramentas', '/music/ferramentas', 'Ferramentas')}
        ${noApp ? '<a href="/music/app#conta">Minha conta</a>' : '<a href="/music/entrar">Entrar</a>'}</nav>
 </div></header>`;
 }
