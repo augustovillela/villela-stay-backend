@@ -453,9 +453,9 @@ async function rodar({ t, secao, req, assert }) {
     });
   });
 
-  await t('VIOLÃO (Coleção): 10 capítulos íntegros, com figuras e ferramentas; todas as rotas do curso e as v2 exigem assinatura', async () => {
+  await t('VIOLÃO (Coleção): 58 capítulos íntegros, com figuras e ferramentas; todas as rotas do curso e as v2 exigem assinatura', async () => {
     const CV = require('./curso-violao');
-    assert.equal(CV.CAPS.length, 10);
+    assert.equal(CV.CAPS.length, 58);
     CV.CAPS.forEach((c, i) => {
       assert.equal(c.numero, i + 1, 'numeração contínua');
       assert.ok(c.html.length > 3000, 'capítulo com conteúdo: ' + c.slug);
@@ -473,7 +473,7 @@ async function rodar({ t, secao, req, assert }) {
 
   await t('CURSOS DA COLEÇÃO: os 8 cursos têm conteúdo íntegro, ferramentas ligadas e exigem assinatura (índice, capítulo, .json, figuras)', async () => {
     const CC = require('./cursos-colecao');
-    const esperado = { guitarra: 9, bateria: 7, ukulele: 6, teoria: 22 };
+    const esperado = { guitarra: 56, bateria: 52, ukulele: 6, teoria: 22 };
     assert.deepEqual(Object.keys(CC.COLECAO).sort(), ['bandolim', 'bateria', 'cavaquinho', 'contrabaixo', 'guitarra', 'piano', 'teoria', 'ukulele']);
     for (const C of Object.values(CC.COLECAO)) {
       if (esperado[C.slug]) assert.equal(C.caps.length, esperado[C.slug], C.slug);
