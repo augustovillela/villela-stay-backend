@@ -182,7 +182,7 @@ function visitasHtml(d) {
   <div class="vs-abas">
     ${[['origem', '🧭 Origem'], ['local', '📍 Localidade'], ['publico', '📱 Público'], ['paginas', '📄 Páginas'], ['funil', '🎯 Funil'], ['casas', '🏡 Casas']]
       // relatório nominal dos alunos: só admin (a rota responde 403 aos demais)
-      .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos'], ['musique', '🎵 Alunos do Musique']] : [])
+      .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos'], ['musique', '🎵 Alunos do Musique'], ['produtos', '📊 Uso dos produtos']] : [])
       .map(([id, rot]) => `<button data-aba="${id}" class="${VIS.aba === id ? 'ativa' : ''}">${rot}</button>`).join('')}
   </div>
   <div id="vs-aba" class="vs-caixa">${visitasAbaHtml(VIS.aba, d)}</div>
@@ -226,6 +226,7 @@ function visitasAbaHtml(aba, d) {
   if (aba === 'casas') return '<p class="vazio">Carregando casas…</p>';
   if (aba === 'alunos') return '<p class="vazio">Carregando alunos…</p>';
   if (aba === 'musique') return '<p class="vazio">Carregando alunos do Musique…</p>';
+  if (aba === 'produtos') return '<p class="vazio">Carregando uso dos produtos…</p>';
   return '';
 }
 
@@ -238,6 +239,7 @@ function ligarAbasVisitas() {
     if (VIS.aba === 'casas') carregarCasasVisitas();
     if (VIS.aba === 'alunos') carregarAlunosVisitas();
     if (VIS.aba === 'musique') carregarAlunosMusique();
+    if (VIS.aba === 'produtos') carregarUsoProdutos();
   });
   document.querySelectorAll('.vs-linha-site').forEach(tr => tr.onclick = () => {
     VIS.produto = tr.dataset.produto;
@@ -248,6 +250,7 @@ function ligarAbasVisitas() {
   if (VIS.aba === 'casas') carregarCasasVisitas();
   if (VIS.aba === 'alunos') carregarAlunosVisitas();
   if (VIS.aba === 'musique') carregarAlunosMusique();
+  if (VIS.aba === 'produtos') carregarUsoProdutos();
 }
 
 /** Funil por canal: visita → lead → reserva. É o que diz qual origem dá dinheiro. */
@@ -414,5 +417,63 @@ async function abrirDetalheAlunoMusique(id) {
         </tbody></table>` : '<p class="vazio">Sem uso medido no período.</p>'}</div>
       <div><h3 class="vs-h3">Sites visitados</h3>${visBarras(sites.map(p => ({ k: `${p.emoji} ${p.nome}`, n: p.paginas })), 'Nenhuma visita identificada no período.')}</div>
     </div>`;
+  } catch (e) { td.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+/** 📊 Uso dos produtos: quem entra e quanto tempo passa em CRM, Gestão, Finance, Closet, Vitrine, Kids, Alta Vista, Docs, Projetos e Jurídico. */
+async function carregarUsoProdutos(produtoId) {
+  const alvo = $('#vs-aba'); if (!alvo) return;
+  try {
+    const lista = await api('GET', `/uso-produtos?dias=${VIS.dias}`);
+    const atual = produtoId || VIS.usoProduto || lista.produtos[0].id;
+    VIS.usoProduto = atual;
+    const d = await api('GET', `/uso-produtos/${encodeURIComponent(atual)}?dias=${VIS.dias}`);
+    const r = d.resumo;
+    alvo.innerHTML = `
+      <h3 class="vs-h3">📊 Uso dos produtos</h3>
+      <p><select id="vs-uso-produto">${lista.produtos.map(p => `<option value="${esc(p.id)}"${p.id === atual ? ' selected' : ''}>${esc(p.emoji)} ${esc(p.nome)} — ${visNum(p.pessoas)} pessoa(s), ${visTempo(p.segundos)}</option>`).join('')}</select></p>
+      <div class="cards vs-cards-alunos">
+        <div class="card"><div class="n">${visNum(r.pessoas)}</div><div class="rot">Pessoas identificadas</div></div>
+        <div class="card"><div class="n">${visNum(r.pessoas_usando)}</div><div class="rot">Usaram no período</div></div>
+        <div class="card"><div class="n">${visTempo(r.tempo_total_seg)}</div><div class="rot">Tempo total de uso</div></div>
+        <div class="card"><div class="n">${visNum(r.sessoes)}</div><div class="rot">Visitas (sessões)</div></div>
+      </div>
+      <h3 class="vs-h3">Onde o tempo é gasto (minutos)</h3>${visBarras(r.por_area.map(x => ({ k: x.area, n: Math.round(x.segundos / 60) })), 'Nenhum uso medido no período.')}
+      <p><button class="btn peq secund" id="vs-uso-csv">⬇ Exportar CSV</button></p>
+      <div class="vs-rolagem"><table class="vs-tabela vs-alunos">
+        <thead><tr><th>Pessoa</th><th class="num">Visitas</th><th>Áreas usadas</th><th class="num">Tempo de uso</th><th>Última atividade</th></tr></thead>
+        <tbody>${d.pessoas.length ? d.pessoas.map(a => `<tr class="vs-linha-aluno" data-uid="${esc(a.id)}" title="Ver dia a dia">
+          <td><b>${esc(a.nome || '(sem nome)')}</b><br><small class="suave">${esc(a.email)}</small></td>
+          <td class="num">${visNum(a.visitas.sessoes)}<br><small class="suave">${visNum(a.visitas.paginas)} pág.</small></td>
+          <td>${a.areas.length ? a.areas.map(x => `<div class="vs-curso"><b>${esc(x.area)}</b> · ${visTempo(x.segundos)} · ${x.dias} dia(s)</div>`).join('') : '<span class="suave">—</span>'}</td>
+          <td class="num"><b>${visTempo(a.tempo_total_seg)}</b></td>
+          <td class="suave">${esc(dataBr(a.ultima_atividade))}</td></tr>
+          <tr class="vs-detalhe-aluno" data-det="${esc(a.id)}" hidden><td colspan="5"></td></tr>`).join('')
+          : '<tr><td colspan="5" class="vazio">Ninguém logado visitou ou usou este produto no período.</td></tr>'}
+        </tbody>
+      </table></div>
+      <p class="vs-nota">Só aparece quem tem conta e estava <b>logado</b>; visitante segue anônimo. O tempo conta só com a aba visível e a pessoa mexendo.
+      "Área" é o trecho do endereço onde a pessoa estava. No Kids a conta é do responsável: não há perfil de criança aqui.
+      Medição começou em ${esc(dataBr(d.desde + 'T12:00:00Z').split(' ')[0])}; antes disso não há dado.</p>`;
+    $('#vs-uso-produto').onchange = (e) => carregarUsoProdutos(e.target.value);
+    $('#vs-uso-csv').onclick = () => window.open(`/staff/api/uso-produtos/${encodeURIComponent(atual)}.csv?dias=${VIS.dias}`, '_blank');
+    document.querySelectorAll('.vs-linha-aluno').forEach(tr => tr.onclick = () => abrirDetalheUsoProduto(atual, tr.dataset.uid));
+  } catch (e) {
+    alvo.innerHTML = `<p class="erro">${esc(e.status === 403 ? 'Relatório nominal: só administrador.' : e.message)}</p>`;
+  }
+}
+
+async function abrirDetalheUsoProduto(produto, id) {
+  const linha = document.querySelector(`.vs-detalhe-aluno[data-det="${CSS.escape(id)}"]`);
+  if (!linha) return;
+  if (!linha.hidden) { linha.hidden = true; return; }
+  linha.hidden = false;
+  const td = linha.firstElementChild;
+  td.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const d = await api('GET', `/uso-produtos/${encodeURIComponent(produto)}/${encodeURIComponent(id)}?dias=${VIS.dias}`);
+    td.innerHTML = d.dias_de_uso.length ? `<table class="vs-tabela"><thead><tr><th>Dia</th><th>Área</th><th class="num">Tempo</th></tr></thead><tbody>
+      ${d.dias_de_uso.map(x => `<tr><td>${esc(x.dia)}</td><td>${esc(x.area)}</td><td class="num">${visTempo(x.segundos)}</td></tr>`).join('')}
+      </tbody></table>` : '<p class="vazio">Sem uso medido no período.</p>';
   } catch (e) { td.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }

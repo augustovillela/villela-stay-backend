@@ -283,7 +283,7 @@ function utmDe(query) {
 
 function criarRegistrador(DATA_DIR, geo) {
   const arquivo = path.join(DATA_DIR, ARQ_HITS);
-  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma, uid, mid }) {
+  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma, uid, mid, pprod, pid }) {
     try {
       const info = uaInfo(ua);
       const loc = info.bot ? null : geo.consultar(ip);      // robô não gasta consulta de localidade
@@ -304,6 +304,9 @@ function criarRegistrador(DATA_DIR, geo) {
         uid: (!info.bot && uid) ? String(uid).slice(0, 64) : undefined,
         // Idem para quem está logado no MUSIQUE (conta própria; cookie vs_musique).
         mid: (!info.bot && mid) ? String(mid).slice(0, 64) : undefined,
+        // Quem estava logado num dos produtos medidos por nucleo/uso-produtos.js.
+        pprod: (!info.bot && pid && pprod) ? String(pprod).slice(0, 20) : undefined,
+        pid: (!info.bot && pid && pprod) ? String(pid).slice(0, 64) : undefined,
         _recebido: new Date().toISOString(),
       };
       fs.appendFileSync(arquivo, JSON.stringify(linha) + '\n');
@@ -342,6 +345,8 @@ function criarMiddleware(registrar) {
           aceitaIdioma: req.headers['accept-language'] || '',
           uid: atribuicao.ler(req),
           mid: atribuicaoMusique.ler(req),
+          pprod: req.usoProduto && req.usoProduto.produto,
+          pid: req.usoProduto && req.usoProduto.uid,
         });
       } catch { /* analytics jamais atrapalha a resposta */ }
     });
@@ -432,10 +437,14 @@ function calcularSessoes(hits) {
  * anônimas (intervalo < 30 min). Robô nunca tem uid.
  * Devolve { [uid]: { paginas, sessoes, dias, primeira, ultima, porProduto } }.
  */
-function visitasPorUid(DATA_DIR, de, ate, campo = 'uid') {
+function visitasPorUid(DATA_DIR, de, ate, campo = 'uid') { return visitasPorCampo(DATA_DIR, de, ate, campo); }
+
+/** Igual a visitasPorUid, com um filtro opcional por linha (ex.: só o produto X). */
+function visitasPorCampo(DATA_DIR, de, ate, campo = 'uid', filtro = null) {
   const porUid = {};
   for (const bruto of lerLinhas(DATA_DIR)) {
     if (!bruto || !bruto[campo] || bruto.bot) continue;
+    if (filtro && !filtro(bruto)) continue;
     const d = diaDe(bruto);
     if ((de && d < de) || (ate && d > ate)) continue;
     (porUid[bruto[campo]] = porUid[bruto[campo]] || []).push(bruto);
@@ -562,6 +571,7 @@ function rotacionar(DATA_DIR) {
 // =====================================================================
 module.exports.PRODUTOS = PRODUTOS;
 module.exports.visitasPorUid = visitasPorUid;
+module.exports.visitasPorCampo = visitasPorCampo;
 module.exports.NOME_PRODUTO = NOME_PRODUTO;
 module.exports.produtoDe = produtoDe;
 module.exports.canalDe = canalDe;

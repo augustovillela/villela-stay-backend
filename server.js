@@ -4713,6 +4713,10 @@ app.use('/assets', express.static(path.join(__dirname, 'assets'), { maxAge: '7d'
 try { require('./nucleo/analytics').montar(app, { DATA_DIR, tokensIguais, limiteTaxa, appendJsonl, upsertContato, registrarVisita: (d) => visitasColetor.registrar(d) }); } catch (e) { console.error('[nucleo/analytics] falha ao montar:', e.message); }
 try { require('./nucleo/backup').montar(app, { DATA_DIR, requireAdminOuChave }); } catch (e) { console.error('[nucleo/backup] falha ao montar:', e.message); }
 try { require('./nucleo/visitas').montarRotas(app, { DATA_DIR, requireAuth, podeArea, requirePublishOrAdmin, lerContatos }); } catch (e) { console.error('[nucleo/visitas] falha ao montar rotas:', e.message); }
+// Uso dos produtos (CRM, Gestão, Finance, Closet, Vitrine, Kids, Alta Vista, Docs, Projetos, Jurídico):
+// quem entra e quanto tempo fica. Montado ANTES dos produtos (injeta o pulso nas páginas deles).
+// Relatório nominal, só admin. Ver nucleo/uso-produtos.js.
+try { require('./nucleo/uso-produtos').montar(app, { DATA_DIR, jwtSecret: () => JWT_SECRET, requireAuth, requireAdmin, auditar: registrarAuditoria }); } catch (e) { console.error('[nucleo/uso-produtos] falha ao montar:', e.message); }
 try { require('./nucleo/stays-proxy').montar(app, { stays, staysPaginado, staysPost, getStaysClientes, getListingMap, resolverClientes, invalidarStaysClientes, nomeCliente, normalizarPlataforma, semAcento, CAL_STATUS, registrarAuditoria, requireAuth, requireAdmin }); } catch (e) { console.error('[nucleo/stays-proxy] falha ao montar:', e.message); }
 try { require('./nucleo/cozinhe-proxy').montar(app, { requireAuth, requireAdmin, registrarAuditoria }); } catch (e) { console.error('[nucleo/cozinhe-proxy] falha ao montar:', e.message); }
 try { require('./nucleo/crm-legado').montar(app, { requirePublishOrSession, podeCRM, lerContatos, salvarContatos, semAcento, ESTAGIOS, hojeISO, upsertContato, lerAtividades, addAtividade, stays, getListingMap, DATA_DIR }); } catch (e) { console.error('[nucleo/crm-legado] falha ao montar:', e.message); }
