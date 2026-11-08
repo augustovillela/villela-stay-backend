@@ -14,7 +14,7 @@
 //   git push --no-verify
 // =====================================================================
 'use strict';
-const { execSync, spawnSync } = require('child_process');
+const { execSync, spawnSync, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -84,13 +84,25 @@ function arquivosDoPush() {
   catch (__) { return { lista: [], contra: 'nada' }; }
 }
 
-function rodar(rotulo, cmd, args) {
-  process.stdout.write(`  … ${rotulo}\r`);
-  const r = spawnSync(cmd, args, { cwd: RAIZ, encoding: 'utf8', shell: process.platform === 'win32' });
-  const saida = (r.stdout || '') + (r.stderr || '');
+// As suítes e a auditoria são independentes (cada suíte usa o próprio DATA_DIR temporário e porta
+// efêmera), então rodam EM PARALELO: o tempo do portão deixa de ser a soma e passa a ser o da mais
+// lenta. A saída de cada uma só é impressa quando ela termina.
+function executar(cmd, args) {
+  return new Promise((resolve) => {
+    const p = spawn(cmd, args, { cwd: RAIZ, shell: process.platform === 'win32' });
+    let saida = '';
+    p.stdout.on('data', (d) => { saida += d; });
+    p.stderr.on('data', (d) => { saida += d; });
+    p.on('error', (e) => resolve({ status: 1, saida: saida + e.message }));
+    p.on('close', (status) => resolve({ status, saida }));
+  });
+}
+
+async function rodar(rotulo, cmd, args) {
+  const r = await executar(cmd, args);
   if (r.status !== 0) {
     erro(rotulo);
-    console.log(saida.split('\n').slice(-25).join('\n'));
+    console.log(r.saida.split('\n').slice(-25).join('\n'));
     return false;
   }
   ok(rotulo);
@@ -99,9 +111,9 @@ function rodar(rotulo, cmd, args) {
 
 /** Falha só em high/critical: low e moderate viram aviso, para o portão não
  *  virar ruído que todo mundo aprende a ignorar com --no-verify. */
-function auditoria() {
-  const r = spawnSync('npm', ['audit', '--omit=dev', '--json'], { cwd: RAIZ, encoding: 'utf8', shell: process.platform === 'win32' });
-  let j; try { j = JSON.parse(r.stdout); } catch (_) { ok('npm audit (não consegui ler — seguindo)'); return true; }
+async function auditoria() {
+  const r = await executar('npm', ['audit', '--omit=dev', '--json']);
+  let j; try { j = JSON.parse(r.saida); } catch (_) { ok('npm audit (não consegui ler — seguindo)'); return true; }
   const v = (j.metadata && j.metadata.vulnerabilities) || {};
   const graves = (v.high || 0) + (v.critical || 0);
   const resumo = `npm audit — ${graves} grave(s), ${v.moderate || 0} moderada(s), ${v.low || 0} baixa(s)`;
@@ -117,7 +129,7 @@ function auditoria() {
   return true;
 }
 
-function principal() {
+async function principal() {
   if (process.argv.includes('--instalar')) return instalar();
 
   const { lista: mudados, contra } = arquivosDoPush();
@@ -137,8 +149,15 @@ function principal() {
     console.log(cor(31, '\nPush BLOQUEADO.') + ' O portão não consegue testar o que está sendo empurrado.\n');
     process.exit(1);
   }
-  let verde = auditoria();
-  for (const s of [...suites].sort()) verde = rodar(s, 'npm', ['run', s]) && verde;
+  console.log(`  … ${suites.size} suíte(s) + auditoria rodando em paralelo\n`);
+  // No máximo 3 ao mesmo tempo: esta máquina vira swap com muitos processos Node juntos (lentidão = swap, não CPU).
+  const tarefas = [() => auditoria(), ...[...suites].sort().map((x) => () => rodar(x, 'npm', ['run', x]))];
+  const resultados = new Array(tarefas.length);
+  let proxima = 0;
+  await Promise.all(Array.from({ length: Math.min(3, tarefas.length) }, async () => {
+    while (proxima < tarefas.length) { const k = proxima++; resultados[k] = await tarefas[k](); }
+  }));
+  const verde = resultados.every(Boolean);
 
   if (!verde) {
     console.log(cor(31, '\nPush BLOQUEADO.') + ' Conserte, ou use --no-verify se souber o que está fazendo.\n');
@@ -147,4 +166,4 @@ function principal() {
   console.log(cor(32, '\nVerde. Pode subir.\n'));
 }
 
-principal();
+principal().catch((e) => { console.error(e); process.exit(1); });

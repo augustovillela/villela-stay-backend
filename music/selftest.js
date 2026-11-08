@@ -183,6 +183,10 @@ const secao = (s) => console.log('\n— ' + s + ' —');
 
 (async () => {
   const srv = app.listen(0);
+  // O fetch do Node reaproveita a conexão; o servidor fecha a ociosa em 5 s e, quando um teste
+  // demora mais que isso entre dois pedidos, o próximo cai numa conexão morta (ECONNRESET) e os
+  // testes que dependem dele falham em cascata. Manter a conexão aberta por mais tempo que o teste mais lento.
+  srv.keepAliveTimeout = 120000; srv.headersTimeout = 125000;
   await new Promise((r) => srv.once('listening', r));
   BASE = 'http://127.0.0.1:' + srv.address().port;
 

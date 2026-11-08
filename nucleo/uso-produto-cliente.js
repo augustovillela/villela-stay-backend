@@ -14,7 +14,12 @@
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else if (root && !root.VillelaUso) {
-    root.VillelaUso = factory().criar({ janela: root, documento: root.document });
+    var tag = root.document && root.document.currentScript;
+    root.VillelaUso = factory().criar({
+      janela: root, documento: root.document,
+      pulsoUrl: tag && tag.getAttribute('data-pulso') || '',          // o servidor diz para onde mandar
+      areaNoPrefixo: !!(tag && tag.getAttribute('data-area-no-prefixo')),
+    });
     root.VillelaUso.instalar();
   }
 })(typeof window !== 'undefined' ? window : this, function () {
@@ -24,11 +29,11 @@
   var OCIOSO_MS = 120000;
 
   /** { prefixo: "/finance", area: "app" } a partir de pathname e hash. */
-  function ondeEstou(pathname, hash) {
+  function ondeEstou(pathname, hash, areaNoPrefixo) {
     var seg = String(pathname || '/').split('/').filter(Boolean);
     if (!seg.length) return null;
     var prefixo = '/' + seg[0];
-    var area = seg[1] || String(hash || '').replace(/^#\/?/, '').split(/[/?=&]/)[0] || 'inicio';
+    var area = (areaNoPrefixo ? seg[0] : seg[1]) || String(hash || '').replace(/^#\/?/, '').split(/[/?=&]/)[0] || 'inicio';
     area = area.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 24) || 'inicio';
     return { prefixo: prefixo, area: area };
   }
@@ -59,9 +64,9 @@
     function pulsar() {
       if (parado || !visivel()) return null;
       if (agora() - ultimaAcao > OCIOSO_MS) return null;
-      var onde = ondeEstou(w.location && w.location.pathname, w.location && w.location.hash);
+      var onde = ondeEstou(w.location && w.location.pathname, w.location && w.location.hash, o.areaNoPrefixo);
       if (!onde) return null;
-      var url = onde.prefixo + '/api/uso/pulso';
+      var url = o.pulsoUrl || (onde.prefixo + '/api/uso/pulso');
       var corpo = { area: onde.area };
       enviar(url, corpo);
       return { url: url, corpo: corpo };

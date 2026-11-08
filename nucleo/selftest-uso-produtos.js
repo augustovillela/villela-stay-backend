@@ -137,7 +137,7 @@ async function t(nome, fn) { try { await fn(); ok++; console.log('  ✅ ' + nome
     assert.equal((await get('/staff/api/uso-produtos/fin/fantasma')).status, 404);
     const csv = await (await get('/staff/api/uso-produtos/fin.csv')).text();
     assert.ok(csv.includes(';') && !/(^|;)=HYPERLINK/.test(csv), 'nome começando com = precisa ser neutralizado');
-    assert.ok(uso.csv(uso.relatorio(FAKES[0], 7)).charCodeAt(0) === 0xFEFF, 'sem BOM o Excel quebra os acentos');
+    assert.ok(uso.csv(await uso.relatorio(FAKES[0], 7)).charCodeAt(0) === 0xFEFF, 'sem BOM o Excel quebra os acentos');
     assert.ok(AUDIT.some((a) => a.acao === 'relatorio.uso-produto.csv'), 'exportar dados pessoais tem de ficar na auditoria');
   });
 
@@ -150,7 +150,11 @@ async function t(nome, fn) { try { await fn(); ok++; console.log('  ✅ ' + nome
     c.marcar(); assert.ok(c.pulsar());
     assert.deepEqual(Cliente.ondeEstou('/gestao/app', '#/reservas?x=1'), { prefixo: '/gestao', area: 'app' });
     assert.deepEqual(Cliente.ondeEstou('/crm', '#leads'), { prefixo: '/crm', area: 'leads' });
-    assert.equal(Cliente.ondeEstou('/', ''), null);
+    assert.deepEqual(Cliente.ondeEstou('/', ''), null);
+    assert.deepEqual(Cliente.ondeEstou('/livros/o-livro', '', true), { prefixo: '/livros', area: 'livros' });
+    const l = Cliente.criar({ janela: { location: { pathname: '/minha-conta', hash: '' } }, documento: doc, agora: () => t0, pulsoUrl: '/livraria/api/uso/pulso', areaNoPrefixo: true, enviar: () => {} });
+    l.marcar();
+    assert.deepEqual(l.pulsar(), { url: '/livraria/api/uso/pulso', corpo: { area: 'minha-conta' } }, 'o servidor diz para onde mandar o pulso');
     env.forEach(([, b]) => assert.deepEqual(Object.keys(b), ['area']));
   });
 
@@ -168,28 +172,52 @@ async function t(nome, fn) { try { await fn(); ok++; console.log('  ✅ ' + nome
     assert.equal(new Set(P.map((p) => p.prefixo)).size, P.length);
     assert.equal(new Set(P.map((p) => p.cookie)).size, P.length);
     const FONTE = { crm: 'crm/rotas-cliente.js', gestao: 'vsm/rotas-cliente.js', finance: 'financeiro/rotas-app.js', closet: 'closet/rotas-conta.js', vitrine: 'vitrine/rotas-conta.js',
-      kids: 'kids/rotas-conta.js', altavista: 'alta-vista/rotas-conta.js', docs: 'vdocs/auth.js', projetos: 'vpe/auth.js', juridico: 'legal-saas/rotas-cliente.js' };
+      kids: 'kids/rotas-conta.js', altavista: 'alta-vista/rotas-conta.js', docs: 'vdocs/auth.js', projetos: 'vpe/auth.js', juridico: 'legal-saas/rotas-cliente.js',
+      origena: 'origena/sessao.js', clientejur: 'legal/portal-cliente.js', livraria: 'livraria/conta.js', hospede: 'server.js' };
     for (const p of P) {
       const src = fs.readFileSync(path.join(__dirname, '..', FONTE[p.id]), 'utf8');
       assert.ok(src.includes(`'${p.cookie}'`), `${p.id}: o cookie ${p.cookie} não está em ${FONTE[p.id]}`);
-      assert.ok(new RegExp(`path:\\s*'${p.prefixo}'`).test(src), `${p.id}: o cookie não é restrito ao prefixo ${p.prefixo}`);
+      // Livraria usa caminho "/" de propósito (a loja não tem prefixo comum); os demais ficam presos ao próprio prefixo.
+      if (p.id !== 'livraria') assert.ok(new RegExp(`path:\\s*'${p.prefixo}'`).test(src), `${p.id}: o cookie não é restrito ao prefixo ${p.prefixo}`);
     }
   });
 
   await t('tabela real de produtos: a consulta de pessoa roda no banco de CADA produto (tabela e colunas existem)', async () => {
     // O leitor engole erro de propósito (a rota não pode cair); sem este teste uma tabela renomeada viraria "pessoa inexistente" em silêncio.
     const BANCO = { crm: ['../crm/db', 'tenant_users'], gestao: ['../vsm/db', 'tenant_users'], finance: ['../financeiro/db', 'tenant_users'], closet: ['../closet/db', 'users'],
-      vitrine: ['../vitrine/db', 'users'], kids: ['../kids/db', 'users'], altavista: ['../alta-vista/db', 'clientes'], docs: ['../vdocs/db', 'users'], projetos: ['../vpe/db', 'users'], juridico: ['../legal-saas/db', 'tenant_users'] };
-    for (const p of Mod.PRODUTOS) {
+      vitrine: ['../vitrine/db', 'users'], kids: ['../kids/db', 'users'], altavista: ['../alta-vista/db', 'clientes'], docs: ['../vdocs/db', 'users'], projetos: ['../vpe/db', 'users'], juridico: ['../legal-saas/db', 'tenant_users'],
+      clientejur: ['../legal/db', 'client_accounts'], livraria: ['../livraria/db', 'customers'] };
+    for (const p of Mod.PRODUTOS.filter((x) => BANCO[x.id])) {
       const [mod, tabela] = BANCO[p.id];
       const db = require(path.join(__dirname, mod)).db;
       const cols = db.prepare(`PRAGMA table_info(${tabela})`).all().map((c) => c.name);
       for (const c of ['id', 'email']) assert.ok(cols.includes(c), `${p.id}: ${tabela} sem coluna ${c}`);
-      assert.ok(cols.includes('nome') || cols.includes('name'), `${p.id}: ${tabela} sem nome`);
+      if (p.id !== 'clientejur') assert.ok(cols.includes('nome') || cols.includes('name'), `${p.id}: ${tabela} sem nome`);   // clientejur: o nome vem do JOIN com clients
       const id = 'teste-' + p.id;
       db.prepare(`SELECT * FROM ${tabela} WHERE id = ?`).get(id);   // não pode lançar
-      assert.equal(p.pessoa(id), null);
+      assert.equal(await p.pessoa(id), null);
     }
+    // Origena (PostgreSQL) sem banco configurado devolve null, nunca lança; Hóspede lê o JSON.
+    assert.equal(await Mod.PRODUTOS.find((x) => x.id === 'origena').pessoa('x'), null);
+    fs.writeFileSync(path.join(DATA, 'hospedes.json'), JSON.stringify([{ id: 'h-1', nome: 'Hóspede Um', email: 'h@t' }]));
+    process.env.DATA_DIR = DATA;
+    assert.deepEqual(await Mod.PRODUTOS.find((x) => x.id === 'hospede').pessoa('h-1'), { id: 'h-1', nome: 'Hóspede Um', email: 'h@t' });
+    assert.equal(await Mod.PRODUTOS.find((x) => x.id === 'hospede').pessoa('outro'), null);
+  });
+
+  await t('produtos de sessão própria: Hóspede lê hid/tipo, Origena lê sub, Livraria lê o token opaco e casa os caminhos da loja', async () => {
+    const por = (id) => Mod.PRODUTOS.find((x) => x.id === id);
+    const req = (cookies) => ({ cookies });
+    assert.equal(Mod.quemEstaLogado(por('hospede'), req({ hospede_token: jwt.sign({ hid: 'h-1', tipo: 'hospede' }, SEG) }), SEG), 'h-1');
+    assert.equal(Mod.quemEstaLogado(por('hospede'), req({ hospede_token: jwt.sign({ hid: 'h-1', tipo: 'outro' }, SEG) }), SEG), '', 'tipo errado');
+    assert.equal(Mod.quemEstaLogado(por('origena'), req({ origena_sess: jwt.sign({ sub: 'u-9', v: 1 }, SEG) }), SEG), 'u-9');
+    assert.equal(Mod.quemEstaLogado(por('origena'), req({ origena_sess: jwt.sign({ uid: 'u-9' }, SEG) }), SEG), '', 'sem o campo sub não identifica');
+    assert.equal(Mod.quemEstaLogado(por('clientejur'), req({ legal_cli: jwt.sign({ aid: 'a-1' }, SEG) }), SEG), 'a-1');
+    assert.equal(Mod.quemEstaLogado(por('livraria'), req({}), SEG), '');
+    assert.equal(Mod.quemEstaLogado(por('livraria'), req({ livraria_sess: 'token-que-nao-existe' }), SEG), '');
+    const L = [por('livraria')];
+    for (const c of ['/livros', '/livros/o-livro', '/minha-conta', '/checkout', '/pacotes/x', '/livraria/api/x']) assert.equal(Mod.produtoDoCaminho(L, c) && Mod.produtoDoCaminho(L, c).id, 'livraria', c);
+    for (const c of ['/', '/finance/app', '/livrosx', '/blog']) assert.equal(Mod.produtoDoCaminho(L, c), null, c);
   });
 
   srv.close();
