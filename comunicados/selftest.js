@@ -900,8 +900,11 @@ const rascunho = (extra = {}) => ({ titulo: 'Novo recurso', corpo: 'Linha 1\n\nL
     acad.prepare("INSERT INTO est_escopos (id, product_id, slug, tipo, titulo, status, dono_user_id, criado_em, atualizado_em) VALUES ('esc-p1', 'p1', 'meu', 'edital', 'Meu', 'publicado', 'a1', ?, ?)").run(agora, agora);
     acad.prepare("INSERT INTO est_escopos (id, product_id, slug, tipo, titulo, status, criado_em, atualizado_em) VALUES ('esc-p2', 'p2', 'rasc', 'edital', 'Rascunho', 'rascunho', ?, ?)").run(agora, agora);
     assert.deepEqual([fontes.soDicasDoCurso('academy', 'p1'), fontes.soDicasDoCurso('academy', 'p2'), fontes.soDicasDoCurso('vsm', 'x')], [false, false, false]);
+    // curso de MÚSICA recebe só as dicas dele (as gerais falam de prompts/agentes/audiobook que ele não tem)
+    acad.prepare("INSERT INTO products (id, producer_id, tipo, titulo, slug, categoria, status, criado_em) VALUES ('pm1', 'a1', 'curso', 'Curso de Música', 'curso-musica', 'musica', 'publicado', ?)").run(agora);
+    assert.equal(fontes.soDicasDoCurso('academy', 'pm1'), true);
     // fora do curso, as gerais continuam por ver
-    const fora = (await req('GET', '/academy/api/comunicados/dicas/proxima', { cookie: ck })).json.dica;
+    const fora =(await req('GET', '/academy/api/comunicados/dicas/proxima', { cookie: ck })).json.dica;
     assert.ok(fora && !com.dicas.obter(fora.id).curso_id);
     // o widget: espera a página dizer que a tela se definiu, e não põe dois post-its
     const js = require('fs').readFileSync(path.join(__dirname, 'widget.js'), 'utf8');

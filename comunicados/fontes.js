@@ -265,8 +265,12 @@ const FONTES = [
     // Curso que hospeda o ESTUDE (percurso publicado, que não é particular de um aluno): a tela dele não é a do
     // curso comum, e as dicas GERAIS falam de recursos que ela não tem. Quem decide é o SERVIDOR: antes dependia de
     // o app marcar a página a tempo — com a rede lenta, a dica geral saía dentro do Estude e ficava gravada como vista (D1).
+    // Curso de MÚSICA (Coleção Musique) também só recebe as dicas DELE: as gerais falam de Prompt Builder, gerador de
+    // agentes, biblioteca de prompts, audiobook e Villela Express, que esses cursos não têm (e o aluno via dica de
+    // "Claude AI na Prática" dentro de um curso de violão). Cada curso de música tem as próprias, uma por recurso.
     soDicasDoCurso: (curso) => !!dbDe('academy').prepare(
-      "SELECT 1 FROM est_escopos WHERE product_id = ? AND status = 'publicado' AND COALESCE(dono_user_id, '') = '' LIMIT 1").get(String(curso)),
+      `SELECT 1 FROM est_escopos WHERE product_id = ?1 AND status = 'publicado' AND COALESCE(dono_user_id, '') = '' LIMIT 1`).get(String(curso))
+      || !!dbDe('academy').prepare("SELECT 1 FROM products WHERE id = ?1 AND categoria = 'musica' LIMIT 1").get(String(curso)),
     // O sino da Academy já existe (e espelha em push): o comunicado entra nele.
     nativo: (ref, c) => require('../academy/emails').Notificacoes.criar(ref, c.titulo, c.corpo.slice(0, 500), c.link_url || '/academy/app'),
   },
