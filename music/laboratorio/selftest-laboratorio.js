@@ -473,7 +473,7 @@ async function rodar({ t, secao, req, assert }) {
 
   await t('CURSOS DA COLEÇÃO: os 8 cursos têm conteúdo íntegro, ferramentas ligadas e exigem assinatura (índice, capítulo, .json, figuras)', async () => {
     const CC = require('./cursos-colecao');
-    const esperado = { guitarra: 56, bateria: 52, ukulele: 6, teoria: 22 };
+    const esperado = { guitarra: 56, bateria: 52, ukulele: 42, cavaquinho: 42, contrabaixo: 48, piano: 50, bandolim: 42, teoria: 52 };
     assert.deepEqual(Object.keys(CC.COLECAO).sort(), ['bandolim', 'bateria', 'cavaquinho', 'contrabaixo', 'guitarra', 'piano', 'teoria', 'ukulele']);
     for (const C of Object.values(CC.COLECAO)) {
       if (esperado[C.slug]) assert.equal(C.caps.length, esperado[C.slug], C.slug);
