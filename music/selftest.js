@@ -177,7 +177,7 @@ async function req(metodo, caminho, { corpo, como = '', staff = 'adm', headers: 
 }
 async function t(nome, fn) {
   try { await fn(); ok++; console.log('  ✅ ' + nome); }
-  catch (e) { falhas.push({ nome, erro: e.message }); console.log('  ❌ ' + nome + '\n     ' + e.message); }
+  catch (e) { falhas.push({ nome, erro: e.message + (e.cause ? ' [' + (e.cause.code || e.cause.message) + ']' : '') }); console.log('  ❌ ' + nome + '\n     ' + e.message); }
 }
 const secao = (s) => console.log('\n— ' + s + ' —');
 
@@ -890,6 +890,11 @@ const secao = (s) => console.log('\n— ' + s + ' —');
   // LABORATÓRIO MUSICAL (ADR-0013) — núcleo com grafia, páginas, API paga
   // ===================================================================
   await require('./laboratorio/selftest-laboratorio').rodar({ t, secao, req, assert });
+
+  // ===================================================================
+  // TEMPO DE USO + ALUNOS IDENTIFICADOS (07/11/2026)
+  // ===================================================================
+  await require('./selftest-uso').rodar({ t, secao, req, assert });
 
   // ===================================================================
   srv.close();

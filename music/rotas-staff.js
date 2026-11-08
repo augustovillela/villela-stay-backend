@@ -56,6 +56,26 @@ function registrarRotasStaff(app, { requireAuth, requireAdmin }) {
     res.json({ telemetria: req.query.demonstracao === '1' ? telemetria.demonstracao() : telemetria.resumo(req.query.dias) });
   }));
 
+  // 🎵 Alunos do Musique — visitas identificadas + tempo de uso por área.
+  // Só admin: é relatório NOMINAL (nome, e-mail, comportamento) — LGPD, art. 6º, III.
+  const relAlunos = () => require('./relatorio-visitas-alunos');
+  app.get('/staff/api/music/visitas-alunos', ...ADM, h(async (req, res) => {
+    res.set('Cache-Control', 'no-store').json(relAlunos().montar({ dias: req.query.dias }));
+  }));
+  app.get('/staff/api/music/visitas-alunos.csv', ...ADM, h(async (req, res) => {
+    const R = relAlunos();
+    const rel = R.montar({ dias: req.query.dias });
+    direitos.registrar({ ator: (req.user && (req.user.email || req.user.id)) || 'staff', acao: 'relatorio.visitas-alunos.csv',
+      alvo: 'contas_music', detalhe: { alunos: rel.alunos.length, dias: rel.periodo.dias }, ip: String(req.ip || '') });
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store',
+      'Content-Disposition': `attachment; filename="alunos-musique-${rel.periodo.ate}.csv"` }).send(R.csv(rel));
+  }));
+  app.get('/staff/api/music/visitas-alunos/:id', ...ADM, h(async (req, res) => {
+    const d = relAlunos().detalhe(req.params.id, { dias: req.query.dias });
+    if (!d) return res.status(404).json({ erro: 'Aluno não encontrado.' });
+    res.set('Cache-Control', 'no-store').json(d);
+  }));
+
   // ---- fila: o que morreu, e por quê ----
   app.get('/staff/api/music/fila', requireAuth, h(async (req, res) => {
     res.json({ resumo: fila.resumo(), dlq: fila.dlq(Number(req.query.n) || 50), handlers: fila.tiposRegistrados() });

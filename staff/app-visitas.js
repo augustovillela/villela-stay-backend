@@ -182,7 +182,7 @@ function visitasHtml(d) {
   <div class="vs-abas">
     ${[['origem', '🧭 Origem'], ['local', '📍 Localidade'], ['publico', '📱 Público'], ['paginas', '📄 Páginas'], ['funil', '🎯 Funil'], ['casas', '🏡 Casas']]
       // relatório nominal dos alunos: só admin (a rota responde 403 aos demais)
-      .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos']] : [])
+      .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos'], ['musique', '🎵 Alunos do Musique']] : [])
       .map(([id, rot]) => `<button data-aba="${id}" class="${VIS.aba === id ? 'ativa' : ''}">${rot}</button>`).join('')}
   </div>
   <div id="vs-aba" class="vs-caixa">${visitasAbaHtml(VIS.aba, d)}</div>
@@ -225,6 +225,7 @@ function visitasAbaHtml(aba, d) {
   if (aba === 'funil') return '<p class="vazio">Carregando funil…</p>';
   if (aba === 'casas') return '<p class="vazio">Carregando casas…</p>';
   if (aba === 'alunos') return '<p class="vazio">Carregando alunos…</p>';
+  if (aba === 'musique') return '<p class="vazio">Carregando alunos do Musique…</p>';
   return '';
 }
 
@@ -236,6 +237,7 @@ function ligarAbasVisitas() {
     if (VIS.aba === 'funil') carregarFunilVisitas();
     if (VIS.aba === 'casas') carregarCasasVisitas();
     if (VIS.aba === 'alunos') carregarAlunosVisitas();
+    if (VIS.aba === 'musique') carregarAlunosMusique();
   });
   document.querySelectorAll('.vs-linha-site').forEach(tr => tr.onclick = () => {
     VIS.produto = tr.dataset.produto;
@@ -245,6 +247,7 @@ function ligarAbasVisitas() {
   if (VIS.aba === 'funil') carregarFunilVisitas();
   if (VIS.aba === 'casas') carregarCasasVisitas();
   if (VIS.aba === 'alunos') carregarAlunosVisitas();
+  if (VIS.aba === 'musique') carregarAlunosMusique();
 }
 
 /** Funil por canal: visita → lead → reserva. É o que diz qual origem dá dinheiro. */
@@ -352,6 +355,63 @@ async function abrirDetalheAluno(uid) {
       <div><h3 class="vs-h3">Aula a aula</h3>${d.aulas.length ? `<table class="vs-tabela"><thead><tr><th>Aula</th><th class="num">Tempo</th><th class="num">Dias</th><th>Último estudo</th></tr></thead><tbody>
         ${d.aulas.map(x => `<tr><td>${esc(x.aula_titulo || x.lesson_id)}</td><td class="num">${visTempo(x.segundos)}</td><td class="num">${x.dias}</td><td class="suave">${esc(dataBr(x.ultimo))}</td></tr>`).join('')}
         </tbody></table>` : '<p class="vazio">Não abriu aula no período.</p>'}</div>
+      <div><h3 class="vs-h3">Sites visitados</h3>${visBarras(sites.map(p => ({ k: `${p.emoji} ${p.nome}`, n: p.paginas })), 'Nenhuma visita identificada no período.')}</div>
+    </div>`;
+  } catch (e) { td.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
+}
+
+/** 🎵 Alunos do Musique: pessoa a pessoa — visitas identificadas + tempo de uso por área. */
+async function carregarAlunosMusique() {
+  const alvo = $('#vs-aba'); if (!alvo) return;
+  try {
+    const d = await api('GET', `/music/visitas-alunos?dias=${VIS.dias}`);
+    const r = d.resumo;
+    alvo.innerHTML = `
+      <h3 class="vs-h3">🎵 Alunos do Musique</h3>
+      <div class="cards vs-cards-alunos">
+        <div class="card"><div class="n">${visNum(r.alunos)}</div><div class="rot">Pessoas identificadas</div></div>
+        <div class="card"><div class="n">${visNum(r.alunos_usando)}</div><div class="rot">Usaram no período</div></div>
+        <div class="card"><div class="n">${visTempo(r.tempo_total_seg)}</div><div class="rot">Tempo total de uso</div></div>
+        <div class="card"><div class="n">${visNum(r.sessoes)}</div><div class="rot">Visitas (sessões)</div></div>
+      </div>
+      <h3 class="vs-h3">Onde o tempo é gasto (minutos)</h3>${visBarras(r.por_area.map(x => ({ k: x.nome, n: Math.round(x.segundos / 60) })), 'Nenhum uso medido no período.')}
+      <p><button class="btn peq secund" id="vs-musique-csv">⬇ Exportar CSV</button></p>
+      <div class="vs-rolagem"><table class="vs-tabela vs-alunos">
+        <thead><tr><th>Aluno</th><th class="num">Visitas</th><th>Áreas usadas</th><th class="num">Tempo de uso</th><th>Última atividade</th></tr></thead>
+        <tbody>${d.alunos.length ? d.alunos.map(a => `<tr class="vs-linha-aluno" data-uid="${esc(a.id)}" title="Ver dia a dia">
+          <td><b>${esc(a.nome || '(sem nome)')}</b><br><small class="suave">${esc(a.email)}</small></td>
+          <td class="num">${visNum(a.visitas.sessoes)}<br><small class="suave">${visNum(a.visitas.paginas)} pág.</small></td>
+          <td>${a.areas.length ? a.areas.map(x => `<div class="vs-curso"><b>${esc(x.nome)}</b> · ${visTempo(x.segundos)} · ${x.dias} dia(s)</div>`).join('') : '<span class="suave">—</span>'}</td>
+          <td class="num"><b>${visTempo(a.tempo_total_seg)}</b></td>
+          <td class="suave">${esc(dataBr(a.ultima_atividade))}</td></tr>
+          <tr class="vs-detalhe-aluno" data-det="${esc(a.id)}" hidden><td colspan="5"></td></tr>`).join('')
+          : '<tr><td colspan="5" class="vazio">Nenhuma pessoa logada no Musique visitou os sites ou usou o app no período.</td></tr>'}
+        </tbody>
+      </table></div>
+      <p class="vs-nota">Só aparece quem tem conta no Musique e estava <b>logado</b> (conta separada da Academy): visitante sem conta segue anônimo.
+      O tempo conta só com a aba visível e a pessoa mexendo (no Tocar junto e no Laboratório a tolerância é de 10 min, porque se pratica com o instrumento).
+      Medição e identificação começaram em ${esc(dataBr(d.desde + 'T12:00:00Z').split(' ')[0])}.</p>`;
+    $('#vs-musique-csv').onclick = () => window.open(`/staff/api/music/visitas-alunos.csv?dias=${VIS.dias}`, '_blank');
+    document.querySelectorAll('.vs-linha-aluno').forEach(tr => tr.onclick = () => abrirDetalheAlunoMusique(tr.dataset.uid));
+  } catch (e) {
+    alvo.innerHTML = `<p class="erro">${esc(e.status === 403 ? 'Relatório nominal: só administrador.' : e.message)}</p>`;
+  }
+}
+
+async function abrirDetalheAlunoMusique(id) {
+  const linha = document.querySelector(`.vs-detalhe-aluno[data-det="${CSS.escape(id)}"]`);
+  if (!linha) return;
+  if (!linha.hidden) { linha.hidden = true; return; }
+  linha.hidden = false;
+  const td = linha.firstElementChild;
+  td.innerHTML = '<p class="vazio">Carregando…</p>';
+  try {
+    const d = await api('GET', `/music/visitas-alunos/${encodeURIComponent(id)}?dias=${VIS.dias}`);
+    const sites = (d.visitas && d.visitas.porProduto) || [];
+    td.innerHTML = `<div class="vs-duas">
+      <div><h3 class="vs-h3">Dia a dia</h3>${d.dias_de_uso.length ? `<table class="vs-tabela"><thead><tr><th>Dia</th><th>Área</th><th class="num">Tempo</th></tr></thead><tbody>
+        ${d.dias_de_uso.map(x => `<tr><td>${esc(x.dia)}</td><td>${esc(x.nome)}</td><td class="num">${visTempo(x.segundos)}</td></tr>`).join('')}
+        </tbody></table>` : '<p class="vazio">Sem uso medido no período.</p>'}</div>
       <div><h3 class="vs-h3">Sites visitados</h3>${visBarras(sites.map(p => ({ k: `${p.emoji} ${p.nome}`, n: p.paginas })), 'Nenhuma visita identificada no período.')}</div>
     </div>`;
   } catch (e) { td.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
