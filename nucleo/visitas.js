@@ -30,6 +30,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { fork } = require('child_process');
 const atribuicao = require('./atribuicao-aluno');
+const atribuicaoMusique = atribuicao.musique;
 
 const ARQ_HITS = 'hits.jsonl';
 const ARQ_HIST = 'visitas-historico.json';   // dias antigos já agregados
@@ -282,7 +283,7 @@ function utmDe(query) {
 
 function criarRegistrador(DATA_DIR, geo) {
   const arquivo = path.join(DATA_DIR, ARQ_HITS);
-  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma, uid }) {
+  return function registrar({ produto, caminho, ref, utm, ua, ip, aceitaIdioma, uid, mid }) {
     try {
       const info = uaInfo(ua);
       const loc = info.bot ? null : geo.consultar(ip);      // robô não gasta consulta de localidade
@@ -301,6 +302,8 @@ function criarRegistrador(DATA_DIR, geo) {
         // Só aluno LOGADO na Academy (cookie vs_aluno assinado). Visitante
         // sem conta não tem uid: segue anônimo. Ver atribuicao-aluno.js.
         uid: (!info.bot && uid) ? String(uid).slice(0, 64) : undefined,
+        // Idem para quem está logado no MUSIQUE (conta própria; cookie vs_musique).
+        mid: (!info.bot && mid) ? String(mid).slice(0, 64) : undefined,
         _recebido: new Date().toISOString(),
       };
       fs.appendFileSync(arquivo, JSON.stringify(linha) + '\n');
@@ -338,6 +341,7 @@ function criarMiddleware(registrar) {
           ip: req.ip,
           aceitaIdioma: req.headers['accept-language'] || '',
           uid: atribuicao.ler(req),
+          mid: atribuicaoMusique.ler(req),
         });
       } catch { /* analytics jamais atrapalha a resposta */ }
     });
@@ -428,13 +432,13 @@ function calcularSessoes(hits) {
  * anônimas (intervalo < 30 min). Robô nunca tem uid.
  * Devolve { [uid]: { paginas, sessoes, dias, primeira, ultima, porProduto } }.
  */
-function visitasPorUid(DATA_DIR, de, ate) {
+function visitasPorUid(DATA_DIR, de, ate, campo = 'uid') {
   const porUid = {};
   for (const bruto of lerLinhas(DATA_DIR)) {
-    if (!bruto || !bruto.uid || bruto.bot) continue;
+    if (!bruto || !bruto[campo] || bruto.bot) continue;
     const d = diaDe(bruto);
     if ((de && d < de) || (ate && d > ate)) continue;
-    (porUid[bruto.uid] = porUid[bruto.uid] || []).push(bruto);
+    (porUid[bruto[campo]] = porUid[bruto[campo]] || []).push(bruto);
   }
   const out = {};
   for (const [uid, lista] of Object.entries(porUid)) {

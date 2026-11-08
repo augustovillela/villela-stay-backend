@@ -149,6 +149,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 </main>
 <noscript><div class="wrap"><p>Ative o JavaScript para abrir a pista e escutar seu violão, guitarra ou contrabaixo.</p></div></noscript>
 <script src="/music/telemetria-cliente.js" defer></script>
+<script src="/music/uso-cliente.js" defer></script>
 <script src="/music/tocar/perfis.js" defer></script>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/midi.js" defer></script>
@@ -186,6 +187,7 @@ function montar(app, { requireUsuario, opcional } = {}) {
 </main>
 <noscript><div class="wrap"><p>Ative o JavaScript para gerenciar os arranjos do seu Acervo.</p></div></noscript>
 <script src="/music/telemetria-cliente.js" defer></script>
+<script src="/music/uso-cliente.js" defer></script>
 <script src="/music/tocar/perfis.js" defer></script>
 <script src="/music/tocar/nucleo.js" defer></script>
 <script src="/music/tocar/formato-catalogo.js" defer></script>

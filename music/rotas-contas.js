@@ -13,6 +13,7 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 const contas = require('./contas');
+const atribuicao = require('../nucleo/atribuicao-aluno').musique;
 const { db, nowISO } = require('./db');
 
 const { Contas, Sessoes, DoisFatores } = contas;
@@ -52,6 +53,7 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     const jti = Sessoes.criar(c.id, { ip: ipDe(req), userAgent: req.headers['user-agent'] });
     db.prepare('UPDATE contas_music SET ultimo_login = ? WHERE id = ?').run(nowISO(), c.id);
     contas.emitir(res, contas.assinar(c.id, jti, jwtSecret));
+    try { atribuicao.emitir(res, c.id); } catch (_) { /* atribuição nunca derruba o login */ }
     return jti;
   };
 
@@ -123,6 +125,7 @@ function registrarRotasContas(app, { jwtSecret, enviarEmail, academia = {}, requ
     const s0 = contas.criarVerificador({ jwtSecret }).resolver(req);
     if (s0) { Sessoes.revogar(s0.jti); contas.auditar(s0.usuario.id, 'conta.sair', '', ipDe(req)); }
     contas.limpar(res);
+    atribuicao.limpar(res);
     res.json({ ok: true });
   }));
 

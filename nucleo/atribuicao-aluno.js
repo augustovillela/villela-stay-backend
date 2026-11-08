@@ -21,7 +21,6 @@
 'use strict';
 const crypto = require('crypto');
 
-const COOKIE = 'vs_aluno';
 const MAX_AGE_MS = 30 * 24 * 3600 * 1000;   // mesmo prazo da sessão
 const RE_UID = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -30,30 +29,6 @@ const RE_UID = /^[A-Za-z0-9_-]{1,64}$/;
 // segredo efêmero; aqui também — o pior caso é a atribuição cair no
 // reinício, nunca a visita ser atribuída a outra pessoa.
 const EFEMERO = crypto.randomBytes(32).toString('hex');
-const chave = () => crypto.createHash('sha256')
-  .update('vs_aluno.v1|' + (process.env.JWT_SECRET || EFEMERO)).digest();
-
-const assinatura = (uid) => crypto.createHmac('sha256', chave()).update(String(uid)).digest('base64url').slice(0, 27);
-
-function valorDe(uid) {
-  if (!RE_UID.test(String(uid || ''))) return '';
-  return uid + '.' + assinatura(uid);
-}
-
-/** Lê e confere o cookie. Devolve o uid ou '' (ausente, malformado ou forjado). */
-function verificar(valor) {
-  const v = String(valor || '');
-  const i = v.lastIndexOf('.');
-  if (i <= 0) return '';
-  const uid = v.slice(0, i), sig = v.slice(i + 1);
-  if (!RE_UID.test(uid)) return '';
-  const esperado = Buffer.from(assinatura(uid));
-  const recebido = Buffer.from(sig);
-  if (esperado.length !== recebido.length) return '';
-  return crypto.timingSafeEqual(esperado, recebido) ? uid : '';
-}
-
-const ler = (req) => verificar(req && req.cookies && req.cookies[COOKIE]);
 
 /** Domínio do cookie: a família inteira do grupo quando o host é dela;
  *  fora disso (onrender.com, localhost) fica host-only. */
@@ -67,23 +42,62 @@ function dominioDe(host) {
 
 const seguroPadrao = () => process.env.NODE_ENV !== 'development';
 
-function emitir(res, uid, seguro = seguroPadrao()) {
-  const valor = valorDe(uid);
-  if (!valor) return;
-  const req = res.req || {};
-  const domain = dominioDe(req.hostname || (req.headers && req.headers.host));
-  res.cookie(COOKIE, valor, {
-    httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: MAX_AGE_MS, path: '/',
-    ...(domain ? { domain } : {}),
-  });
+/**
+ * Uma atribuição por PRODUTO. Academy e Musique têm contas separadas
+ * (ADR-0011): ids de um não podem ser lidos como ids do outro, então cada
+ * um tem o seu cookie e o seu rótulo de assinatura — o cookie da Academy
+ * assinado NÃO vale como o do Musique, nem o contrário.
+ */
+function criar(COOKIE, rotulo) {
+  const chave = () => crypto.createHash('sha256')
+    .update(rotulo + '|' + (process.env.JWT_SECRET || EFEMERO)).digest();
+  const assinatura = (uid) => crypto.createHmac('sha256', chave()).update(String(uid)).digest('base64url').slice(0, 27);
+
+  function valorDe(uid) {
+    if (!RE_UID.test(String(uid || ''))) return '';
+    return uid + '.' + assinatura(uid);
+  }
+
+  /** Lê e confere o cookie. Devolve o uid ou '' (ausente, malformado ou forjado). */
+  function verificar(valor) {
+    const v = String(valor || '');
+    const i = v.lastIndexOf('.');
+    if (i <= 0) return '';
+    const uid = v.slice(0, i), sig = v.slice(i + 1);
+    if (!RE_UID.test(uid)) return '';
+    const esperado = Buffer.from(assinatura(uid));
+    const recebido = Buffer.from(sig);
+    if (esperado.length !== recebido.length) return '';
+    return crypto.timingSafeEqual(esperado, recebido) ? uid : '';
+  }
+
+  const ler = (req) => verificar(req && req.cookies && req.cookies[COOKIE]);
+
+  function emitir(res, uid, seguro = seguroPadrao()) {
+    const valor = valorDe(uid);
+    if (!valor) return;
+    const req = res.req || {};
+    const domain = dominioDe(req.hostname || (req.headers && req.headers.host));
+    res.cookie(COOKIE, valor, {
+      httpOnly: true, secure: seguro, sameSite: 'lax', maxAge: MAX_AGE_MS, path: '/',
+      ...(domain ? { domain } : {}),
+    });
+  }
+
+  /** Sai nos dois escopos (família e host), para logout sair de verdade. */
+  function limpar(res) {
+    const req = res.req || {};
+    const domain = dominioDe(req.hostname || (req.headers && req.headers.host));
+    res.clearCookie(COOKIE, { path: '/' });
+    if (domain) res.clearCookie(COOKIE, { path: '/', domain });
+  }
+
+  return { COOKIE, MAX_AGE_MS, valorDe, verificar, ler, dominioDe, emitir, limpar };
 }
 
-/** Sai nos dois escopos (família e host), para logout sair de verdade. */
-function limpar(res) {
-  const req = res.req || {};
-  const domain = dominioDe(req.hostname || (req.headers && req.headers.host));
-  res.clearCookie(COOKIE, { path: '/' });
-  if (domain) res.clearCookie(COOKIE, { path: '/', domain });
-}
+// Academy: o contrato de sempre (cookie `vs_aluno`, rótulo `vs_aluno.v1`).
+const academy = criar('vs_aluno', 'vs_aluno.v1');
+// Musique (desde 07/11/2026): cookie e assinatura PRÓPRIOS.
+const musique = criar('vs_musique', 'vs_musique.v1');
 
-module.exports = { COOKIE, MAX_AGE_MS, valorDe, verificar, ler, dominioDe, emitir, limpar };
+module.exports = { ...academy, criar, musique };

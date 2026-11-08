@@ -443,6 +443,7 @@ function registrarPaginas(app) {
   <div id="corpo"><p class="vazio">Carregando…</p></div>
 </div>
 <script src="/music/telemetria-cliente.js"></script>
+<script src="/music/uso-cliente.js"></script>
 <script src="/music/audio.js"></script>
 <script src="/music/app.js"></script>
 <script src="/music/biblioteca.js"></script>
@@ -531,6 +532,11 @@ function registrarPaginas(app) {
   app.get('/music/telemetria-cliente.js', (req, res) => {
     res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache')
       .sendFile(path.join(__dirname, 'telemetria-cliente.js'));
+  });
+  // Pulso de tempo de uso da pessoa logada (app, Tocar junto e Laboratório).
+  app.get('/music/uso-cliente.js', (req, res) => {
+    res.set('Content-Type', 'application/javascript; charset=utf-8').set('Cache-Control', 'no-cache')
+      .sendFile(path.join(__dirname, 'uso-cliente.js'));
   });
   require('./app-cliente').registrar(app);
   require('./biblioteca-cliente').registrar(app);

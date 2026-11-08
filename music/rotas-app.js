@@ -38,6 +38,13 @@ function registrarRotasApp(app, { requireUsuario }) {
     res.status(202).json(telemetria.registrar(d));
   }));
 
+  // Tempo de uso da pessoa LOGADA (relatório 🎵 do staff, só admin). O servidor
+  // decide quanto somar; o corpo só sugere a área. Ver uso-tempo.js.
+  app.post('/music/api/uso/pulso', requireUsuario, h(async (req, res) => {
+    const area = String((req.body || {}).area || '').slice(0, 20);
+    res.json(require('./uso-tempo').pulso(req.usuario.id, area));
+  }));
+
   // ---- quem sou eu aqui ----
   app.get('/music/api/me', requireUsuario, h(async (req, res) => {
     res.json({
