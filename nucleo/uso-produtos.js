@@ -1,7 +1,8 @@
 // =====================================================================
 // USO DOS PRODUTOS — quem entra e quanto tempo passa, por produto do
 // grupo (CRM/Growth, Gestão, Finance, Closet, Vitrine, Kids, Alta Vista,
-// Docs, Projetos, Jurídico SaaS). Academy e Musique têm o seu próprio
+// Docs, Projetos, Jurídico SaaS, Origena, Livraria, Área do Hóspede e portal
+// de cliente jurídico). Academy e Musique têm o seu próprio
 // (academy/relatorio-visitas-alunos.js, music/relatorio-visitas-alunos.js).
 //
 // COMO FUNCIONA, sem mexer em nenhum produto
@@ -53,6 +54,38 @@ function leitor(carregarDb, sql) {
   };
 }
 
+// Banco do produto em PostgreSQL (Origena): mesma regra, consulta assíncrona.
+function leitorPg(carregar, sql) {
+  return async (id) => {
+    try {
+      const o = carregar();
+      if (!o.configurado()) return null;
+      const r = await o.uma(sql, [String(id)]);
+      if (!r || (r.status && r.status !== 'ativo')) return null;
+      return { id: String(r.id), nome: r.nome || '', email: r.email || '' };
+    } catch (_) { return null; }
+  };
+}
+
+// Hóspedes moram em DATA_DIR/hospedes.json (não em banco): leitura em cache de 60 s.
+let _hosp = { em: 0, mapa: new Map() };
+function hospedePorId(DATA_DIR) {
+  return (id) => {
+    try {
+      if (Date.now() - _hosp.em > 60000) {
+        const lista = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'hospedes.json'), 'utf8'));
+        _hosp = { em: Date.now(), mapa: new Map((Array.isArray(lista) ? lista : []).map((h) => [String(h.id), h])) };
+      }
+      const h = _hosp.mapa.get(String(id));
+      return h ? { id: String(h.id), nome: h.nome || h.name || '', email: h.email || '' } : null;
+    } catch (_) { return null; }
+  };
+}
+
+const crypto = require('crypto');
+const sha = (x) => crypto.createHash('sha256').update(String(x)).digest('hex');
+const DATA = () => process.env.DATA_DIR || path.join(__dirname, '..', 'data');
+
 const PRODUTOS = [
   { id: 'crm',      nome: 'Villela CRM / Growth OS', emoji: '🤝', prefixo: '/crm',        cookie: 'crm_sess',     pessoa: leitor(() => require('../crm/db').db,          'SELECT * FROM tenant_users WHERE id = ?') },
   { id: 'gestao',   nome: 'Stay Manager',            emoji: '🏨', prefixo: '/gestao',     cookie: 'vsm_sess',     pessoa: leitor(() => require('../vsm/db').db,          'SELECT * FROM tenant_users WHERE id = ?') },
@@ -64,6 +97,29 @@ const PRODUTOS = [
   { id: 'docs',     nome: 'Docs Intelligence',       emoji: '📄', prefixo: '/vdocs',      cookie: 'vdocs_sess',   pessoa: leitor(() => require('../vdocs/db').db,        'SELECT * FROM users WHERE id = ?') },
   { id: 'projetos', nome: 'Projects & Events',       emoji: '📋', prefixo: '/vpe',        cookie: 'vpe_sess',     pessoa: leitor(() => require('../vpe/db').db,          'SELECT * FROM users WHERE id = ?') },
   { id: 'juridico', nome: 'Legal SaaS (assinantes)', emoji: '⚖️', prefixo: '/juridico',   cookie: 'jur_saas',     pessoa: leitor(() => require('../legal-saas/db').db,   'SELECT * FROM tenant_users WHERE id = ?') },
+  // ---- sessões de formato próprio ----
+  // Origena: JWT { sub }, usuário em PostgreSQL (consulta assíncrona).
+  { id: 'origena', nome: 'Origena', emoji: '🌳', prefixo: '/origena', cookie: 'origena_sess', campoId: 'sub',
+    pessoa: leitorPg(() => require('../origena/db'), "SELECT id, nome, email, status FROM users WHERE id = $1 AND deleted_at IS NULL") },
+  // Área do Hóspede: JWT { hid, tipo:'hospede' }; hóspedes em hospedes.json.
+  { id: 'hospede', nome: 'Área do Hóspede', emoji: '🛎️', prefixo: '/hospede', cookie: 'hospede_token', campoId: 'hid', tiposSessao: ['hospede'],
+    pessoa: (id) => hospedePorId(DATA())(id) },
+  // Portal do cliente do escritório jurídico: JWT { aid }; conta + nome do cliente no banco do escritório.
+  { id: 'clientejur', nome: 'Portal do cliente jurídico', emoji: '🏛️', prefixo: '/cliente-juridico', cookie: 'legal_cli', campoId: 'aid',
+    pessoa: leitor(() => require('../legal/db').db, 'SELECT a.id AS id, COALESCE(c.nome, a.email) AS nome, a.email AS email, a.ativo AS ativo FROM client_accounts a LEFT JOIN clients c ON c.id = a.client_id WHERE a.id = ?') },
+  // Livraria: sessão OPACA (token aleatório; só o hash fica no banco) num cookie de caminho "/".
+  // Páginas da loja não têm prefixo comum, então o produto diz quais caminhos são dele.
+  { id: 'livraria', nome: 'Livraria', emoji: '📚', prefixo: '/livraria', cookie: 'livraria_sess', areaNoPrefixo: true,
+    casa: (c) => /^\/(livros|pacotes|checkout|obrigado|minha-conta|minha-biblioteca|suporte-livros|livraria)(\/|$)/.test(c),
+    identificar: (req) => {
+      try {
+        const tok = req.cookies && req.cookies.livraria_sess;
+        if (!tok) return '';
+        const x = require('../livraria/db').db.prepare('SELECT customer_id, revogada, expira_em FROM conta_sessoes WHERE id = ?').get(sha(tok));
+        return x && !x.revogada && x.expira_em > new Date().toISOString() ? String(x.customer_id) : '';
+      } catch (_) { return ''; }
+    },
+    pessoa: leitor(() => require('../livraria/db').db, 'SELECT * FROM customers WHERE id = ?') },
 ];
 
 function criarArmazem(DATA_DIR) {
@@ -118,20 +174,22 @@ function areaLimpa(a) {
 
 /** Quem está logado em `produto` neste pedido (assinatura conferida) ou ''. */
 function quemEstaLogado(produto, req, jwtSecret) {
+  if (typeof produto.identificar === 'function') return produto.identificar(req);
   try {
     const bruto = req.cookies && req.cookies[produto.cookie];
     if (!bruto) return '';
     const d = jwt.verify(bruto, jwtSecret);
     const tipos = produto.tiposSessao || [undefined];
     if (d.tipo !== undefined && !tipos.includes(d.tipo)) return '';   // link de senha/2FA colado no cookie não vale
-    const uid = String(d.uid || '');
+    const uid = String(d[produto.campoId || 'uid'] || '');
     return /^[A-Za-z0-9_-]{1,64}$/.test(uid) ? uid : '';
   } catch (_) { return ''; }
 }
 
-const produtoDoCaminho = (produtos, caminho) => produtos.find((p) => caminho === p.prefixo || caminho.startsWith(p.prefixo + '/')) || null;
+const produtoDoCaminho = (produtos, caminho) => produtos.find((p) => (p.casa ? p.casa(caminho) : (caminho === p.prefixo || caminho.startsWith(p.prefixo + '/')))) || null;
+const urlPulso = (p) => p.pulsoUrl || `${p.prefixo}/api/uso/pulso`;
 
-const TAG = '<script src="/uso-produto.js" defer></script>';
+const tagDe = (p) => `<script src="/uso-produto.js" data-pulso="${urlPulso(p)}"${p.areaNoPrefixo ? ' data-area-no-prefixo="1"' : ''} defer></script>`;
 
 /**
  * Monta tudo. deps: { DATA_DIR, jwtSecret (valor ou função), requireAuth,
@@ -152,7 +210,7 @@ function montar(app, deps) {
     if (!p) return next();
     const uid = quemEstaLogado(p, req, segredo());
     if (uid) req.usoProduto = { produto: p.id, uid };
-    if (req.method === 'GET' && !/\.[a-z0-9]{1,5}$/i.test(caminho) && !caminho.includes('/api/')) {
+    if (req.method === 'GET' && !/\.[a-z0-9]{1,5}$/i.test(caminho) && !caminho.includes('/api/') && !/\/download\//.test(caminho)) {
       const enviar = res.send.bind(res);
       res.send = function (corpo) {
         try {
@@ -160,7 +218,7 @@ function montar(app, deps) {
           const tipo = String(res.getHeader('content-type') || '') || 'text/html';
           if (typeof corpo === 'string' && res.statusCode === 200 && /text\/html/i.test(tipo) && !corpo.includes('/uso-produto.js')) {
             const i = corpo.lastIndexOf('</body>');
-            if (i >= 0) corpo = corpo.slice(0, i) + TAG + corpo.slice(i);
+            if (i >= 0) corpo = corpo.slice(0, i) + tagDe(p) + corpo.slice(i);
           }
         } catch (_) { /* a medição nunca atrapalha a página */ }
         return enviar(corpo);
@@ -171,11 +229,13 @@ function montar(app, deps) {
 
   // 2) o pulso, um por prefixo (o cookie só viaja para o prefixo do produto)
   for (const p of produtos) {
-    app.post(`${p.prefixo}/api/uso/pulso`, (req, res) => {
-      const uid = quemEstaLogado(p, req, segredo());
-      if (!uid) return res.status(401).json({ erro: 'sem sessão' });
-      if (!p.pessoa(uid)) return res.status(403).json({ erro: 'conta inativa' });
-      res.json(armazem.pulso(p.id, uid, (req.body || {}).area));
+    app.post(urlPulso(p), async (req, res) => {
+      try {
+        const uid = quemEstaLogado(p, req, segredo());
+        if (!uid) return res.status(401).json({ erro: 'sem sessão' });
+        if (!(await p.pessoa(uid))) return res.status(403).json({ erro: 'conta inativa' });
+        res.json(armazem.pulso(p.id, uid, (req.body || {}).area));
+      } catch (e) { res.status(500).json({ erro: 'falha ao medir' }); }
     });
   }
 
@@ -188,14 +248,16 @@ function montar(app, deps) {
   // 4) relatório do staff — NOMINAL, só admin
   const ADM = [deps.requireAuth, deps.requireAdmin];
   const achar = (id) => produtos.find((x) => x.id === id) || null;
-  const nomeDe = (p, id) => p.pessoa(id) || { id, nome: '', email: '' };
+  const nomeDe = async (p, id) => (await p.pessoa(id)) || { id, nome: '', email: '' };
 
-  function relatorio(p, dias) {
+  async function relatorio(p, dias) {
     const per = periodo(dias);
     const vis = visitas.visitasPorCampo(deps.DATA_DIR, per.de, per.ate, 'pid', (h) => h.pprod === p.id);
     const usos = armazem.porUsuarioArea(p.id, per.de, per.ate);
     const pessoas = {};
-    const pegar = (id) => pessoas[id] || (pessoas[id] = { ...nomeDe(p, id), visitas: { paginas: 0, sessoes: 0, dias: 0 }, areas: [], tempo_total_seg: 0, ultima_atividade: '' });
+    const ids = new Set([...Object.keys(vis), ...usos.map((u) => u.usuario)]);
+    for (const id of ids) pessoas[id] = { ...(await nomeDe(p, id)), visitas: { paginas: 0, sessoes: 0, dias: 0 }, areas: [], tempo_total_seg: 0, ultima_atividade: '' };
+    const pegar = (id) => pessoas[id];
     for (const [id, v] of Object.entries(vis)) { const a = pegar(id); a.visitas = { paginas: v.paginas, sessoes: v.sessoes, dias: v.dias }; a.ultima_atividade = v.ultima || a.ultima_atividade; }
     for (const u of usos) { const a = pegar(u.usuario); a.areas.push({ area: u.area, segundos: u.segundos || 0, dias: u.dias || 0 }); a.tempo_total_seg += u.segundos || 0; if ((u.ultimo || '') > a.ultima_atividade) a.ultima_atividade = u.ultimo; }
     const lista = Object.values(pessoas);
@@ -228,21 +290,21 @@ function montar(app, deps) {
     const tot = Object.fromEntries(armazem.totais(per.de, per.ate).map((t) => [t.produto, t]));
     res.set('Cache-Control', 'no-store').json({ periodo: per, desde: '2026-11-08', produtos: produtos.map((p) => ({ id: p.id, nome: p.nome, emoji: p.emoji, prefixo: p.prefixo, pessoas: (tot[p.id] || {}).pessoas || 0, segundos: (tot[p.id] || {}).segundos || 0 })) });
   });
-  app.get('/staff/api/uso-produtos/:produto.csv', ...ADM, (req, res) => {
+  app.get('/staff/api/uso-produtos/:produto.csv', ...ADM, async (req, res) => {
     const p = achar(req.params.produto); if (!p) return res.status(404).json({ erro: 'Produto não medido.' });
-    const rel = relatorio(p, req.query.dias);
+    const rel = await relatorio(p, req.query.dias);
     if (typeof deps.auditar === 'function') deps.auditar(req, 'relatorio.uso-produto.csv', `${p.id}: ${rel.pessoas.length} pessoas, ${rel.periodo.dias} dias`);
     res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Disposition': `attachment; filename="uso-${p.id}-${rel.periodo.ate}.csv"` }).send(csv(rel));
   });
-  app.get('/staff/api/uso-produtos/:produto/:id', ...ADM, (req, res) => {
+  app.get('/staff/api/uso-produtos/:produto/:id', ...ADM, async (req, res) => {
     const p = achar(req.params.produto); if (!p) return res.status(404).json({ erro: 'Produto não medido.' });
     const per = periodo(req.query.dias);
-    const pessoa = p.pessoa(req.params.id); if (!pessoa) return res.status(404).json({ erro: 'Pessoa não encontrada.' });
+    const pessoa = await p.pessoa(req.params.id); if (!pessoa) return res.status(404).json({ erro: 'Pessoa não encontrada.' });
     res.set('Cache-Control', 'no-store').json({ periodo: per, pessoa, dias_de_uso: armazem.porDia(p.id, pessoa.id, per.de, per.ate) });
   });
-  app.get('/staff/api/uso-produtos/:produto', ...ADM, (req, res) => {
+  app.get('/staff/api/uso-produtos/:produto', ...ADM, async (req, res) => {
     const p = achar(req.params.produto); if (!p) return res.status(404).json({ erro: 'Produto não medido.' });
-    res.set('Cache-Control', 'no-store').json(relatorio(p, req.query.dias));
+    res.set('Cache-Control', 'no-store').json(await relatorio(p, req.query.dias));
   });
 
   return { armazem, produtos, relatorio, csv };
