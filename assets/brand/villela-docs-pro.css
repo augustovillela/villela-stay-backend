@@ -398,7 +398,8 @@ body[data-vertical="docs"]{
   --cat-extrato_bancario:#6D3AD6; --cat-extrato_bancario-s:#EEE8FD;
   --cat-recibo:#0E7490;           --cat-recibo-s:#DDF3F8;
   --cat-financeiro:#B4235F;       --cat-financeiro-s:#FCE4EE;
-  --cat-outro:#475569;            --cat-outro-s:#EEF2F7;
+  --cat-societario:#8A6410;       --cat-societario-s:#FAF1D9;
+  --cat-outro:#475569;           --cat-outro-s:#EEF2F7;
 }
 /* corrige o menu da landing: link azul vencia a cor clara */
 body[data-vertical="docs"] .dx-nav a{color:#C9D4E8}
@@ -414,6 +415,7 @@ body[data-vertical="docs"] .dx-link{color:#fff!important}
 .dx-cat-extrato_bancario{--c:var(--cat-extrato_bancario);--s:var(--cat-extrato_bancario-s)}
 .dx-cat-recibo{--c:var(--cat-recibo);--s:var(--cat-recibo-s)}
 .dx-cat-financeiro{--c:var(--cat-financeiro);--s:var(--cat-financeiro-s)}
+.dx-cat-societario{--c:var(--cat-societario);--s:var(--cat-societario-s)}
 /* botão de filtro por categoria: ponto colorido e, quando ativo, fundo na cor */
 body[data-vertical="docs"] .btn.dx-catbtn{--c:var(--cat-outro);--s:var(--cat-outro-s);gap:7px}
 body[data-vertical="docs"] .btn.dx-catbtn::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c);flex:0 0 auto}
@@ -462,6 +464,7 @@ body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-fatura{--c:var(--cat-fatura);--
 body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-extrato_bancario{--c:var(--cat-extrato_bancario);--s:var(--cat-extrato_bancario-s)}
 body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-recibo{--c:var(--cat-recibo);--s:var(--cat-recibo-s)}
 body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-financeiro{--c:var(--cat-financeiro);--s:var(--cat-financeiro-s)}
+body[data-vertical="docs"] .btn.dx-catbtn.dx-cat-societario{--c:var(--cat-societario);--s:var(--cat-societario-s)}
 
 /* =====================================================================
    LANDING v4 (hx-*): contemporânea, com seriedade. Hero escuro com aurora e vidro, uma animação

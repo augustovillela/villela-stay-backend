@@ -186,6 +186,11 @@ function receberBruto(tenantId, { tipo, identificador, origem_id, remetente, ass
 // arquivo e pelo texto extraído, sobem para o topo da fila já com a categoria sugerida.
 // É SUGESTÃO — quem confirma é a triagem. Texto ainda não extraído = só o nome decide.
 const SINAIS = [
+  // Societário vem PRIMEIRO: "contrato social" não é contrato comum e "comprovante de inscrição" (cartão CNPJ)
+  // não é comprovante de pagamento — os sinais de baixo engoliriam os dois.
+  { tipo: 'societario', rotulo: 'Documentos societários',
+    forte: /\b(contrato social|estatuto social|ato constitutivo|alteracao contratual|consolidacao contratual|requerimento de empresario|acordo de (socios|quotistas|acionistas)|ata de (assembleia|reuniao de socios|constituicao)|cartao (do )?cnpj|comprovante de inscricao|inscricao (estadual|municipal)|certidao simplificada|junta comercial|quadro (de socios|societario)|qsa)\b/i,
+    fraco: /\b(nire|capital social|socio administrador|quotas|objeto social|sede social|natureza juridica|situacao cadastral|data de abertura|nome empresarial)\b/i },
   { tipo: 'financeiro', rotulo: 'Financeiro',
     forte: /\b(recebiveis|resumo diario|conciliacao|repasse|payout)\b/i,
     fraco: /\b(liquidacao|antecipacao|taxa de administracao|valor liquido|adquirente)\b/i },
@@ -281,10 +286,31 @@ const nomeDoRemetente = (r) => s(String(r || '').split(/[<(]/)[0].replace(/["']/
 const PASTA_PROPAGANDA = '📢 Propaganda (conferir)';
 const PASTA_POR_TIPO = {
   nota_fiscal: 'Notas fiscais', fatura: 'Faturas', extrato_bancario: 'Extratos bancários', contrato: 'Contratos', recibo: 'Recibos', financeiro: 'Comprovantes e financeiro',
+  societario: 'Documentos societários',
 };
-function pastaPorNome(tenantId, nome, ator) {
-  const ja = db.prepare("SELECT id FROM folders WHERE tenant_id = ? AND parent_id = '' AND nome = ?").get(String(tenantId), nome);
-  return ja ? ja.id : docs.criarPasta(tenantId, { nome, parent_id: '' }, ator, 'entrada');
+// Subpastas de uma categoria: nascem junto com a pasta-mãe; o documento desce para a que o NOME indicar
+// e, sem indicação, fica na pasta-mãe (quem decide o resto é a pessoa).
+const SUBPASTAS_POR_TIPO = {
+  societario: [
+    { nome: 'Documentos constitutivos', re: /\b(contrato social|estatuto|ato constitutivo|alteracao contratual|consolidacao|requerimento de empresario|acordo de (socios|quotistas|acionistas)|ata de (assembleia|reuniao|constituicao))\b/i },
+    { nome: 'Identificação da sociedade', re: /\b(cnpj|comprovante de inscricao|inscricao (estadual|municipal)|certidao simplificada|junta comercial|nire|quadro (de socios|societario)|qsa|alvara)\b/i },
+  ],
+};
+function pastaPorNome(tenantId, nome, ator, pai = '') {
+  const ja = db.prepare('SELECT id FROM folders WHERE tenant_id = ? AND parent_id = ? AND nome = ?').get(String(tenantId), String(pai), nome);
+  return ja ? ja.id : docs.criarPasta(tenantId, { nome, parent_id: pai }, ator, 'entrada');
+}
+/** Pasta de destino da categoria (cria o que faltar, subpastas inclusive). null = categoria sem pasta própria. */
+function pastaDoTipo(tenantId, tipo, nomeDoc, ator) {
+  if (!PASTA_POR_TIPO[tipo]) return null;
+  const mae = pastaPorNome(tenantId, PASTA_POR_TIPO[tipo], ator);
+  const n = sem(nomeDoc).replace(/[_.\-]+/g, ' ');
+  let destino = mae;
+  for (const sub of SUBPASTAS_POR_TIPO[tipo] || []) {
+    const id = pastaPorNome(tenantId, sub.nome, ator, mae);
+    if (destino === mae && sub.re.test(n)) destino = id;
+  }
+  return destino;
 }
 
 /**
@@ -378,7 +404,7 @@ function decidirTriagem(tenantId, itens, ator, ip) {
         let destino = it.folder_id == null ? '__auto' : String(it.folder_id);
         if (destino === '__auto') {
           const tipoFinal = it.tipo_documental || d.tipo_documental;
-          destino = PASTA_POR_TIPO[tipoFinal] ? pastaPorNome(tenantId, PASTA_POR_TIPO[tipoFinal], ator) : '__manter';
+          destino = pastaDoTipo(tenantId, tipoFinal, it.nome || d.nome, ator) || '__manter';
         }
         if (destino !== '__manter' && s(destino, 40) !== d.folder_id) docs.moverDocumento(tenantId, l.document_id, s(destino, 40), ator, ip);
         db.prepare("UPDATE entradas_log SET triagem = 'processado' WHERE id = ?").run(l.id);
@@ -447,7 +473,7 @@ const SCHEMA_NOMES = {
 };
 const INSTRUCAO_NOMEAR = `TAREFA ATUAL: dar NOME a documentos recém-recebidos. Ignore as regras de citação e de pergunta/resposta.
 Formato do nome: "Tipo – Emissor ou parte – Data" (data dd/mm/aaaa; para fatura ou extrato de período, mm/aaaa), no máximo 90 caracteres.
-Exemplos: "Nota fiscal – Zara – 03/11/2026", "Fatura – Claro – 10/2026", "Extrato bancário – C6 PJ – 10/2026", "Comprovante de Pix – João Silva – 05/11/2026", "Contrato de locação – Maria Souza – 01/2027".
+Exemplos: "Nota fiscal – Zara – 03/11/2026", "Fatura – Claro – 10/2026", "Extrato bancário – C6 PJ – 10/2026", "Comprovante de Pix – João Silva – 05/11/2026", "Contrato de locação – Maria Souza – 01/2027", "Contrato social – Empresa Beta Ltda – 03/2024" (este é tipo societario, assim como estatuto, alteração contratual, ata, cartão CNPJ e inscrições).
 Regras: use SOMENTE o que está no texto ou no contexto do recebimento (remetente, assunto e data do e-mail); se um elemento (emissor, data) não aparecer, OMITA-O — nunca invente; nunca ponha CPF, CNPJ, número de conta, código de barras ou chave de acesso no nome; se não der para saber o que é o documento, devolva nome vazio. tipo_documental deve ser um destes ou vazio: `;
 function sanitizaNome(n) { return s(String(n || '').replace(/[\\*?"<>|\r\n]+/g, ' ').replace(/\s+/g, ' '), 120).trim(); }
 /** Núcleo: pede à IA o nome de cada item { id, nome, texto }. Devolve [{ id, nome, tipo_documental }]. 1 consulta do plano por chamada. */

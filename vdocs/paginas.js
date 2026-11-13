@@ -115,7 +115,7 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=9"></head><body class="vx dx-pub" data-vertical="docs">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=10"></head><body class="vx dx-pub" data-vertical="docs">
 ${SPRITE}
 <header class="dx-top"><div class="dx-wrap">
   <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal.svg" alt="Villela Docs"></a>
@@ -505,7 +505,7 @@ body .pl-t td,body .pl-t th{padding:3px 10px;line-height:1.35;height:auto}
 .pl-rod{padding:6px 12px;font-size:12px;color:var(--suave);border-top:1px solid var(--borda)}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=9"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=10"></head><body class="vx" data-vertical="docs">
 ${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
@@ -1090,7 +1090,7 @@ async function criarWebhook(){try{
 async function delWebhook(id){if(!confirm('Excluir este webhook?'))return;await api('DELETE','/integracoes/webhooks/'+id);vInteg();}
 
 // ---------------- Triagem + Entrada automática ----------------
-const ROT_TIPO={nota_fiscal:'Nota fiscal',fatura:'Fatura',extrato_bancario:'Extrato bancário',contrato:'Contrato',recibo:'Recibo',proposta:'Proposta',politica_interna:'Política interna',rh:'RH',juridico:'Jurídico',financeiro:'Financeiro',administrativo:'Administrativo',projeto:'Projeto',outro:'Outro'};
+const ROT_TIPO={nota_fiscal:'Nota fiscal',fatura:'Fatura',extrato_bancario:'Extrato bancário',contrato:'Contrato',recibo:'Recibo',societario:'Documentos societários',proposta:'Proposta',politica_interna:'Política interna',rh:'RH',juridico:'Jurídico',financeiro:'Financeiro',administrativo:'Administrativo',projeto:'Projeto',outro:'Outro'};
 const tamH=n=>n>=1048576?(n/1048576).toFixed(1)+' MB':Math.max(1,Math.round(n/1024))+' KB';
 async function vTriagem(aba){
   const d=await api('GET','/entrada/triagem');

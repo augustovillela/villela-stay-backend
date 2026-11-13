@@ -966,6 +966,8 @@ function teste(nome, cond) {
       teste('documento comum de pessoa não é propaganda', g({ nome: 'relatorio.pdf', assunto: 'Reunião', remetente: 'ana@a.com', emLista: false }) === 'normal');
       teste('sugestão: fatura, boleto e conta de luz', ['Fatura Claro.pdf', 'boleto_marco.pdf', 'conta de luz.pdf', '2a via cobrança.pdf'].every(n => entrada.sugerirTipo(n, '').tipo === 'fatura'));
       teste('sugestão: extrato bancário', entrada.sugerirTipo('Extrato C6 outubro.pdf', '').tipo === 'extrato_bancario');
+      teste('sugestão: societário vence "contrato" e "comprovante"', ['Contrato Social Beta Ltda.pdf', 'Cartao CNPJ.pdf', 'comprovante_de_inscricao.pdf', '3a alteração contratual.pdf', 'Estatuto Social.pdf'].every(n => entrada.sugerirTipo(n, '').tipo === 'societario')
+        && entrada.sugerirTipo('Contrato de locação.pdf', '').tipo === 'contrato' && entrada.sugerirTipo('comprovante pix.pdf', '').tipo === 'financeiro');
       const promoReal = [
         ['ÓTIMA OPÇÃO PRA CORRER E TREINAR 🏃 Lite Flow U adidas 🔥 R$ 199,46 no Pix ⚠️ Cu-ECB1BC.jpg', 'PromosP (558586836667-1609985246)'],
         ['O BRABO SB FORCE Tênis Nike SB Force 58 (37 ao 44) De R$ 449 por R$ 269 no Pix U-91C1A0.jpg', 'Lorrane (120363351515748877)'],
@@ -1110,7 +1112,7 @@ function teste(nome, cond) {
       const sobra = fl.filter(i => i.grupo === 'propaganda' && ['tabela-a.pdf', 'tabela-b.pdf', 'informativo-semana.pdf'].includes(i.nome));
       await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: sobra.map(i => ({ log_id: i.log_id, acao: 'eliminar' })) }, jar: 'anaA' });
       const ids = {};
-      for (const [k, nome, extra] of [['promo', 'catalogo_outono.pdf', { assunto: 'Ofertas imperdíveis', remetente: 'news@loja.com', em_lista: true }], ['fat', 'Fatura Vivo.pdf', {}], ['ext', 'Extrato C6.pdf', {}]]) {
+      for (const [k, nome, extra] of [['promo', 'catalogo_outono.pdf', { assunto: 'Ofertas imperdíveis', remetente: 'news@loja.com', em_lista: true }], ['fat', 'Fatura Vivo.pdf', {}], ['ext', 'Extrato C6.pdf', {}], ['soc', 'Contrato Social Beta Ltda.pdf', {}], ['cnpj', 'Cartao CNPJ.pdf', {}], ['socg', 'Procuracao da sociedade.pdf', {}]]) {
         const e2 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-' + k, arquivo_nome: nome, conteudo_base64: B64('%PDF-1.4 ' + nome), ...extra }));
         ids[k] = e2.dados.document_id;
       }
@@ -1122,12 +1124,22 @@ function teste(nome, cond) {
       r = await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [
         { log_id: por(ids.fat).log_id, acao: 'processar', tipo_documental: 'fatura', folder_id: '__auto' },
         { log_id: por(ids.ext).log_id, acao: 'processar', tipo_documental: 'extrato_bancario', folder_id: '__auto' },
+        ...['soc', 'cnpj', 'socg'].map(k => ({ log_id: por(ids[k]).log_id, acao: 'processar', tipo_documental: 'societario', folder_id: '__auto' })),
         { log_id: por(ids.promo).log_id, acao: 'nao_propaganda' }] }, jar: 'anaA' });
       teste('processar com pasta automática + "não é propaganda" aplicados', r.dados.resultado.every(x => x.ok));
       const pastas2 = (await req('GET', '/vdocs/api/pastas', { jar: 'anaA' })).dados.pastas;
       const pasta = (nome) => (pastas2.find(p => p.nome === nome) || {}).id;
       const pastaDe = async (id) => (await req('GET', '/vdocs/api/documentos/' + id, { jar: 'anaA' })).dados.documento.folder_id;
       teste('fatura foi para "Faturas" e extrato para "Extratos bancários"', await pastaDe(ids.fat) === pasta('Faturas') && await pastaDe(ids.ext) === pasta('Extratos bancários'));
+      {
+        const mae = pastas2.find(p => p.nome === 'Documentos societários' && !p.parent_id) || {};
+        const sub = (nome) => (pastas2.find(p => p.nome === nome && p.parent_id === mae.id) || {}).id;
+        teste('societário: pasta-mãe com as duas subpastas', !!mae.id && !!sub('Documentos constitutivos') && !!sub('Identificação da sociedade'));
+        teste('societário: contrato social → constitutivos, cartão CNPJ → identificação, o resto na pasta-mãe',
+          await pastaDe(ids.soc) === sub('Documentos constitutivos') && await pastaDe(ids.cnpj) === sub('Identificação da sociedade') && await pastaDe(ids.socg) === mae.id);
+        teste('societário: tipo gravado e subpastas não duplicam', (await req('GET', '/vdocs/api/documentos/' + ids.soc, { jar: 'anaA' })).dados.documento.tipo_documental === 'societario'
+          && pastas2.filter(p => p.nome === 'Documentos constitutivos').length === 1);
+      }
       teste('"não é propaganda" volta para a Entrada automática, tag removida', await pastaDe(ids.promo) === pasta(entrada.PASTA_PADRAO) && !(await req('GET', '/vdocs/api/documentos/' + ids.promo, { jar: 'anaA' })).dados.documento.tags.includes('propaganda'));
       // limpa a fila para os testes de aviso abaixo (a propaganda devolvida segue pendente: elimina)
       const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => i.document_id === ids.promo);
