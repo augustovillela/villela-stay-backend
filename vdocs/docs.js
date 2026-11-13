@@ -50,6 +50,31 @@ function obterPasta(tenantId, id) {
   if (!p) throw new Error('Pasta não encontrada.');
   return p;
 }
+// ---- categorias próprias do assinante (as embutidas ficam em TIPOS_DOCUMENTAIS)
+const ROTULOS_PADRAO = ['Contrato', 'Nota fiscal', 'Fatura', 'Extrato bancário', 'Recibo', 'Documentos societários', 'Proposta', 'Política interna', 'RH', 'Jurídico', 'Financeiro', 'Administrativo', 'Projeto', 'Outro'];
+const MAX_TIPOS_PROPRIOS = 60;
+const semAc = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+const tiposProprios = (tenantId) => db.prepare('SELECT chave, rotulo FROM tenant_tipos WHERE tenant_id = ? ORDER BY rotulo').all(String(tenantId));
+/** Lista de categorias que ESTA empresa pode usar: embutidas + as dela, com "outro" por último. */
+const tiposDoTenant = (tenantId) => TIPOS_DOCUMENTAIS.filter(t => t !== 'outro').concat(tiposProprios(tenantId).map(x => x.chave), 'outro');
+const rotulosProprios = (tenantId) => Object.fromEntries(tiposProprios(tenantId).map(x => [x.chave, x.rotulo]));
+const tipoValido = (tenantId, tipo) => TIPOS_DOCUMENTAIS.includes(tipo)
+  || (!!tipo && !!db.prepare('SELECT 1 FROM tenant_tipos WHERE tenant_id = ? AND chave = ?').get(String(tenantId), String(tipo)));
+function criarTipo(tenantId, { nome }, ator, ip) {
+  const rotulo = s(String(nome || '').replace(/\s+/g, ' '), 60);
+  const base = semAc(rotulo);
+  const slug = base.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 36);
+  if (rotulo.length < 2 || !slug) throw new Error('Informe o nome da categoria.');
+  const chave = 'c_' + slug;
+  const proprios = tiposProprios(tenantId);
+  if (TIPOS_DOCUMENTAIS.includes(slug) || ROTULOS_PADRAO.some(r => semAc(r) === base) || proprios.some(x => x.chave === chave || semAc(x.rotulo) === base))
+    throw new Error('Essa categoria já existe.');
+  if (proprios.length >= MAX_TIPOS_PROPRIOS) throw new Error('Limite de ' + MAX_TIPOS_PROPRIOS + ' categorias próprias atingido.');
+  db.prepare('INSERT INTO tenant_tipos (tenant_id, chave, rotulo, criado_em, criado_por) VALUES (?,?,?,?,?)')
+    .run(String(tenantId), chave, rotulo, nowISO(), s(ator && ator.id, 40));
+  repo.auditar(tenantId, ator, 'tipo.criar', 'tenant_tipos', chave, { rotulo }, ip);
+  return { chave, rotulo };
+}
 function criarPasta(tenantId, { nome, parent_id }, ator, ip) {
   if (!s(nome, 120)) throw new Error('Informe o nome da pasta.');
   if (parent_id) obterPasta(tenantId, parent_id); // valida que o pai é do tenant
@@ -134,7 +159,7 @@ function criarDocumento(tenantId, { nome, folder_id, descricao, tipo_documental,
     db.prepare(`INSERT INTO documents (id, tenant_id, folder_id, nome, descricao, tipo_documental, tags, status, versao_atual, validade, criado_em, criado_por)
       VALUES (?,?,?,?,?,?,?,'ativo',1,?,?,?)`)
       .run(id, String(tenantId), s(folder_id, 40), s(nome || arquivo_nome, 200), s(descricao, 500),
-        TIPOS_DOCUMENTAIS.includes(tipo_documental) ? tipo_documental : 'outro',
+        tipoValido(tenantId, tipo_documental) ? tipo_documental : 'outro',
         j.str(Array.isArray(tags) ? tags.map(t => s(t, 40)).filter(Boolean).slice(0, 20) : []),
         s(validade, 10), agora, s(ator && ator.id, 40));
     db.prepare(`INSERT INTO document_versions (id, tenant_id, document_id, numero, nome_arquivo, mime, tamanho, sha256, file_path, criado_em, criado_por)
@@ -191,7 +216,7 @@ function atualizarDocumento(tenantId, id, campos, ator, ip) {
   const tags = campos.tags != null ? j.str((Array.isArray(campos.tags) ? campos.tags : []).map(t => s(t, 40)).filter(Boolean).slice(0, 20)) : j.str(d.tags);
   db.prepare('UPDATE documents SET nome = ?, descricao = ?, tipo_documental = ?, tags = ?, validade = ?, atualizado_em = ? WHERE id = ? AND tenant_id = ?')
     .run(s(campos.nome || d.nome, 200), s(campos.descricao ?? d.descricao, 500),
-      TIPOS_DOCUMENTAIS.includes(campos.tipo_documental) ? campos.tipo_documental : d.tipo_documental,
+      tipoValido(tenantId, campos.tipo_documental) ? campos.tipo_documental : d.tipo_documental,
       tags, s(campos.validade ?? d.validade, 10), nowISO(), d.id, String(tenantId));
   if (campos.metadados && typeof campos.metadados === 'object') {
     for (const [k, v] of Object.entries(campos.metadados).slice(0, 40)) {
@@ -384,6 +409,7 @@ function usoVivo(tenantId) {
 
 module.exports = {
   EXTENSOES, TIPOS_DOCUMENTAIS, MAX_ARQUIVO_MB,
+  tiposDoTenant, rotulosProprios, tipoValido, criarTipo,
   listarPastas, criarPasta, renomearPasta, moverPasta, excluirPasta,
   criarDocumento, obterDocumento, listarDocumentos, atualizarDocumento, moverDocumento,
   novaVersao, restaurarVersao, paraLixeira, restaurarDaLixeira, excluirDefinitivo, alternarLegalHold,

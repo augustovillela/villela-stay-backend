@@ -595,3 +595,13 @@ CREATE TABLE IF NOT EXISTS remetentes_propaganda (
   criado_em TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_remetentes_propaganda ON remetentes_propaganda (tenant_id, padrao);
+
+-- Categorias (tipos documentais) criadas pelo próprio assinante; as embutidas moram em docs.js.
+CREATE TABLE IF NOT EXISTS tenant_tipos (
+  tenant_id  TEXT NOT NULL,
+  chave      TEXT NOT NULL,             -- 'c_' + nome sem acento (nunca colide com as embutidas)
+  rotulo     TEXT NOT NULL,             -- como o assinante digitou
+  criado_em  TEXT NOT NULL,
+  criado_por TEXT DEFAULT '',
+  PRIMARY KEY (tenant_id, chave)
+);

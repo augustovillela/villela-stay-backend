@@ -113,6 +113,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
       tenant: { id: tenant.id, nome: tenant.nome, slug: tenant.slug, status: tenant.status, trial_expira_em: tenant.trial_expira_em },
       papel: vinculo.papel, papel_nome: papelNome, permissoes, bloqueado,
       tenants: repo.tenantsDoUsuario(user.id),
+      rotulos_tipos: docs.rotulosProprios(tenant.id),
       catalogo_permissoes: PERMISSOES,
       papeis_embutidos: Object.fromEntries(Object.entries(PAPEIS).map(([k, v]) => [k, v.nome])),
     });
@@ -201,6 +202,10 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   r.post('/pastas', requireTenant, requirePerm('criar_pasta'), h(async (req, res) => {
     res.json({ ok: true, id: docs.criarPasta(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
   }));
+  // Categoria própria da empresa: quem organiza pastas organiza categorias (mesma permissão).
+  r.post('/tipos', requireTenant, requirePerm('criar_pasta'), h(async (req, res) => {
+    res.json({ ok: true, ...docs.criarTipo(req.vd.tenant.id, req.body || {}, req.vd.user, req.vd.ip) });
+  }));
   r.patch('/pastas/:id', requireTenant, requirePerm('criar_pasta'), h(async (req, res) => {
     const b = req.body || {};
     if (b.nome) docs.renomearPasta(req.vd.tenant.id, req.params.id, b.nome, req.vd.user, req.vd.ip);
@@ -229,7 +234,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
         } catch (_) {}
       }
     }
-    res.json({ documentos: lista.concat(porConteudo), tipos: docs.TIPOS_DOCUMENTAIS });
+    res.json({ documentos: lista.concat(porConteudo), tipos: docs.tiposDoTenant(req.vd.tenant.id) });
   }));
   r.post('/documentos', requireTenant, requirePerm('criar_documento'), h(async (req, res) => {
     try {
@@ -326,7 +331,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
     res.json({
       salvas: busca.listarSalvas(req.vd.tenant.id, req.vd.user.id),
       historico: busca.historico(req.vd.tenant.id, req.vd.user.id),
-      tipos: docs.TIPOS_DOCUMENTAIS,
+      tipos: docs.tiposDoTenant(req.vd.tenant.id),
       pastas: docs.listarPastas(req.vd.tenant.id),
     });
   }));
@@ -435,7 +440,7 @@ function registrarRotasApi(app, { express, auth, notificar, enviarEmail, jwtSecr
   }));
   // Triagem: quem vê documentos vê a fila; cada decisão exige a permissão do que faz.
   r.get('/entrada/triagem', requireTenant, requirePerm('ver_documentos'), h(async (req, res) => {
-    res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.TIPOS_DOCUMENTAIS });
+    res.json({ itens: entrada.pendentesTriagem(req.vd.tenant.id), remetentes_propaganda: entrada.listarRemetentesPropaganda(req.vd.tenant.id), pastas: docs.listarPastas(req.vd.tenant.id), tipos: docs.tiposDoTenant(req.vd.tenant.id) });
   }));
   r.post('/entrada/triagem/nomear', requireTenant, requirePerm('usar_ia'), h(async (req, res) => {
     res.json({ ok: true, ...(await entrada.nomearComIA(req.vd.tenant.id, req.vd.user, (req.body || {}).log_ids, req.vd.ip)) });

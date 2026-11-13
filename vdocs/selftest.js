@@ -1140,6 +1140,26 @@ function teste(nome, cond) {
         teste('societário: tipo gravado e subpastas não duplicam', (await req('GET', '/vdocs/api/documentos/' + ids.soc, { jar: 'anaA' })).dados.documento.tipo_documental === 'societario'
           && pastas2.filter(p => p.nome === 'Documentos constitutivos').length === 1);
       }
+      { // categorias próprias do assinante
+        let c = await req('POST', '/vdocs/api/tipos', { body: { nome: 'Atas de Condomínio' }, jar: 'anaA' });
+        teste('categoria própria: cria e devolve chave e rótulo', c.status === 200 && c.dados.chave === 'c_atas_de_condominio' && c.dados.rotulo === 'Atas de Condomínio');
+        teste('categoria própria: repetida (sem acento/caixa) e nome de embutida são recusadas',
+          (await req('POST', '/vdocs/api/tipos', { body: { nome: 'atas de condominio' }, jar: 'anaA' })).status === 400
+          && (await req('POST', '/vdocs/api/tipos', { body: { nome: 'Extrato bancario' }, jar: 'anaA' })).status === 400
+          && (await req('POST', '/vdocs/api/tipos', { body: { nome: ' ' }, jar: 'anaA' })).status === 400);
+        const meA = (await req('GET', '/vdocs/api/me', { jar: 'anaA' })).dados, meB = (await req('GET', '/vdocs/api/me', { jar: 'bobB' })).dados;
+        teste('categoria própria: aparece só para a empresa dona', meA.rotulos_tipos.c_atas_de_condominio === 'Atas de Condomínio' && !meB.rotulos_tipos.c_atas_de_condominio);
+        const lst = (await req('GET', '/vdocs/api/documentos', { jar: 'anaA' })).dados.tipos;
+        teste('categoria própria: entra na lista de tipos, "outro" segue por último', lst.includes('c_atas_de_condominio') && lst[lst.length - 1] === 'outro' && lst.includes('societario'));
+        await req('PATCH', '/vdocs/api/documentos/' + ids.socg, { body: { tipo_documental: 'c_atas_de_condominio' }, jar: 'anaA' });
+        teste('categoria própria: documento aceita a categoria', (await req('GET', '/vdocs/api/documentos/' + ids.socg, { jar: 'anaA' })).dados.documento.tipo_documental === 'c_atas_de_condominio');
+        teste('categoria própria: outra empresa não consegue usar a chave', !require('./docs').tipoValido('empresa-que-nao-e-a-dona', 'c_atas_de_condominio'));
+        const e3 = await v1('POST', '/entrada', corpo({ tipo: 'gmail', identificador: 'augusto@gmail.com', origem_id: 'P-ata', arquivo_nome: 'reuniao-marco.pdf', conteudo_base64: B64('%PDF-1.4 reuniao-marco') }));
+        const it = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.find(i => i.document_id === e3.dados.document_id);
+        await req('POST', '/vdocs/api/entrada/triagem', { body: { itens: [{ log_id: it.log_id, acao: 'processar', tipo_documental: 'c_atas_de_condominio', folder_id: '__auto' }] }, jar: 'anaA' });
+        const pastaAta = ((await req('GET', '/vdocs/api/pastas', { jar: 'anaA' })).dados.pastas.find(p => p.nome === 'Atas de Condomínio') || {}).id;
+        teste('categoria própria: "(pasta da categoria)" cria a pasta com o nome dela', !!pastaAta && await pastaDe(e3.dados.document_id) === pastaAta);
+      }
       teste('"não é propaganda" volta para a Entrada automática, tag removida', await pastaDe(ids.promo) === pasta(entrada.PASTA_PADRAO) && !(await req('GET', '/vdocs/api/documentos/' + ids.promo, { jar: 'anaA' })).dados.documento.tags.includes('propaganda'));
       // limpa a fila para os testes de aviso abaixo (a propaganda devolvida segue pendente: elimina)
       const resto = (await req('GET', '/vdocs/api/entrada/triagem', { jar: 'anaA' })).dados.itens.filter(i => i.document_id === ids.promo);

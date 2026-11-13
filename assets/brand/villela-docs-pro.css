@@ -678,9 +678,15 @@ body[data-vertical="docs"] .vx-kpi{border-radius:14px}
 .tg-nome{font-size:16px;font-weight:650;color:#0F1F3D!important;text-decoration:none!important;overflow-wrap:anywhere;letter-spacing:-.01em}.tg-nome:hover{text-decoration:underline!important}
 .tg-de{font-size:12.5px;color:#64748B;margin-top:2px}
 .tg-trecho{margin:8px 0 0;font-size:13px;color:#64748B;line-height:1.5;background:#F7F9FC;border-radius:10px;padding:9px 12px}
-.tg-form{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px 12px;margin-top:12px}
+.tg-form{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr);gap:10px 12px;margin-top:12px}
 .tg-form label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#7B8AA5;margin:0}
 .tg-form input[type=text],.tg-form input:not([type]),.tg-form select{width:100%;margin-top:4px;text-transform:none;letter-spacing:0;font-weight:500}
+.dx-mais-ln{display:flex;gap:6px;align-items:center}
+.dx-mais-ln select{flex:1;min-width:0;margin-top:0!important}
+.tg-form .dx-mais-ln{margin-top:4px}
+.dx-mais{flex:none;width:36px;height:36px;padding:0;border-radius:8px;border:1px solid #CBD5E1;background:#fff;color:#1E3A5F;font-size:20px;font-weight:600;line-height:1;cursor:pointer}
+.dx-mais:hover{background:#F1F5F9;border-color:#94A3B8}
+.dx-mais:focus-visible{outline:2px solid #2563EB;outline-offset:2px}
 .tg-form .tg-chk{grid-column:1/-1;display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:#475569}
 .tg-form .tg-chk input{width:16px;height:16px;margin:0;accent-color:#C2570C}
 .tg-acoes{display:flex;flex-direction:column;gap:8px;min-width:150px}

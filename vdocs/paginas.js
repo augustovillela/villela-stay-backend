@@ -115,7 +115,7 @@ ${canonical ? `<link rel="canonical" href="${esc(canonical)}">` : ''}
 <meta property="og:title" content="${esc(titulo)}"><meta property="og:description" content="${esc(descricao)}">
 <meta property="og:image" content="${BASE_URL}${BRAND_DIR}/og-image.png">
 ${HEAD_MARCA}${GA}
-<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=10"></head><body class="vx dx-pub" data-vertical="docs">
+<link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=11"></head><body class="vx dx-pub" data-vertical="docs">
 ${SPRITE}
 <header class="dx-top"><div class="dx-wrap">
   <a class="dx-brand" href="/vdocs"><img src="${BRAND_DIR}/logo-horizontal.svg" alt="Villela Docs"></a>
@@ -505,7 +505,7 @@ body .pl-t td,body .pl-t th{padding:3px 10px;line-height:1.35;height:auto}
 .pl-rod{padding:6px 12px;font-size:12px;color:var(--suave);border-top:1px solid var(--borda)}
 .barra{height:8px;background:var(--borda);border-radius:99px;overflow:hidden}.barra i{display:block;height:100%;background:var(--azul)}
 @media(max-width:760px){.layout{flex-direction:column}aside{width:auto;display:flex;overflow-x:auto;gap:4px}aside button{white-space:nowrap;width:auto}}
-</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=10"></head><body class="vx" data-vertical="docs">
+</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"><link rel="stylesheet" href="/assets/brand/villela-docs-pro.css?v=11"></head><body class="vx" data-vertical="docs">
 ${SPRITE}
 <header class="top"><div class="wrap" style="max-width:none">
   <a class="brand" href="/vdocs/app"><img src="${BRAND_DIR}/logo-horizontal-claro.svg" alt="Villela Docs"></a>
@@ -656,7 +656,7 @@ function ir(t,naoMarcar){
   ({dashboard:vDash,documentos:vDocs,triagem:vTriagem,entrada:vEntrada,busca:vBusca,ia:vIA,redigir:vRedigir,workflows:vWorkflows,compartilhar:vShares,integracoes:vInteg,usuarios:vUsuarios,auditoria:vAudit,plano:vPlano,config:vConfig}[t]||vDash)().catch(erroTela);}
 
 async function boot(){
-  S.me=await api('GET','/me');
+  S.me=await api('GET','/me');Object.assign(ROT_TIPO,S.me.rotulos_tipos||{});
   $('quem').textContent=S.me.user.nome+' · '+S.me.tenant.nome+' ('+S.me.papel_nome+')';
   menu();
   pintarBotaoInstalar();
@@ -793,6 +793,18 @@ async function vDocs(){
    }).join(''):'<tr><td colspan="5" style="color:var(--suave)">'+(S.lixeira?'Lixeira vazia.':(S.tipoF||S.pasta?'Nenhum documento com este filtro.':'Nenhum documento ainda.'))+'</td></tr>')+'</table></div>';
   if(temFoco){const el=$('dq');if(el){el.focus();try{el.setSelectionRange(selIni,selFim);}catch(e){}}}
 }
+// "+" ao lado de Categoria e de Pasta: cria sem sair da tela e já deixa escolhida (aparece em todos os seletores abertos)
+function maisCat(sel){return S.me.permissoes.criar_pasta?'<button type="button" class="dx-mais" title="Nova categoria" aria-label="Nova categoria" onclick="novaCategoria(\\''+sel+'\\')">+</button>':'';}
+function maisPasta(sel){return S.me.permissoes.criar_pasta?'<button type="button" class="dx-mais" title="Nova pasta" aria-label="Nova pasta" onclick="novaPastaEm(\\''+sel+'\\')">+</button>':'';}
+async function novaCategoria(sel){const n=(prompt('Nome da nova categoria:')||'').trim();if(!n)return;
+  try{const r=await api('POST','/tipos',{nome:n});ROT_TIPO[r.chave]=r.rotulo;
+    if(S.tiposDoc&&!S.tiposDoc.includes(r.chave))S.tiposDoc.splice(Math.max(S.tiposDoc.length-1,0),0,r.chave);
+    document.querySelectorAll('select.sel-tipo').forEach(function(s){s.insertBefore(new Option(r.rotulo,r.chave),Array.from(s.options).find(function(o){return o.value==='outro';})||null);});
+    if($(sel))$(sel).value=r.chave;}catch(e){alert(e.message);}}
+async function novaPastaEm(sel){const n=(prompt('Nome da nova pasta:')||'').trim();if(!n)return;
+  try{const r=await api('POST','/pastas',{nome:n,parent_id:''});if(S.pastas)S.pastas.push({id:r.id,nome:n,parent_id:''});
+    document.querySelectorAll('select.sel-pasta').forEach(function(s){s.add(new Option(n,r.id));});
+    if($(sel))$(sel).value=r.id;}catch(e){alert(e.message);}}
 async function novaPasta(){const n=prompt('Nome da nova pasta:');if(!n)return;
   try{await api('POST','/pastas',{nome:n,parent_id:S.pasta});vDocs();}catch(e){alert(e.message);}}
 async function excluirPasta(id){if(!confirm('Excluir esta pasta? (precisa estar vazia)'))return;
@@ -893,7 +905,7 @@ async function abrirDoc(id){
     :st==='ocr_pendente'?'🟡 Sem texto extraível (imagem/escaneado) — OCR chega em fase futura.'
     :st==='erro'?'🔴 Falha na extração: '+esc((pr.job&&pr.job.erro)||'')
     :st?'⏳ Extração de texto em processamento…':'';
-  const selPasta='<select id="dd-pasta"><option value="">🏠 Início dos documentos (sem pasta)</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
+  const selPasta='<select id="dd-pasta" class="sel-pasta"><option value="">🏠 Início dos documentos (sem pasta)</option>'+S.pastas.map(p=>'<option value="'+p.id+'"'+(p.id===d.folder_id?' selected':'')+'>📁 '+esc(p.nome)+'</option>').join('')+'</select>';
   $('corpo').innerHTML='<p><a href="#" onclick="return irPasta(S.pasta)">← voltar</a></p><h2>'+esc(d.nome)+'</h2>'+
    '<p><button class="btn peq" onclick="visualizarDoc(\\''+d.id+'\\')">👁️ Visualizar</button> '+(P.baixar_documento?'<a class="btn btn-ghost peq" href="/vdocs/api/documentos/'+d.id+'/baixar">⬇️ Baixar</a> ':'')+(P.usar_ia?'<button class="btn btn-ghost peq" onclick="S.iaEscopo={tipo:\\'documento\\',ref:\\''+d.id+'\\'};S.iaConv=\\'\\';ir(\\'ia\\')">🤖 Perguntar à IA</button> ':'')+
    (P.compartilhar_documento?'<button class="btn btn-ghost peq" onclick="compartilharDoc(\\''+d.id+'\\')">🔗 Compartilhar por link</button> ':'')+
@@ -902,12 +914,12 @@ async function abrirDoc(id){
    '<div class="card">'+
    (P.editar_metadados?'<label>Nome</label><input id="dd-nome" value="'+esc(d.nome)+'">'+
     '<label>Descrição</label><textarea id="dd-desc" rows="2">'+esc(d.descricao)+'</textarea>'+
-    '<label>Tipo documental</label><select id="dd-tipo">'+S.tiposDoc.map(t=>'<option'+(t===d.tipo_documental?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
+    '<label>Categoria</label><div class="dx-mais-ln"><select id="dd-tipo" class="sel-tipo">'+S.tiposDoc.map(t=>'<option value="'+esc(t)+'"'+(t===d.tipo_documental?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+maisCat('dd-tipo')+'</div>'+
     '<label>Tags (separadas por vírgula)</label><input id="dd-tags" value="'+esc(d.tags.join(', '))+'">'+
     '<label>Validade (para alertas de vencimento)</label><input id="dd-val" type="date" value="'+esc(d.validade)+'">'+
     '<p><button class="btn peq" onclick="salvarDoc(\\''+d.id+'\\')">Salvar</button> <span id="dd-out"></span></p>'
     :'<p>'+esc(d.descricao||'Sem descrição.')+'</p><p>Tipo: '+esc(d.tipo_documental)+' · Tags: '+d.tags.map(t=>'<span class="chip">'+esc(t)+'</span>').join(' ')+'</p>')+
-   (P.mover_documento?'<label>Pasta</label><div style="display:flex;gap:8px">'+selPasta+'<button class="btn btn-ghost peq" onclick="moverDoc(\\''+d.id+'\\')">Mover</button></div>':'')+
+   (P.mover_documento?'<label>Pasta</label><div class="dx-mais-ln">'+selPasta+maisPasta('dd-pasta')+'<button class="btn btn-ghost peq" onclick="moverDoc(\\''+d.id+'\\')">Mover</button></div>':'')+
    '</div>'+
    (proc?'<div class="card" style="margin-top:12px"><b>Processamento</b><p style="font-size:14px;margin:.4rem 0">'+proc+'</p>'+
     (P.criar_documento&&(st==='erro'||st==='ocr_pendente')?'<button class="btn btn-ghost peq" onclick="reprocDoc(\\''+d.id+'\\')">🔄 Reprocessar</button>':'')+'</div>':'')+
@@ -1123,8 +1135,8 @@ async function vTriagem(aba){
     const pill=sug?'<span class="dx-cat dx-cat-'+esc(sug.tipo)+'" title="Sugerido '+esc(sug.motivo)+'">'+ic('spark')+esc(sug.rotulo||ROT_TIPO[sug.tipo]||sug.tipo)+(sug.confianca==='alta'?'':' ?')+'</span>':'<span class="dx-cat">Sem sugestão</span>';
     const form=ehProp?'':'<div class="tg-form">'+
       '<label>Nome<input id="tri-nome'+n+'" value="'+esc(i.nome)+'" title="Nome do documento — editável; vale ao Processar"></label>'+
-      '<label>Categoria<select id="tri-tipo'+n+'">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select></label>'+
-      '<label>Pasta<select id="tri-pasta'+n+'"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></label>'+
+      '<label>Categoria<span class="dx-mais-ln"><select id="tri-tipo'+n+'" class="sel-tipo">'+d.tipos.map(t=>'<option value="'+t+'"'+(t===tipoSel?' selected':'')+'>'+esc(ROT_TIPO[t]||t)+'</option>').join('')+'</select>'+maisCat('tri-tipo'+n)+'</span></label>'+
+      '<label>Pasta<span class="dx-mais-ln"><select id="tri-pasta'+n+'" class="sel-pasta"><option value="__auto">(pasta da categoria)</option><option value="__manter">(deixar em Entrada automática)</option><option value="">Raiz</option>'+d.pastas.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select>'+maisPasta('tri-pasta'+n)+'</span></label>'+
       '<label class="tg-chk" title="Marca para dar baixa na Stays com a data do check-in"><input type="checkbox" id="tri-baixa'+n+'"'+(sug&&sug.rotulo==='Comprovante'?' checked':'')+'> Pagamento de hospedagem (baixa na Stays)</label></div>';
     const acoes=ehProp
       ?'<button class="btn peq" onclick="triLote(\\'eliminar\\','+n+')">'+ic('trash')+' Eliminar</button><button class="btn btn-ghost peq" onclick="triLote(\\'nao_propaganda\\','+n+')">Não é propaganda</button><button class="btn btn-ghost peq" title="Tudo que vier deste remetente vai direto para Propaganda" onclick="triLote(\\'remetente_propaganda\\','+n+')">Sempre propaganda</button>'

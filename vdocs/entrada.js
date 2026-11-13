@@ -302,8 +302,10 @@ function pastaPorNome(tenantId, nome, ator, pai = '') {
 }
 /** Pasta de destino da categoria (cria o que faltar, subpastas inclusive). null = categoria sem pasta própria. */
 function pastaDoTipo(tenantId, tipo, nomeDoc, ator) {
-  if (!PASTA_POR_TIPO[tipo]) return null;
-  const mae = pastaPorNome(tenantId, PASTA_POR_TIPO[tipo], ator);
+  // categoria criada pelo assinante: a pasta leva o nome que ele deu à categoria
+  const nomePasta = PASTA_POR_TIPO[tipo] || docs.rotulosProprios(tenantId)[tipo];
+  if (!nomePasta) return null;
+  const mae = pastaPorNome(tenantId, nomePasta, ator);
   const n = sem(nomeDoc).replace(/[_.\-]+/g, ' ');
   let destino = mae;
   for (const sub of SUBPASTAS_POR_TIPO[tipo] || []) {
