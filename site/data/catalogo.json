@@ -1,6 +1,45 @@
 {
-  "coletadoEm": "2026-11-06T18:05:42.566Z",
+  "coletadoEm": "2026-11-15T20:31:32.434Z",
   "livros": [
+    {
+      "slug": "bandolim-brasileiro-do-zero-ao-avancado",
+      "titulo": "Bandolim Brasileiro: do Zero ao Avançado",
+      "subtitulo": "O bandolim de 8 cordas: técnica, escalas, choro, ritmos brasileiros e repertório",
+      "resumo": "Método completo de bandolim em 42 capítulos e cerca de 345 páginas: palhetada e tremolo, escalas, posições, choro, valsa, baião, bossa e repertório.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/bandolim-brasileiro-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/bandolim-brasileiro-do-zero-ao-avancado"
+    },
+    {
+      "slug": "bateria-do-zero-ao-avancado",
+      "titulo": "Bateria: do Zero ao Avançado",
+      "subtitulo": "Rudimentos, grooves, ritmos brasileiros, jazz e técnica avançada, com notação de bateria",
+      "resumo": "Método completo de bateria em 52 capítulos e cerca de 280 páginas: técnica, rudimentos, grooves, ritmos brasileiros, jazz, latinos e prática de palco e estúdio.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/bateria-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/bateria-do-zero-ao-avancado"
+    },
+    {
+      "slug": "cavaquinho-do-zero-ao-avancado",
+      "titulo": "Cavaquinho: do Zero ao Avançado",
+      "subtitulo": "Da roda de samba ao regional de choro, com acordes, levadas, melodia e repertório",
+      "resumo": "Método completo de cavaquinho em 42 capítulos e cerca de 310 páginas: acordes, levadas de samba e choro, solo, roda, banda, repertório e rotina de estudo.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/cavaquinho-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/cavaquinho-do-zero-ao-avancado"
+    },
     {
       "slug": "chatgpt-ai-na-pratica",
       "titulo": "ChatGPT AI na Prática",
@@ -93,6 +132,19 @@
       "url": "https://livros.villelastay.com.br/livros/conexoes-de-sucesso"
     },
     {
+      "slug": "contrabaixo-eletrico",
+      "titulo": "Contrabaixo Elétrico: do Zero ao Avançado",
+      "subtitulo": "Do primeiro groove ao baixo em banda: escalas, técnica, estilos, equipamento e prática",
+      "resumo": "Método completo de contrabaixo elétrico em 48 capítulos e cerca de 370 páginas: técnica, escalas, slap, estilos do rock ao jazz e ao samba, equipamento e rotina de estudo.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/contrabaixo-eletrico.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/contrabaixo-eletrico"
+    },
+    {
       "slug": "de-repente-rico",
       "titulo": "De Repente Rico",
       "subtitulo": "Finanças Pessoais",
@@ -130,6 +182,19 @@
       "precoCombo": 27000,
       "destaque": false,
       "url": "https://livros.villelastay.com.br/livros/google-ai-na-pratica"
+    },
+    {
+      "slug": "guitarra-do-zero-ao-avancado",
+      "titulo": "Guitarra: do Zero ao Avançado",
+      "subtitulo": "Do primeiro power chord ao solo: acordes, escalas, técnica, estilos, timbre e improvisação",
+      "resumo": "Método completo de guitarra em 56 capítulos e mais de 400 páginas: equipamento, acordes, escalas e CAGED, técnica, estilos, pedais, improvisação e composição.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/guitarra-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/guitarra-do-zero-ao-avancado"
     },
     {
       "slug": "o-homem-essencial",
@@ -171,6 +236,19 @@
       "url": "https://livros.villelastay.com.br/livros/o-locador-inteligente-na-era-da-ia"
     },
     {
+      "slug": "piano-do-zero-ao-avancado",
+      "titulo": "Piano: do Zero ao Avançado",
+      "subtitulo": "Leitura, escalas, harmonia, técnica, acompanhamento e repertório, com grande pauta",
+      "resumo": "Método completo de piano em 50 capítulos e cerca de 440 páginas: leitura nas duas claves, escalas, técnica, acompanhamento popular, repertório erudito e brasileiro.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/piano-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/piano-do-zero-ao-avancado"
+    },
+    {
       "slug": "pilotagem-de-drones-na-pratica-dji-mini-3",
       "titulo": "Pilotagem de Drones na Prática - DJI Mini 3",
       "subtitulo": "Do primeiro voo à filmagem profissional com DJI Mini 3 - Segurança, legislação e operações em Brasília",
@@ -195,9 +273,128 @@
       "precoCombo": 8600,
       "destaque": false,
       "url": "https://livros.villelastay.com.br/livros/suas-definicoes-de-marketing"
+    },
+    {
+      "slug": "teoria-musical-do-zero-ao-avancado",
+      "titulo": "Teoria Musical: do Zero ao Avançado",
+      "subtitulo": "Teoria completa para qualquer instrumento: notas, escalas, acordes, harmonia, forma e ouvido",
+      "resumo": "Teoria musical completa em 52 capítulos e cerca de 365 páginas: ritmo, escalas, acordes, campo harmônico, harmonia, forma, percepção e prática, com teclado e braço.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/teoria-musical-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/teoria-musical-do-zero-ao-avancado"
+    },
+    {
+      "slug": "ukulele-do-zero-ao-avancado",
+      "titulo": "Ukulele: do Zero ao Avançado",
+      "subtitulo": "Dos primeiros acordes ao ukulele solo, com diagramas, tablaturas e repertório",
+      "resumo": "Método completo de ukulele em 42 capítulos e mais de 300 páginas: acordes, batidas, dedilhado, fingerstyle, ritmos brasileiros, leitura, teoria, repertório e rotina de estudo.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/ukulele-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/ukulele-do-zero-ao-avancado"
+    },
+    {
+      "slug": "violao-do-zero-ao-avancado",
+      "titulo": "Violão: do Zero ao Avançado",
+      "subtitulo": "O método completo: do primeiro acorde ao violão solo, com diagramas, tablaturas, partituras e repertório",
+      "resumo": "Método completo de violão em 58 capítulos e cerca de 290 páginas: acordes, pestana, mão direita, samba, bossa nova, choro, leitura, teoria no braço, técnica, repertório e rotina de estudo.",
+      "categoria": "Música",
+      "capa": "https://livros.villelastay.com.br/assets/livros/violao-do-zero-ao-avancado.jpg",
+      "precoPdf": 7500,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/violao-do-zero-ao-avancado"
     }
   ],
   "cursos": [
+    {
+      "slug": "bandolim-brasileiro-do-zero-ao-avancado",
+      "titulo": "Bandolim Brasileiro: do Zero ao Avançado",
+      "resumo": "Curso completo de bandolim brasileiro: do primeiro passo ao repertório, em 42 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/3rGztETHAmFR?v=mIfa3JujhzlX",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/bandolim-brasileiro-do-zero-ao-avancado"
+    },
+    {
+      "slug": "piano-do-zero-ao-avancado",
+      "titulo": "Piano: do Zero ao Avançado",
+      "resumo": "Curso completo de piano: do primeiro passo ao repertório, em 50 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/e0DG3hippQdN?v=-W5zA6nKRv8o",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/piano-do-zero-ao-avancado"
+    },
+    {
+      "slug": "contrabaixo-eletrico-do-zero-ao-avancado",
+      "titulo": "Contrabaixo Elétrico: do Zero ao Avançado",
+      "resumo": "Curso completo de contrabaixo elétrico: do primeiro passo ao repertório, em 48 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/MbtrzorA3nCp?v=bSKAfAnisnFt",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/contrabaixo-eletrico-do-zero-ao-avancado"
+    },
+    {
+      "slug": "cavaquinho-do-zero-ao-avancado",
+      "titulo": "Cavaquinho: do Zero ao Avançado",
+      "resumo": "Curso completo de cavaquinho: do primeiro passo ao repertório, em 42 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/5CoEDJsXY6xv?v=p6W2dSf2inUG",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/cavaquinho-do-zero-ao-avancado"
+    },
+    {
+      "slug": "ukulele-do-zero-ao-avancado",
+      "titulo": "Ukulele: do Zero ao Avançado",
+      "resumo": "Curso completo de ukulele: do primeiro passo ao repertório, em 42 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/u7xWK_S6j8fL?v=y1hiXTGfW-ol",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/ukulele-do-zero-ao-avancado"
+    },
+    {
+      "slug": "bateria-do-zero-ao-avancado",
+      "titulo": "Bateria: do Zero ao Avançado",
+      "resumo": "Curso completo de bateria: do primeiro passo ao repertório, em 52 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/uNl_syK-QXDl?v=GLmNM7y3RdXQ",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/bateria-do-zero-ao-avancado"
+    },
+    {
+      "slug": "guitarra-do-zero-ao-avancado",
+      "titulo": "Guitarra: do Zero ao Avançado",
+      "resumo": "Curso completo de guitarra: do primeiro passo ao repertório, em 56 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/ymQPBVQtX8-i?v=az6yC57as2D3",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/guitarra-do-zero-ao-avancado"
+    },
+    {
+      "slug": "violao-do-zero-ao-avancado",
+      "titulo": "Violão: do Zero ao Avançado",
+      "resumo": "Curso completo de violão: do primeiro acorde ao violão solo, em 58 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/cVlkwz77mLGf?v=1lNdW5WJbCrr",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/violao-do-zero-ao-avancado"
+    },
+    {
+      "slug": "teoria-musical-do-zero-ao-avancado",
+      "titulo": "Teoria Musical: do Zero ao Avançado",
+      "resumo": "Curso completo de teoria musical: teoria completa para qualquer instrumento, em 52 capítulos com exercícios e plano de prática.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/upFc4Kmfflbb?v=kJGfV6Dm8dky",
+      "preco": 14700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/teoria-musical-do-zero-ao-avancado"
+    },
+    {
+      "slug": "curso-preparatorio-para-o-concurso-de-promotor-de-justica-do-distrito-federal-m",
+      "titulo": "Curso Preparatório para o Concurso de Promotor de Justiça do Distrito Federal (MPDFT)",
+      "resumo": "Preparação pelo programa oficial do 33º Concurso para Promotor de Justiça Adjunto do MPDFT (Edital 1/2025): texto de cada item, legislação, jurisprudência, aulas animadas, questões, simulados objetivos, discursivos com peça e orais, e trilha de método. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/OzqSHsFyLZ3S?v=UmxKU94mTH4l",
+      "preco": 24900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-o-concurso-de-promotor-de-justica-do-distrito-federal-m"
+    },
     {
       "slug": "o-locador-inteligente-na-era-da-inteligencia-artificial",
       "titulo": "O Locador Inteligente na era da Inteligência Artificial",
@@ -349,14 +546,6 @@
       "capa": "https://academia.villelastay.com.br/academy/capa/oulc0Z2yDB5R?v=4Ngr_QJycoOH",
       "preco": 24900,
       "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-o-concurso-de-juiz-de-direito-substituto-do-tjdft"
-    },
-    {
-      "slug": "curso-preparatorio-para-o-concurso-de-promotor-de-justica-do-distrito-federal-m",
-      "titulo": "Curso Preparatório para o Concurso de Promotor de Justiça do Distrito Federal (MPDFT)",
-      "resumo": "Preparação pelo programa oficial do 33º Concurso para Promotor de Justiça Adjunto do MPDFT (Edital 1/2025): texto de cada item, legislação, jurisprudência, aulas animadas, questões, simulados objetivos, discursivos com peça e orais, e trilha de método. Acesso por 1 ano.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/OzqSHsFyLZ3S?v=UmxKU94mTH4l",
-      "preco": 24900,
-      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-o-concurso-de-promotor-de-justica-do-distrito-federal-m"
     },
     {
       "slug": "ouvido-de-musico-a-base-que-serve-para-qualquer-instrumento",

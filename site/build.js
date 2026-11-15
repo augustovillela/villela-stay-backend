@@ -3748,6 +3748,14 @@ ${blocos}
         'Del primer vuelo a la filmación profesional con el DJI Mini 3: regulación, seguridad, planificación de vuelo, encuadre y edición — y el estudio que hace tour virtual 360°, foto aérea y vídeo con IA.'),
       livros: ['pilotagem-de-drones-na-pratica-dji-mini-3'], cursos: [], sistemas: ['altavista'] },
 
+    { id: 'musica',
+      nome: t('Música: aprender um instrumento, teoria e ouvido', 'Music: learning an instrument, theory and ear training', 'Música: aprender un instrumento, teoría y oído'),
+      texto: t('Do primeiro acorde à leitura de partitura: violão, guitarra, bateria, piano, ukulele, cavaquinho, contrabaixo elétrico e bandolim do zero ao avançado, teoria musical, treino de ouvido, e a plataforma de estudo de música com cifras, afinador, metrônomo e sala de prática.',
+        'From the first chord to reading sheet music: guitar, drums, piano, ukulele, cavaquinho, electric bass and mandolin from zero to advanced, music theory, ear training, and the music-study platform with chord charts, tuner, metronome and practice room.',
+        'Del primer acorde a la lectura de partituras: guitarra, batería, piano, ukelele, cavaquinho, bajo eléctrico y bandolín de cero a avanzado, teoría musical, entrenamiento del oído y la plataforma de estudio de música con cifras, afinador, metrónomo y sala de práctica.'),
+      livros: ['bandolim-brasileiro-do-zero-ao-avancado', 'bateria-do-zero-ao-avancado', 'cavaquinho-do-zero-ao-avancado', 'contrabaixo-eletrico', 'guitarra-do-zero-ao-avancado', 'piano-do-zero-ao-avancado', 'teoria-musical-do-zero-ao-avancado', 'ukulele-do-zero-ao-avancado', 'violao-do-zero-ao-avancado'],
+      cursos: ['bandolim-brasileiro-do-zero-ao-avancado', 'bateria-do-zero-ao-avancado', 'cavaquinho-do-zero-ao-avancado', 'contrabaixo-eletrico-do-zero-ao-avancado', 'guitarra-do-zero-ao-avancado', 'piano-do-zero-ao-avancado', 'teoria-musical-do-zero-ao-avancado', 'ukulele-do-zero-ao-avancado', 'violao-do-zero-ao-avancado', 'ouvido-de-musico-a-base-que-serve-para-qualquer-instrumento'], sistemas: ['music'] },
+
     { id: 'pessoa',
       nome: t('Vida, caráter, família e aprendizagem', 'Life, character, family and learning', 'Vida, carácter, familia y aprendizaje'),
       texto: t('O que um pai reúne para os filhos sobre domínio de si, lucidez e propósito — e as plataformas de aprendizagem criativa para crianças, de estudo de música (com o curso de ouvido musical) e de cozinha, que nasceram da mesma pergunta: como se aprende de verdade.',
