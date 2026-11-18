@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-15T20:31:32.434Z",
+  "coletadoEm": "2026-11-18T21:36:48.528Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -315,6 +315,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "curso-preparatorio-para-a-magistratura-federal-trf-1-e-demais-trfs",
+      "titulo": "Curso Preparatório para a Magistratura Federal (TRF-1 e demais TRFs)",
+      "resumo": "Preparação pelo programa oficial do último concurso para Juiz Federal Substituto do TRF-1 (XVIII, Edital 1/2025, banca FGV), válido também para os demais TRFs, com a preparação para o ENAM, a técnica de sentença cível e criminal federal e o ângulo federal de cada disciplina. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/91ENL_s7LI6_?v=dWBMFTXu7Crd",
+      "preco": 24900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-a-magistratura-federal-trf-1-e-demais-trfs"
+    },
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
       "titulo": "Bandolim Brasileiro: do Zero ao Avançado",
