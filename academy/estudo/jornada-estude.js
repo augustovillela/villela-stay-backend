@@ -30,8 +30,12 @@ const { erro } = R;
 const DIAG_QUESTOES_POR_DISCIPLINA = 3;   // 15 disciplinas → cerca de 45 questões
 const DIAG_VALIDADE_DIAS = 30;            // sem relógio punitivo: dá para fazer em partes; passado isso fica "não concluído" (retomar ou recomeçar)
 const ABANDONADA = 'abandonada';          // a tentativa que o aluno trocou por outra ao RECOMEÇAR: sai de cena sem virar resultado
-const DIAG_FAIXA_BASE_PCT = 50;           // abaixo disto: "comece por aqui"
-const DIAG_FAIXA_FORTE_PCT = 80;          // a partir disto: "ponto forte"; entre as duas: "base razoável"
+const DIAG_FAIXA_BASE_PCT = 50;           // abaixo disto: "comece por aqui" (SEMÁFORO: vermelho)
+const DIAG_FAIXA_FORTE_PCT = 80;          // a partir disto: "ponto forte" (verde); entre as duas: "base razoável" (amarelo)
+// SEMÁFORO por disciplina (20/11/2026): as mesmas três leituras da régua acima, com o nome da cor que a tela pinta.
+// Os limiares (50 e 80) são PADRÃO INICIAL AJUSTÁVEL, não dado científico — dossiê mestres §12, bloco C. Uma só fonte:
+// as duas constantes acima. Não há segundo conjunto de números (o 70/85 de um texto de cursinho não vale aqui).
+const SEMAFORO_COR = { comece_por_aqui: 'vermelho', base_razoavel: 'amarelo', ponto_forte: 'verde', sem_questoes: 'cinza' };
 const TESTE_FINAL_PCT_AULAS = 70;         // % das aulas estudadas (régua de `aulaEstudada`) que libera o teste final
 const TESTE_FINAL_INTERVALO_DIAS = 14;    // intervalo mínimo para refazer o teste final
 const MODOS = A.MODOS_DE_AFERICAO;       // diagnostico | teste_final — a lista é a da régua (aluno.js): o que se responde aqui não conta como aula estudada
@@ -64,7 +68,7 @@ function porDisciplina(t) {
     const its = t.congelado.itens.filter(i => i.bloco === d.codigo);
     const acertos = its.filter(i => sit[i.id] === 'certa').length, respondidas = its.filter(i => sit[i.id] === 'certa' || sit[i.id] === 'errada').length;
     const pct = its.length ? Math.round(100 * acertos / its.length) : 0, leitura = leituraDoPct(pct, its.length);
-    return { codigo: d.codigo, nome: d.nome, ordem, total: its.length, respondidas, acertos, pct, leitura, leitura_txt: LEITURAS[leitura] };
+    return { codigo: d.codigo, nome: d.nome, ordem, total: its.length, respondidas, acertos, pct, leitura, leitura_txt: LEITURAS[leitura], cor: SEMAFORO_COR[leitura] };
   });
 }
 // por onde começar: a disciplina mais fraca primeiro; empate, a ordem do edital; sem questão para medir, no fim
@@ -92,7 +96,7 @@ function situacao(usuario, c, { discs = disciplinas(c), regua = A.reguaDeEstudo(
   return {
     disponivel: discs.length > 0 && !c.particular, // o percurso particular do aluno não tem aulas por disciplina: não há o que diagnosticar
     por_disciplina: DIAG_QUESTOES_POR_DISCIPLINA, disciplinas: discs.length,
-    diagnostico: { feito: !!diag, aberto: andamento(abertoD), nao_concluido: !diag && !abertoD && largadas('diagnostico') > 0, resultado: antes, ordem_sugerida: antes ? ordemSugerida(antes.disciplinas).map(d => ({ codigo: d.codigo, nome: d.nome, leitura: d.leitura, leitura_txt: d.leitura_txt, acertos: d.acertos, total: d.total })) : [] },
+    diagnostico: { feito: !!diag, aberto: andamento(abertoD), nao_concluido: !diag && !abertoD && largadas('diagnostico') > 0, resultado: antes, ordem_sugerida: antes ? ordemSugerida(antes.disciplinas).map(d => ({ codigo: d.codigo, nome: d.nome, leitura: d.leitura, leitura_txt: d.leitura_txt, cor: d.cor, acertos: d.acertos, total: d.total })) : [] },
     teste_final: { liberado: totalAulas > 0 && !faltamAulas, pct_aulas: pctAulas, pct_exigido: TESTE_FINAL_PCT_AULAS, aulas_estudadas: estudadas, total_aulas: totalAulas, faltam_aulas: faltamAulas,
       aberto: andamento(abertoF), feitos: finais.length, resultado: depois, pode_refazer_em: podeRefazerEm, pode_refazer: !ultimo || hoje >= podeRefazerEm, intervalo_dias: TESTE_FINAL_INTERVALO_DIAS },
     // antes × depois, lado a lado, por disciplina (só quando há os dois)
@@ -287,7 +291,9 @@ function jornada(usuario, produto, slugEscopo) {
     nivel: nivelDe(c, est), selos: selos(discs, est, regua), medalhas: medalhas(usuario, produto, c, { discs, evs, diag }),
     sequencia: sequencias(evs), avaliacao: diag,
     criterios: { selo_prata_pct: SELO_PRATA_PCT, selo_ouro_pct: SELO_OURO_PCT, sequencia_dias: MEDALHA_SEQUENCIA_DIAS, retencao_dias: ev.INTERVALO_RETENCAO_DIAS,
-      faixa_base_pct: DIAG_FAIXA_BASE_PCT, faixa_forte_pct: DIAG_FAIXA_FORTE_PCT } };
+      faixa_base_pct: DIAG_FAIXA_BASE_PCT, faixa_forte_pct: DIAG_FAIXA_FORTE_PCT,
+      semaforo: { vermelho_abaixo_pct: DIAG_FAIXA_BASE_PCT, verde_a_partir_pct: DIAG_FAIXA_FORTE_PCT, cores: SEMAFORO_COR,
+        nota: 'Padrão inicial ajustável, não é dado científico: mede o seu acerto no diagnóstico por disciplina.' } } };
 }
 // o que o painel leva para a aba Hoje: o nível (cartão compacto) e o diagnóstico (cartão e ordem sugerida).
 // Recebe os estados que o painel já calculou — não lê as evidências de novo.

@@ -266,6 +266,7 @@ function painelInteiro(usuario, produto, slugEscopo) {
   return {
     reta_final: alvo ? { data_alvo: alvo, dias, fase, foco: rf.foco || 'objetiva' } : null,
     erros_pendentes: errosPendentes(usuario.id, escopo.id, c).length,
+    erros_por_tipo: errosPorTipo(usuario.id, c),
     // PROVA EM ANDAMENTO (treino ou simulado): a aba Prova e a aba Hoje mostram "continuar", com o tempo que resta —
     // trocar de aba ou recarregar a página não pode esconder uma prova com o relógio correndo
     prova_aberta: provaAberta(usuario, escopo),
@@ -532,6 +533,50 @@ function errosPendentes(userId, escopoId, c = null) {
   return [...por.values()].filter(x => x.pendente && (!vivas || vivas.has(x.id)) && (!superadas || !superadas.has(x.id))).map(x => ({ id: x.id, erros: x.erros.size, ultima: x.ultima })).sort((a, b) => b.ultima.localeCompare(a.ultima));
 }
 const anotacaoDe = (userId, questaoId) => (db.prepare('SELECT texto FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).texto || '';
+// TIPO DO ERRO (caderno de erros, 20/11/2026): o aluno classifica por que errou — a correção de cada tipo é diferente.
+// Lista FECHADA, única: a tela e o painel leem daqui (não duplicam rótulo nem conselho). A frase de correção é do método
+// (conhecimento corrente de estudo, dossiê mestres §12), escrita com palavras da casa.
+const TIPOS_DE_ERRO = [
+  { id: 'conhecimento', rotulo: 'Faltou conhecimento', correcao: 'Volte à aula ou à lei seca daquele ponto, estude, e só então refaça a questão — sem reler tudo, só o que faltou.' },
+  { id: 'confusao', rotulo: 'Confundi conceitos', correcao: 'Monte um quadro lado a lado dos dois conceitos (o que muda, o que não muda) e treine questões que misturem os dois.' },
+  { id: 'desatencao', rotulo: 'Desatenção', correcao: 'Sublinhe o comando da questão (exceto, incorreta, apenas) antes de ler as alternativas e leia todas até o fim.' },
+  { id: 'interpretacao', rotulo: 'Interpretei mal o enunciado', correcao: 'Reescreva a pergunta com as suas palavras antes de marcar; treine enunciados longos de casos concretos.' },
+  { id: 'banca', rotulo: 'Estilo da banca', correcao: 'Resolva provas anteriores da mesma banca e anote que armadilha ela usou (palavra trocada, exceção, súmula).' },
+  { id: 'estrategia', rotulo: 'Erro de estratégia', correcao: 'Revise a ordem de resolução e a regra do chute para esta prova (a regra de pontuação do edital decide quando arriscar).' },
+  { id: 'tempo_ansiedade', rotulo: 'Tempo ou ansiedade', correcao: 'Treine com o relógio real da prova e com simulados completos; planeje o orçamento de minutos por bloco.' },
+];
+const TIPO_DE_ERRO_ID = new Set(TIPOS_DE_ERRO.map(t => t.id));
+const tipoDeErro = (id) => TIPOS_DE_ERRO.find(t => t.id === id) || null;
+const tipoErroDe = (userId, questaoId) => (db.prepare('SELECT tipo_erro FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).tipo_erro || '';
+// ERROS POR TIPO (painel): só conta o que o aluno classificou, entre os erros PENDENTES. Com menos de 5 classificados
+// não aponta prioridade (amostra pequena demais); sem classificar nada, não devolve nada que pareça análise.
+const ERROS_TIPADOS_PARA_PRIORIDADE = 5;
+function errosPorTipo(userId, c) {
+  const pend = errosPendentes(userId, c.escopo.id, c);
+  const tipos = new Map(db.prepare('SELECT questao_id, tipo_erro FROM est_anotacoes WHERE user_id = ? AND escopo_id = ? AND tipo_erro != \'\'').all(userId, c.escopo.id).map(r => [r.questao_id, r.tipo_erro]));
+  const { grupos } = aulasPorDisciplina(c);
+  const discDaComp = new Map();
+  for (const g of grupos) if (g.codigo) for (const u of g.aulas) for (const k of u.competencias) if (!discDaComp.has(k)) discDaComp.set(k, g);
+  const total = new Map(), porDisc = new Map();
+  let classificados = 0;
+  for (const x of pend) {
+    const tp = tipos.get(x.id);
+    if (!tp || !TIPO_DE_ERRO_ID.has(tp)) continue;
+    classificados++;
+    total.set(tp, (total.get(tp) || 0) + 1);
+    const q = R.Questoes.obter(x.id);
+    const g = q ? R.competenciasDaQuestao(q.id, c.escopo.id).map(k => discDaComp.get(k)).find(Boolean) : null;
+    if (g) { const m = porDisc.get(g.codigo) || { nome: g.nome, tipos: new Map() }; m.tipos.set(tp, (m.tipos.get(tp) || 0) + 1); porDisc.set(g.codigo, m); }
+  }
+  const lista = TIPOS_DE_ERRO.map(t => ({ id: t.id, rotulo: t.rotulo, n: total.get(t.id) || 0 })).filter(t => t.n).sort((a, b) => b.n - a.n);
+  const topo = lista[0] || null;
+  const ti = topo ? tipoDeErro(topo.id) : null;
+  return {
+    pendentes: pend.length, classificados, minimo_para_prioridade: ERROS_TIPADOS_PARA_PRIORIDADE, por_tipo: lista,
+    por_disciplina: [...porDisc.entries()].map(([codigo, m]) => { const [id, n] = [...m.tipos.entries()].sort((a, b) => b[1] - a[1])[0]; return { codigo, nome: m.nome, tipo: id, rotulo: tipoDeErro(id).rotulo, n }; }),
+    atacar_primeiro: classificados >= ERROS_TIPADOS_PARA_PRIORIDADE && ti ? { id: ti.id, rotulo: ti.rotulo, n: topo.n, correcao: ti.correcao } : null,
+  };
+}
 const anotacaoEm = (userId, questaoId) => (db.prepare('SELECT atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(userId, questaoId) || {}).atualizado_em || '';
 // TEXTO DO ALUNO TEM DE SER TEXTO (réplica de 11/10/2026, baixa 8): `{ "a": 1 }` era gravado como "[object Object]".
 function textoDoAluno(v) {
@@ -573,21 +618,30 @@ function erros(usuario, produto, slugEscopo, { pagina = 1 } = {}) {
     if (!q) return null;
     return { id: q.id, erros: x.erros, ultima: x.ultima, enunciado: q.enunciado, competencias: R.competenciasDaQuestao(q.id, c.escopo.id),
       alternativas: q.alternativas.map(a => ({ id: a.id, texto: a.texto, correta: a.correta, explicacao: a.explicacao })),
-      comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id), anotacao_em: anotacaoEm(usuario.id, q.id) };
+      comentario: q.comentario, origem: q.origem, vigencia: q.vigencia, anotacao: anotacaoDe(usuario.id, q.id), anotacao_em: anotacaoEm(usuario.id, q.id),
+      tipo_erro: tipoErroDe(usuario.id, q.id) };
   }).filter(Boolean);
-  return { total: pend.length, pagina: pg, paginas, por_pagina: ERROS_POR_PAGINA, questoes: lista };
+  return { total: pend.length, pagina: pg, paginas, por_pagina: ERROS_POR_PAGINA, tipos_de_erro: TIPOS_DE_ERRO, questoes: lista };
 }
-function anotar(usuario, produto, slugEscopo, questaoId, texto, { lido_em, ao_sair } = {}) {
+// `tipo_erro`: ausente (undefined) = não mexe no que está gravado; '' = limpa; fora da lista = 400. O texto também pode
+// faltar (cliente que só classifica): então fica o que já estava. A linha só some quando não sobra texto NEM tipo.
+function anotar(usuario, produto, slugEscopo, questaoId, texto, { lido_em, ao_sair, tipo_erro } = {}) {
   const c = abrir(usuario, produto, slugEscopo);
   const { q } = questaoDoEscopo(c, questaoId);
   if (!jaViu(usuario.id, q.id)) throw erro('Responda a questão antes de anotar: a anotação é sobre a sua resposta.', 409);
-  const atual = db.prepare('SELECT texto, atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(usuario.id, q.id);
-  const { texto: t, juntado } = conferirTextoLido(atual, lido_em, s(textoDoAluno(texto), 2000), ao_sair === true, 2000);
+  if (tipo_erro != null && typeof tipo_erro !== 'string') throw erro('O tipo do erro deve ser enviado como texto.');
+  const tipoNovo = tipo_erro == null ? null : String(tipo_erro).trim();
+  if (tipoNovo && !TIPO_DE_ERRO_ID.has(tipoNovo)) throw erro('Tipo de erro inválido. Use: ' + TIPOS_DE_ERRO.map(x => x.id).join(', ') + '.');
+  const atual = db.prepare('SELECT texto, tipo_erro, atualizado_em FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').get(usuario.id, q.id);
+  let t = atual ? atual.texto : '', juntado = false;
+  if (texto !== undefined || tipoNovo === null) ({ texto: t, juntado } = conferirTextoLido(atual, lido_em, s(textoDoAluno(texto), 2000), ao_sair === true, 2000));
+  const tipo = tipoNovo === null ? (atual ? atual.tipo_erro : '') : tipoNovo;
   const agora = nowISO();
-  if (!t) db.prepare('DELETE FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').run(usuario.id, q.id);
-  else db.prepare(`INSERT INTO est_anotacoes (user_id, questao_id, escopo_id, texto, atualizado_em) VALUES (?, ?, ?, ?, ?)
-    ON CONFLICT (user_id, questao_id) DO UPDATE SET texto = excluded.texto, atualizado_em = excluded.atualizado_em`).run(usuario.id, q.id, c.escopo.id, t, agora);
-  return { ok: true, anotacao: t, atualizado_em: t ? agora : '', juntado };
+  if (!t && !tipo) db.prepare('DELETE FROM est_anotacoes WHERE user_id = ? AND questao_id = ?').run(usuario.id, q.id);
+  else db.prepare(`INSERT INTO est_anotacoes (user_id, questao_id, escopo_id, texto, tipo_erro, atualizado_em) VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT (user_id, questao_id) DO UPDATE SET texto = excluded.texto, tipo_erro = excluded.tipo_erro, atualizado_em = excluded.atualizado_em`).run(usuario.id, q.id, c.escopo.id, t, tipo, agora);
+  const ti = tipoDeErro(tipo);
+  return { ok: true, anotacao: t, atualizado_em: (t || tipo) ? agora : '', juntado, tipo_erro: tipo, correcao: ti ? ti.correcao : '', tipos_de_erro: TIPOS_DE_ERRO };
 }
 
 // O BANCO por eixo (ADR-0009): quantas questões de correção automática há por banca, órgão, cargo,
@@ -701,6 +755,7 @@ function responder(usuario, produto, slugEscopo, questaoId, { resposta, confianc
       alternativas: q.alternativas.map(a => ({ id: a.id, correta: a.correta, explicacao: a.explicacao })),
       comentario: q.comentario, procedencia: q.procedencia, vigencia: q.vigencia,
       competencias: comps, retomadas: r.proximas, anotacao: anotacaoDe(usuario.id, q.id), anotacao_em: anotacaoEm(usuario.id, q.id),
+      tipo_erro: tipoErroDe(usuario.id, q.id), tipos_de_erro: TIPOS_DE_ERRO,
     };
   });
   // a tela pediu o painel junto (`painel: true`): vai o RESUMO, já com esta resposta contada — sem outro pedido
@@ -1336,6 +1391,7 @@ function caderno(usuario, produto, slugEscopo) {
   const todas = grupos.flatMap(g => g.aulas);
   const anot = new Map(), avulsas = [];
   for (const a of por('SELECT questao_id, texto, atualizado_em FROM est_anotacoes WHERE user_id = ? AND escopo_id = ? ORDER BY atualizado_em')) {
+    if (!a.texto) continue; // linha só com o tipo do erro (sem texto) não é anotação do caderno
     const q = R.Questoes.obter(a.questao_id);
     const comps = q ? R.competenciasDaQuestao(q.id, eid) : [];
     const u = todas.find(x => x.competencias.some(k => comps.includes(k)));

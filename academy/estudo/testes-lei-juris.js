@@ -812,7 +812,7 @@ async function rodar({ t, req }) {
     assert.ok(/\.es-lj-resultados\{display:grid;grid-template-columns:repeat\(auto-fit,minmax\(min\(100%,300px\),1fr\)\)/.test(CSS));
     assert.ok(/@media \(max-width:640px\)\{\n\s+\.es-lj-parte\.n1/.test(CSS), 'o recuo das partes encolhe no celular');
     const pg = ler('paginas.js');
-    assert.ok(/estude: 15,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 7 \}/.test(pg), 'estude.js?v=15 e estude.css?v=7 (03/11/2026: nota do diploma)');
+    assert.ok(/estude: 16,/.test(pg) && /V_FOLHAS = \{ aluno: 5, estude: 8 \}/.test(pg), 'estude.js?v=16 e estude.css?v=8 (03/11/2026: nota do diploma)');
   });
 
   await t('lei-juris · tela: NOTA DO DIPLOMA — aviso discreto logo abaixo do cabeçalho, no acervo e na aba da aula; texto escapado com as quebras de linha; diploma sem nota não desenha nada', async () => {

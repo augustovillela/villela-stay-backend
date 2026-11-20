@@ -71,7 +71,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   app.get(`${base}/o-que-mudou`, ...AL, h((req, res) => { semCache(res); res.json(al.oQueMudou(...a(req))); }));
   // caderno de erros: a última resposta foi erro; a anotação é do próprio aluno
   app.get(`${base}/erros`, ...AL, h((req, res) => { semCache(res); res.json(al.erros(...a(req), { pagina: req.query.pagina })); }));
-  app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto, lido(req))); }));
+  app.put(`${base}/questoes/:questao/anotacao`, ...AL, h((req, res) => { res.json(al.anotar(...a(req), req.params.questao, b(req).texto, { ...lido(req), tipo_erro: b(req).tipo_erro })); }));
   app.post(`${base}/questoes/:questao/pista`, ...AL, h((req, res) => { res.json(al.pedirPista(...a(req), req.params.questao)); }));
   app.post(`${base}/questoes/:questao/responder`, ...AL, h((req, res) => { res.json(al.responder(...a(req), req.params.questao, b(req))); }));
 

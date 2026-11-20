@@ -169,6 +169,8 @@ body.es-em-prova .tv-fab,body.es-em-prova .tv-gaveta{display:none!important}
 .es-alt-lida .es-expl { display: block; margin-top: 3px; font-size: .92em; opacity: .85; }
 .es-anot { display: block; margin-top: 10px; }
 .es-anot textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }
+.es-anot select { width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px; }
+.es-tipo-dica { margin: 4px 0 0; }
 /* nota que explica a sessão do dia nos cards, e o acervo aberto para o revisor */
 .es-nota-aba{max-width:640px;margin:14px 0 0;padding:14px 16px;border-radius:12px;background:var(--al-creme,#f7f3ea);border-left:4px solid var(--al-ouro,#d97706);font-size:.95rem;line-height:1.5;color:var(--al-navy)}
 .es-nota-aba p{margin:6px 0}

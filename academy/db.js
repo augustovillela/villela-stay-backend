@@ -606,6 +606,12 @@ const MIGRACOES = [
           );`,
   },
   {
+    // Caderno de erros: o TIPO do erro (conhecimento, confusão, desatenção, interpretação, banca, estratégia, tempo/ansiedade).
+    // Opcional e do aluno; lista fechada validada no servidor (aluno.js, TIPOS_DE_ERRO). '' = sem classificar.
+    nome: 'estudo-anotacoes-tipo-erro-2026-11-20',
+    sql: `ALTER TABLE est_anotacoes ADD COLUMN tipo_erro TEXT NOT NULL DEFAULT '';`,
+  },
+  {
     // Marca-texto da leitura: o trecho que o aluno grifou, com cor e anotação. Âncora no texto cru do
     // bloco (aula, bloco, início, fim) + o próprio trecho, para reencontrá-lo se a aula for reescrita.
     nome: 'estudo-marcacoes-2026-10-09',

@@ -166,7 +166,7 @@ const TEXTOS_DO_ALUNO = [
   // bloco da aula, a nota livre da aula e os textos dos pedidos pagos. O terceiro campo, quando existe, é
   // como APAGAR sem apagar a linha (o pedido tem valor cobrado: a linha fica, o texto sai).
   ['est_marcacoes', 'SELECT escopo_id, unidade, texto, cor, nota, criado_em FROM est_marcacoes WHERE user_id = ?'],
-  ['est_anotacoes', 'SELECT escopo_id, questao_id, texto, atualizado_em FROM est_anotacoes WHERE user_id = ?'],
+  ['est_anotacoes', 'SELECT escopo_id, questao_id, texto, tipo_erro, atualizado_em FROM est_anotacoes WHERE user_id = ?'],
   ['est_tentativas_bloco', 'SELECT escopo_id, unidade, bloco, texto, atualizado_em FROM est_tentativas_bloco WHERE user_id = ?'],
   ['est_notas_aula', 'SELECT escopo_id, unidade, texto, atualizado_em FROM est_notas_aula WHERE user_id = ?'],
   // a marcação de leitura da legislação e da jurisprudência (lido, grifo): não é texto, mas é do aluno — sai inteira

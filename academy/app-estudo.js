@@ -526,7 +526,7 @@
             '<tr><td>Tudo, incluindo repetidas e com pista</td><td class="n">' + d.acertos + ' de ' + d.respostas + '</td></tr></table>'
             : '<p class="al-sub">Ainda sem respostas. Os números aparecem depois da primeira questão.</p>') + '</div></div>';
         if (p.erros_pendentes) h += '<div class="jr-caixa"><h3>Caderno de erros</h3><p class="al-sub">' + p.erros_pendentes + ' questão(ões) em que a sua última resposta foi um erro. Refazer não conta como domínio, mas fecha a lacuna.</p>' +
-          '<button class="al-bt fan" id="es-hj-err">Abrir o caderno</button></div>';
+          cartaoErrosPorTipo(p.erros_por_tipo) + '<button class="al-bt fan" id="es-hj-err">Abrir o caderno</button></div>';
         alvo.innerHTML = h;
         if (el('es-hj-err')) el('es-hj-err').onclick = function () { ir('erros'); };
         ligarAvaliacao(alvo);
@@ -1860,15 +1860,46 @@
       });
     }
     // a anotação da questão (botão "Guardar anotação"): mesmo cuidado — `lido.em` é o `atualizado_em` que a tela leu
-    function guardarAnotacao(qid, campo, msg, lido) {
-      api('PUT', base() + '/questoes/' + qid + '/anotacao', { texto: campo.value, lido_em: lido.em }).then(function (r) { lido.em = r.atualizado_em || ''; msg.textContent = 'Guardada.'; })
+    // ERROS POR TIPO (painel): só o que o aluno classificou; sem classificar, uma linha convidando — nada de análise inventada
+    function cartaoErrosPorTipo(e) {
+      if (!e) return '';
+      if (!e.classificados) return '<p class="al-fino">Dica: ao errar, diga por que errou (conhecimento, confusão, desatenção…). Com 5 erros classificados, o painel mostra qual correção atacar primeiro.</p>';
+      var h = '<p class="al-fino">Seus erros por tipo (' + e.classificados + ' classificados de ' + e.pendentes + '): ' +
+        e.por_tipo.map(function (t) { return esc(t.rotulo) + ' ' + t.n; }).join(' · ') + '.</p>';
+      if (e.atacar_primeiro) h += '<p class="al-sub"><b>Ataque primeiro: ' + esc(e.atacar_primeiro.rotulo) + '.</b> ' + esc(e.atacar_primeiro.correcao) + '</p>';
+      else h += '<p class="al-fino">Classifique pelo menos ' + e.minimo_para_prioridade + ' erros para o painel indicar a prioridade.</p>';
+      if (e.por_disciplina.length) h += '<p class="al-fino">Por disciplina, o tipo mais frequente: ' + e.por_disciplina.map(function (d) { return esc(d.nome) + ' — ' + esc(d.rotulo); }).join(' · ') + '.</p>';
+      return h;
+    }
+    // TIPO DO ERRO: a lista (rótulo + o que fazer) vem do servidor — a tela não guarda cópia dos textos
+    function seletorTipoErro(tipos, atual, qid) {
+      var t = tipos || [];
+      if (!t.length) return '';
+      var dica = (t.filter(function (x) { return x.id === atual; })[0] || {}).correcao || '';
+      return '<label class="es-campo es-anot">Por que errei? (opcional)<select data-tipo="' + esc(qid) + '"><option value="">— sem classificar —</option>' +
+        t.map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === atual ? ' selected' : '') + '>' + esc(x.rotulo) + '</option>'; }).join('') + '</select></label>' +
+        '<p class="al-fino es-tipo-dica" data-tipo-dica="' + esc(qid) + '">' + esc(dica) + '</p>';
+    }
+    function ligarTipoErro(raiz, tipos, qid) {
+      var sel = raiz.querySelector('[data-tipo="' + qid + '"]'), dica = raiz.querySelector('[data-tipo-dica="' + qid + '"]');
+      if (!sel) return null;
+      sel.onchange = function () {
+        var x = (tipos || []).filter(function (t) { return t.id === sel.value; })[0];
+        if (dica) dica.textContent = x ? x.correcao : '';
+      };
+      return { sel: sel, dica: dica };
+    }
+    function guardarAnotacao(qid, campo, msg, lido, tipo) {
+      var corpo = { texto: campo.value, lido_em: lido.em };
+      if (tipo && tipo.sel) corpo.tipo_erro = tipo.sel.value;
+      api('PUT', base() + '/questoes/' + qid + '/anotacao', corpo).then(function (r) { lido.em = r.atualizado_em || ''; msg.textContent = 'Guardada.'; if (tipo && tipo.dica) tipo.dica.textContent = r.correcao || ''; })
         .catch(function (e) {
           if (!(e && e.status === 409 && e.dados && e.dados.conflito)) { msg.textContent = e.message; return; }
           msg.textContent = 'Não guardou: esta anotação foi alterada em outra aba. Escolha abaixo.';
           caixaDeConflito(campo, e.dados, function (escolha) {
             lido.em = e.dados.atualizado_em || '';
             if (escolha === 'outro') { msg.textContent = 'Ficou o texto da outra aba.'; return; }
-            guardarAnotacao(qid, campo, msg, lido);
+            guardarAnotacao(qid, campo, msg, lido, tipo);
           });
         });
     }
@@ -2073,7 +2104,7 @@
     // mede o que foi DEMONSTRADO — a tela diz isso com todas as letras, e diz o que falta em número de competências.
     // Os eixos do programa continuam separados, cada um com a sua contagem: nenhum percentual único.
     var GRAU = { ouro: ['🥇', 'Ouro'], prata: ['🥈', 'Prata'], bronze: ['🥉', 'Bronze'], '': ['○', 'Ainda sem selo'] };
-    var LEITURA_COR = { comece_por_aqui: 'ambar', base_razoavel: 'azul', ponto_forte: 'verde', sem_questoes: 'cinza' };
+    var LEITURA_COR = { comece_por_aqui: 'verm', base_razoavel: 'ambar', ponto_forte: 'verde', sem_questoes: 'cinza' }; // semáforo (a cor vem do servidor em d.cor)
     var TIPO_AVAL = { diagnostico: 'Diagnóstico de entrada', teste_final: 'Teste final' };
     function ehAvaliacao(t) { return !!t && (t.modo === 'diagnostico' || t.modo === 'teste_final'); }
     function num(x) { return String(Math.round(Number(x) * 1000) / 1000).replace('.', ','); }
@@ -2528,9 +2559,11 @@
           el('es-fb').innerHTML = '<div class="es-fb ' + (x.acerto ? 'ok' : 'nao') + '"><b>' + (x.acerto ? '✔ Certo.' : '✖ Não foi desta vez.') + '</b>' + (letrasCertas.length ? ' Gabarito: ' + esc(letrasCertas.join(', ')) + '.' : '') + ' Conta como: ' + esc(x.conta_como) + '.' +
             (ret ? ' Retomada marcada para ' + dataBR(ret) + '.' : '') + (x.comentario ? '<p>' + esc(x.comentario) + '</p>' : '') + notaDeVigencia(x.vigencia) + '</div>' +
             '<label class="es-campo es-anot">Sua anotação (fica no caderno de erros)<textarea id="es-anot" rows="3" maxlength="2000" placeholder="Por que errei — ou por que cada alternativa está certa ou errada.">' + esc(x.anotacao || '') + '</textarea></label>' +
+            (x.acerto ? '' : seletorTipoErro(x.tipos_de_erro, x.tipo_erro || '', q.id)) +
             '<div class="es-linha"><button class="al-bt" id="es-prox">' + esc(rotuloProx) + '</button><button class="al-bt fan" id="es-anot-ok">Guardar anotação</button><span class="al-fino" id="es-anot-msg"></span></div>';
           var lidoAnot = { em: x.anotacao_em || '' };
-          el('es-anot-ok').onclick = function () { guardarAnotacao(q.id, el('es-anot'), el('es-anot-msg'), lidoAnot); };
+          var tipoAnot = x.acerto ? null : ligarTipoErro(el('es-fb'), x.tipos_de_erro, q.id);
+          el('es-anot-ok').onclick = function () { guardarAnotacao(q.id, el('es-anot'), el('es-anot-msg'), lidoAnot, tipoAnot); };
           el('es-prox').onclick = aoProxima;
           // o painel novo: do resumo que veio com a resposta; sem ele (ou se o conteúdo do curso mudou), pede
           var junto = x.painel && b0 === base() ? juntarResumo(E.painel, x.painel) : null;
@@ -2631,6 +2664,7 @@
                 return '<p class="es-alt-lida ' + (a.correta ? 'certa' : '') + '"><b>' + esc(a.id) + ')' + (a.correta ? ' · ✔ gabarito' : '') + '</b> ' + esc(a.texto) + (a.explicacao ? '<span class="es-expl">' + esc(a.explicacao) + '</span>' : '') + '</p>';
               }).join('') + (q.comentario ? '<p>' + esc(q.comentario) + '</p>' : '') + notaDeVigencia(q.vigencia) + '</details>' +
               '<label class="es-campo es-anot">Sua anotação<textarea rows="2" maxlength="2000" data-anot="' + esc(q.id) + '" data-anot-em="' + esc(q.anotacao_em || '') + '" placeholder="Por que errei.">' + esc(q.anotacao || '') + '</textarea></label>' +
+              seletorTipoErro(r.tipos_de_erro, q.tipo_erro || '', q.id) +
               '<div class="es-linha"><button class="al-bt peq fan" data-anot-ok="' + esc(q.id) + '">Guardar anotação</button><span class="al-fino" data-anot-msg="' + esc(q.id) + '"></span></div></div>';
           }).join('') +
           (r.paginas > 1 ? '<div class="jr-caixa"><p class="al-fino">Página ' + r.pagina + ' de ' + r.paginas + ' · ' + r.total + ' questões no caderno. ' +
@@ -2642,9 +2676,10 @@
             var id = b.getAttribute('data-anot-ok'), msg = alvo.querySelector('[data-anot-msg="' + id + '"]');
             var campo = alvo.querySelector('[data-anot="' + id + '"]');
             if (!campo._esLido) campo._esLido = { em: campo.getAttribute('data-anot-em') || '' };
-            guardarAnotacao(id, campo, msg, campo._esLido);
+            guardarAnotacao(id, campo, msg, campo._esLido, campo._esTipo);
           };
         });
+        cada(alvo, '[data-anot]', function (campo) { campo._esTipo = ligarTipoErro(alvo, r.tipos_de_erro, campo.getAttribute('data-anot')); });
       }).catch(function (e) { falha(alvo, e); });
     }
 

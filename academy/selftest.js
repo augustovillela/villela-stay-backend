@@ -2881,6 +2881,8 @@ async function main() {
   await require('./estudo/testes-media-ponderada').rodar({ t, req });
   // ================= TRILHA INICIAL (ADR-0020): o aluno novo começa pelo método declarado no percurso; quem já estudou não muda de caminho ===============
   await require('./estudo/testes-trilha-inicial').rodar({ t, req });
+  // ================= TIPO DO ERRO (piloto de método do TRF-3, 20/11/2026): classificar o erro, erros por tipo no painel, semáforo com a régua existente ===============
+  await require('./estudo/testes-tipo-erro').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 
