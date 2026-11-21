@@ -518,6 +518,7 @@
         h += '<div class="jr-caixa"><h3>Onde você está no programa</h3>' +
           '<p class="al-sub">São quatro medidas diferentes, cada uma com a sua contagem. Ter a aula pronta não é ter estudado, e ter estudado não é ter demonstrado.</p>' +
           caixaEixos(p) + (c.pendentes_de_leitura ? '<p class="es-aviso">' + c.pendentes_de_leitura + ' item(ns) do programa com leitura pendente de conferência — não contam como cobertos.</p>' : '') + '</div>';
+        h += cartaoSemaforo(p.semaforo, p.proporcoes_fase);
         h += '<div class="es-duas"><div class="jr-caixa"><h3>Retomadas</h3><p class="es-num">' + p.revisoes.hoje + '</p><p class="al-sub">para hoje' +
           (p.revisoes.adiadas ? ' · ' + p.revisoes.adiadas + ' ficaram para depois, para a fila caber no dia' : '') + '</p></div>' +
           '<div class="jr-caixa"><h3>Seu desempenho</h3>' + (d.respostas ? '<table class="es-tab">' +
@@ -1860,6 +1861,21 @@
       });
     }
     // a anotação da questão (botão "Guardar anotação"): mesmo cuidado — `lido.em` é o `atualizado_em` que a tela leu
+    // SEMÁFORO POR ASSUNTO + PROPORÇÕES POR FASE (21/11/2026): tudo vem do servidor (limiares e fases são configuração do percurso)
+    function cartaoSemaforo(sm, pf) {
+      if (!sm && !pf) return '';
+      var cor = { vermelho: '#c0392b', amarelo: '#d4a017', verde: '#2e8b57', sem_dados: '#9aa0a6' };
+      var h = '<div class="jr-caixa"><h3>Semáforo por assunto</h3>';
+      if (sm && sm.assuntos.length) {
+        h += '<p class="al-sub">🔴 ' + sm.resumo.vermelho + ' · 🟡 ' + sm.resumo.amarelo + ' · 🟢 ' + sm.resumo.verde + (sm.resumo.sem_dados ? ' · ⚪ ' + sm.resumo.sem_dados + ' com poucos dados' : '') + '</p><ul class="al-fino" style="list-style:none;padding:0">' +
+          sm.assuntos.slice(0, 12).map(function (a) {
+            return '<li><span style="color:' + cor[a.cor] + '">●</span> ' + esc(a.nome) + ' — ' + esc(a.cor_txt) + ' (' + a.acertos + ' de ' + a.total + ')' + (a.abandonado ? ' · parado há tempo: volte a praticar' : '') + '</li>';
+          }).join('') + '</ul><p class="al-fino">' + esc(sm.criterios.nota) + '</p>';
+      } else h += '<p class="al-sub">Depois de algumas respostas por assunto, o semáforo aparece aqui.</p>';
+      if (pf) h += '<h4>Como dividir o estudo agora: ' + esc(pf.atual.rotulo) + '</h4><p class="al-sub">Teoria ' + pf.atual.teoria + '% · Questões ' + pf.atual.questoes + '% · Revisão ' + pf.atual.revisao + '%' +
+        (pf.atual.ate ? ' (até ' + esc(pf.atual.ate.split('-').reverse().join('/')) + ')' : '') + '</p><p class="al-fino">' + esc(pf.nota) + '</p>';
+      return h + '</div>';
+    }
     // ERROS POR TIPO (painel): só o que o aluno classificou; sem classificar, uma linha convidando — nada de análise inventada
     function cartaoErrosPorTipo(e) {
       if (!e) return '';

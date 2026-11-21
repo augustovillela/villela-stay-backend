@@ -2883,6 +2883,8 @@ async function main() {
   await require('./estudo/testes-trilha-inicial').rodar({ t, req });
   // ================= TIPO DO ERRO (piloto de método do TRF-3, 20/11/2026): classificar o erro, erros por tipo no painel, semáforo com a régua existente ===============
   await require('./estudo/testes-tipo-erro').rodar({ t, req });
+  // ================= SEMÁFORO POR ASSUNTO, PROPORÇÕES POR FASE e ordem 0 na trilha (método v2, 21/11/2026) ===============
+  await require('./estudo/testes-semaforo').rodar({ t, req });
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 
