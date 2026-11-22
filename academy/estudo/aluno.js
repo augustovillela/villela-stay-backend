@@ -267,6 +267,9 @@ function painelInteiro(usuario, produto, slugEscopo) {
     reta_final: alvo ? { data_alvo: alvo, dias, fase, foco: rf.foco || 'objetiva' } : null,
     erros_pendentes: errosPendentes(usuario.id, escopo.id, c).length,
     erros_por_tipo: errosPorTipo(usuario.id, c),
+    // SEMÁFORO POR ASSUNTO e PROPORÇÕES POR FASE (21/11/2026): derivados da prática; limiares e fases em escopo.perfil (semaforo.js)
+    semaforo: require('./semaforo').semaforoDoPercurso(evs, { perfil: escopo.perfil, hoje: hj, rotuloDe: (k) => { const u = uns.find(x => x.competencias.includes(k)); return u ? u.titulo : k; } }),
+    proporcoes_fase: require('./semaforo').proporcoesPorFase(escopo.perfil, hj),
     // PROVA EM ANDAMENTO (treino ou simulado): a aba Prova e a aba Hoje mostram "continuar", com o tempo que resta —
     // trocar de aba ou recarregar a página não pode esconder uma prova com o relógio correndo
     prova_aberta: provaAberta(usuario, escopo),
