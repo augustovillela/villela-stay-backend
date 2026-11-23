@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-18T21:36:48.528Z",
+  "coletadoEm": "2026-11-23T19:49:45.613Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -316,6 +316,22 @@
   ],
   "cursos": [
     {
+      "slug": "curso-preparatorio-para-defensor-publico-da-uniao",
+      "titulo": "Curso Preparatório para Defensor Público da União",
+      "resumo": "Preparação para o concurso de Defensor Público Federal da DPU: aulas por ponto do programa, questões comentadas, cards, provas com relógio e a técnica da peça e da oral. O concurso ainda não tem edital. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/AMXOZxlgtRM-?v=KsCjMRac0ZSh",
+      "preco": 24900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-defensor-publico-da-uniao"
+    },
+    {
+      "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
+      "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
+      "resumo": "Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho (Edital 1/2023, CSJT/FGV): 252 aulas com videoaula e audiobook, 1.677 questões comentadas (639 de provas oficiais), cards, mapas mentais, prova com relógio e plano no seu tempo. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/uD4HwcKoS0Gq?v=EurJawigxHC4",
+      "preco": 24900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma"
+    },
+    {
       "slug": "curso-preparatorio-para-a-magistratura-federal-trf-1-e-demais-trfs",
       "titulo": "Curso Preparatório para a Magistratura Federal (TRF-1 e demais TRFs)",
       "resumo": "Preparação pelo programa oficial do último concurso para Juiz Federal Substituto do TRF-1 (XVIII, Edital 1/2025, banca FGV), válido também para os demais TRFs, com a preparação para o ENAM, a técnica de sentença cível e criminal federal e o ângulo federal de cada disciplina. Acesso por 1 ano.",
@@ -530,14 +546,6 @@
       "capa": "https://academia.villelastay.com.br/academy/capa/XtQ-90a44GZB?v=g6FzY1smJbAq",
       "preco": 14900,
       "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-o-concurso-do-trf-da-3-regiao-2026"
-    },
-    {
-      "slug": "juiz-do-trabalho-trt-10a-regiao-concurso-paradigma",
-      "titulo": "Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)",
-      "resumo": "Preparação pelo programa oficial do concurso nacional da Magistratura do Trabalho (Edital 1/2023, CSJT/FGV): 251 aulas com videoaula e audiobook, 1.677 questões comentadas (639 de provas oficiais), cards, mapas mentais, prova com relógio e plano no seu tempo. Acesso por 1 ano.",
-      "capa": "https://academia.villelastay.com.br/academy/capa/uD4HwcKoS0Gq?v=EurJawigxHC4",
-      "preco": 24900,
-      "url": "https://academia.villelastay.com.br/academy/cursos/juiz-do-trabalho-trt-10a-regiao-concurso-paradigma"
     },
     {
       "slug": "procurador-do-trabalho-23-concurso-do-mpt",
