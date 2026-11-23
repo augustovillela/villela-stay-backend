@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-23T19:49:45.613Z",
+  "coletadoEm": "2026-11-23T19:59:02.838Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -316,6 +316,14 @@
   ],
   "cursos": [
     {
+      "slug": "formacao-completa-em-gastronomia-villela-table",
+      "titulo": "Formação Completa em Gastronomia — Villela Table",
+      "resumo": "Formação completa em gastronomia por Augusto Villela.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/BJsDv7yX63dM?v=pJmyI9bCjDkY",
+      "preco": 15900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/formacao-completa-em-gastronomia-villela-table"
+    },
+    {
       "slug": "curso-preparatorio-para-defensor-publico-da-uniao",
       "titulo": "Curso Preparatório para Defensor Público da União",
       "resumo": "Preparação para o concurso de Defensor Público Federal da DPU: aulas por ponto do programa, questões comentadas, cards, provas com relógio e a técnica da peça e da oral. O concurso ainda não tem edital. Acesso por 1 ano.",
@@ -338,6 +346,14 @@
       "capa": "https://academia.villelastay.com.br/academy/capa/91ENL_s7LI6_?v=dWBMFTXu7Crd",
       "preco": 24900,
       "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-a-magistratura-federal-trf-1-e-demais-trfs"
+    },
+    {
+      "slug": "curso-preparatorio-de-procurador-da-republica",
+      "titulo": "Curso Preparatório de Procurador da República",
+      "resumo": "Preparação pelo programa oficial do último concurso para Procurador da República do MPF (31º CPR, Edital 1/2025), com aulas por ponto, questões comentadas, cards, provas com relógio e a técnica da peça e da oral. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/XSM3pZftyUik?v=GFN48EBIjv5c",
+      "preco": 24900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-de-procurador-da-republica"
     },
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
