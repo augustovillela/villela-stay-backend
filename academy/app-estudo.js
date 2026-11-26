@@ -81,7 +81,9 @@
     function texto(t) { return String(t || '').split(/\n{2,}/).map(function (p) { return '<p>' + esc(p).replace(/\n/g, '<br>') + '</p>'; }).join(''); }
     function horas(min) { var h = Math.floor(min / 60), m = Math.round(min % 60); return (h ? h + ' h' : '') + (h && m ? ' ' : '') + (m || !h ? m + ' min' : ''); }
     function dataBR(d) { return d ? d.slice(8, 10) + '/' + d.slice(5, 7) + (d.length >= 10 ? '/' + d.slice(0, 4) : '') : ''; }
-    function selo(estado) { var x = ESTADO[estado] || ESTADO.nao_avaliada; return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>'; }
+    // Curso da OAB: o aluno nao ve o selo "Ainda nao avaliada" (pedido do Augusto, 26/11/2026). So esse percurso; os demais cursos Estude seguem como antes.
+    var SEM_SELO_NAO_AVALIADA = { 'exame-de-ordem-oab-49': 1 };
+    function selo(estado) { var x = ESTADO[estado] || ESTADO.nao_avaliada; if (x === ESTADO.nao_avaliada && SEM_SELO_NAO_AVALIADA[E.slug]) return ''; return '<span class="es-selo ' + x[1] + '">' + x[0] + '</span>'; }
     function cada(alvo, sel, fn) { Array.prototype.forEach.call(alvo.querySelectorAll(sel), fn); }
     // A competência é escrita como resultado ("Diante de…, o candidato…"), bom
     // para medir e ruim para escolher: numa lista, todas começam igual. Quem
@@ -2200,7 +2202,7 @@
         }).join('') + '</div>' +
         '<p class="es-jr-falta">' + (px ? esc(px.texto) : (k.total ? 'Você está no nível mais alto. Ele se mantém enquanto as competências continuarem demonstradas e retidas.' : 'Este percurso ainda não tem competências para demonstrar.')) + '</p>' +
         '<table class="es-tab es-jr-tab">' + linha('Competências do percurso', k.total) + linha('<b>Demonstradas sem apoio</b> (questão nova, sem pista)', '<b>' + k.demonstradas + '</b>') + linha('— das quais com retenção confirmada', k.retidas) +
-        linha('Acertadas só com apoio (pista, questão repetida ou card)', k.com_apoio) + linha('Em prática (o último resultado sem apoio foi erro)', k.em_pratica) + linha('Ainda não avaliadas', k.nao_avaliadas) + '</table>' +
+        linha('Acertadas só com apoio (pista, questão repetida ou card)', k.com_apoio) + linha('Em prática (o último resultado sem apoio foi erro)', k.em_pratica) + (SEM_SELO_NAO_AVALIADA[E.slug] ? '' : linha('Ainda não avaliadas', k.nao_avaliadas)) + '</table>' +
         (k.sem_questao ? '<p class="es-aviso">' + k.sem_questao + ' competência(s) ainda não têm questão para você demonstrar: elas contam no total, e o nível sobe quando o conteúdo delas chegar.</p>' : '') +
         '<p class="al-fino">O nível sai só do que você demonstrou: acertar, sem pista, uma questão que ainda não tinha visto. Assistir, ler e abrir aula não mudam o nível — e ele pode descer: um erro sem apoio reabre a competência. Nível não é previsão de resultado em prova.</p></div>';
     }
