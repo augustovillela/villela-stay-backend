@@ -196,8 +196,8 @@ async function rodar({ t, req }) {
     assert.equal(barra[1], `/academy/checkout/${est.slug}`, 'o botão leva ao mesmo checkout dos outros dois');
     assert.ok(/Comprar agora|Quero|Matricular/.test(barra[2]));
     assert.ok(/<div class="pv-barra"[\s\S]*?<\/a>\s*<\/div>\s*<footer>/.test(html), 'é o último elemento antes do rodapé — o CSS abre o respiro nele (.pv-barra ~ footer)');
-    assert.ok(html.includes('/academy/publico.css?v=4'), 'a folha mudou: versão nova no endereço');
-    const css = (await req('GET', '/academy/publico.css?v=4')).texto.replace(/\s+/g, ' ');
+    assert.ok(html.includes('/academy/publico.css?v=5'), 'a folha mudou: versão nova no endereço');
+    const css = (await req('GET', '/academy/publico.css?v=5')).texto.replace(/\s+/g, ' ');
     assert.ok(css.includes('.pv-barra{display:none}'), 'em tela larga a barra não existe (o cartão de compra já acompanha a rolagem)');
     const estreita = (css.match(/\.pv-barra\{display:none\} @media\(max-width:980px\)\{(.*?)\} @media print/) || [])[1] || '';
     assert.ok(/\.pv-barra\{display:flex;[^}]*position:fixed;[^}]*bottom:0;/.test(estreita), 'abaixo de 980 px (onde o cartão desce para o fim) ela fica fixa no rodapé da tela');

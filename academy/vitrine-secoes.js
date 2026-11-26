@@ -103,10 +103,32 @@ function encurtar(titulo) {
   return t ? t.charAt(0).toUpperCase() + t.slice(1) : String(titulo || '').trim();
 }
 
+// Nomes de botão escolhidos pelo Augusto (26/11/2026), por slug. É OPCIONAL: curso
+// que não está aqui (todo curso novo) recebe o nome da regra automática.
+const NOMES_DE_BOTAO = {
+  'curso-preparatorio-para-o-exame-de-ordem-oab': 'OAB',
+  'curso-preparatorio-para-a-magistratura-federal-trf-1-e-demais-trfs': 'Juiz Federal',
+  'curso-preparatorio-para-o-concurso-de-juiz-de-direito-substituto-do-tjdft': 'Juiz de Direito',
+  'juiz-do-trabalho-trt-10a-regiao-concurso-paradigma': 'Juiz do Trabalho',
+  'curso-preparatorio-de-procurador-da-republica': 'Procurador da República',
+  'procurador-do-trabalho-23-concurso-do-mpt': 'Procurador do Trabalho',
+  'curso-preparatorio-para-o-concurso-de-promotor-de-justica-do-distrito-federal-m': 'Promotor',
+  'curso-preparatorio-para-defensor-publico-da-uniao': 'Defensor Público',
+  'curso-preparatorio-para-o-concurso-do-trf-da-3-regiao-2026': 'TRF 3ª Região',
+  'bandolim-brasileiro-do-zero-ao-avancado': 'Bandolim',
+  'contrabaixo-eletrico-do-zero-ao-avancado': 'Contrabaixo',
+  'pedreiro-completo-na-pratica': 'Pedreiro',
+  'construcao-com-conteineres-na-pratica': 'Construção de Contêineres',
+  'irrigacao-na-pratica': 'Irrigação',
+  'paisagismo-na-pratica': 'Paisagismo',
+  'piscineiro-na-pratica': 'Piscineiro',
+  'decoracao-de-interiores-na-pratica': 'Decoração',
+};
+
 // Um nome por curso, na mesma ordem, e NUNCA dois iguais: quem colide volta ao
 // título inteiro; se até os títulos forem iguais, numera.
 function nomesCurtos(cursos) {
-  const nomes = cursos.map(c => encurtar(c.titulo));
+  const nomes = cursos.map(c => (Object.hasOwn(NOMES_DE_BOTAO, c.slug) ? NOMES_DE_BOTAO[c.slug] : encurtar(c.titulo)));
   const repetidos = () => {
     const vistos = new Map();
     nomes.forEach((n, i) => vistos.set(norm(n), [...(vistos.get(norm(n)) || []), i]));
@@ -117,4 +139,4 @@ function nomesCurtos(cursos) {
   return nomes;
 }
 
-module.exports = { agrupar, areaDe, encurtar, nomesCurtos };
+module.exports = { agrupar, areaDe, encurtar, nomesCurtos, NOMES_DE_BOTAO };

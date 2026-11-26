@@ -13,7 +13,7 @@ async function rodar({ t, req }) {
   const { db } = require('./db');
   const repo = require('./repo');
   const ct = require('./repo-conteudo');
-  const { agrupar, areaDe, encurtar, nomesCurtos } = require('./vitrine-secoes');
+  const { agrupar, areaDe, encurtar, nomesCurtos, NOMES_DE_BOTAO } = require('./vitrine-secoes');
 
   console.log('\n— marketplace em seções: uma área por seção, cada curso uma vez, índice fixo, filtro e busca como antes —');
   const c = (slug, titulo, categorias, extra = {}) => ({ slug, titulo, categorias, ...extra });
@@ -89,6 +89,20 @@ async function rodar({ t, req }) {
     assert.equal(new Set(iguais.map(x => x.toLowerCase())).size, 4, iguais.join(' | '));
   });
 
+  await t('atalhos: os nomes escolhidos valem por slug, curso novo segue a regra automática e nunca saem botões iguais', () => {
+    const escolhidos = Object.entries(NOMES_DE_BOTAO);
+    assert.deepEqual(escolhidos.map(x => x[1]), ['OAB', 'Juiz Federal', 'Juiz de Direito', 'Juiz do Trabalho', 'Procurador da República',
+      'Procurador do Trabalho', 'Promotor', 'Defensor Público', 'TRF 3ª Região', 'Bandolim', 'Contrabaixo', 'Pedreiro',
+      'Construção de Contêineres', 'Irrigação', 'Paisagismo', 'Piscineiro', 'Decoração']);
+    const itens = escolhidos.map(([slug]) => ({ slug, titulo: 'Título inteiro de ' + slug }));
+    assert.deepEqual(nomesCurtos(itens), escolhidos.map(x => x[1]));
+    const novo = { slug: 'violino-do-zero-ao-avancado', titulo: 'Violino: do Zero ao Avançado' };
+    assert.deepEqual(nomesCurtos([novo, { slug: 'constructor', titulo: 'Curso de Gaita' }]), ['Violino', 'Gaita']);
+    // curso novo cujo nome automático bate com um escolhido: os dois voltam ao nome inteiro
+    const colide = nomesCurtos([...itens, { slug: 'outro-promotor', titulo: 'Curso de Promotor' }]);
+    assert.equal(new Set(colide.map(x => x.toLowerCase())).size, colide.length, colide.join(' | '));
+  });
+
   // ================= a página =================
   const maria = repo.Usuarios.porEmail('maria@t.com');
   const areasCriadas = ['Concursos Públicos', 'Música'].filter(r => !ct.Categorias.existe(r === 'Música' ? 'musica' : 'concursos-publicos'));
@@ -133,7 +147,7 @@ async function rodar({ t, req }) {
       const css = fs.readFileSync(path.join(__dirname, 'publico.css'), 'utf8');
       assert.ok(/\.pv-indice\{position:sticky;top:0;/.test(css), 'o índice fica preso no topo');
       assert.ok(/\.pv-secao\{scroll-margin-top:\d+px/.test(css), 'e não cobre o título da seção');
-      assert.ok(html.includes('/academy/publico.css?v=4'), 'a folha mudou: versão nova no endereço');
+      assert.ok(html.includes('/academy/publico.css?v=5'), 'a folha mudou: versão nova no endereço');
     });
 
     await t('contagens: total no topo e número ao lado de cada título de seção, calculados', async () => {
