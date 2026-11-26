@@ -15,7 +15,7 @@ const norm = (t) => String(t || '').toLowerCase().normalize('NFD').replace(/[̀-
 // A ordem desta lista é a ordem das seções na página.
 // `preferidos`: padrões, na ordem em que os cursos saem; `por` diz o que o padrão lê.
 const SECOES = [
-  { area: 'concursos-publicos', rotulo: 'Concursos Públicos e OAB', por: 'titulo',
+  { area: 'concursos-publicos', rotulo: 'Concursos Públicos e OAB', curto: 'Concursos', por: 'titulo',
     // por CARREIRA, lida no título: concurso novo cai no grupo certo sem cadastro
     preferidos: [
       /\boab\b|exame de ordem/,
@@ -23,14 +23,14 @@ const SECOES = [
       /ministerio publico|\bpromotor|procurador da republica|procurador do trabalho|\bmp(f|t|u|dft|[a-z]{2})?\b/,
       /\bdefensor/,
     ] },
-  { area: 'inteligencia-artificial', por: 'slug',
+  { area: 'inteligencia-artificial', curto: 'IA', por: 'slug',
     preferidos: [/^chatgpt/, /^claude-ai-na-pratica(?!-juridica)/, /^google-ai/, /^claude-ai-na-pratica-juridica/, /locador/, /segunda-onda/] },
-  { area: 'musica', rotulo: 'Música — Villela Music', por: 'slug',
+  { area: 'musica', rotulo: 'Música — Villela Music', curto: 'Música', por: 'slug',
     preferidos: [/^teoria-musical/, /^ouvido-de-musico/] },
-  { area: 'desenvolvimento-pessoal', por: 'slug',
+  { area: 'desenvolvimento-pessoal', curto: 'Pessoal', por: 'slug',
     preferidos: [/homem-essencial/, /homem-contemporaneo/, /conexoes-de-sucesso/] },
   // construção primeiro, depois cuidado e acabamento
-  { area: 'viver-de-chacara', por: 'slug',
+  { area: 'viver-de-chacara', curto: 'Chácara', por: 'slug',
     preferidos: [/^pedreiro/, /^construcao/, /^irrigacao/, /^paisagismo/, /^piscineiro/, /^decoracao/] },
   { area: 'gastronomia' },
 ];
@@ -80,8 +80,41 @@ function agrupar(itens, { ordemDasAreas = [], rotuloDe = (a) => a } = {}) {
         || String(a.titulo).localeCompare(String(b.titulo), 'pt-BR')
         || String(a.slug).localeCompare(String(b.slug)));
       const rotulo = (secao && secao.rotulo) || (area === SEM_AREA ? 'Outros cursos' : rotuloDe(area));
-      return { area, id: `area-${area}`, rotulo, cursos };
+      return { area, id: `area-${area}`, rotulo, curto: (secao && secao.curto) || rotulo, cursos };
     });
 }
 
-module.exports = { agrupar, areaDe };
+// ---------- nome curto, para os botões de atalho ----------
+// Tira o que se repete de curso para curso ("Curso Preparatório para o Concurso
+// de…", "…: do Zero ao Avançado", o subtítulo depois do travessão). São regras
+// sobre o texto, não sobre ids: curso novo é encurtado do mesmo jeito.
+function encurtar(titulo) {
+  let t = String(titulo || '').trim();
+  const antes = t.split(/\s+[—–]\s+/)[0];
+  if (!/^(curso( preparat[óo]rio)?|forma[çc][ãa]o( completa)?)$/i.test(antes)) t = antes;
+  t = t.replace(/\s*:\s*do zero a[oà] .*$/i, '')
+    .replace(/^curso\s+(preparat[óo]rio\s+)?(para|de|do|da)\s+((o|a)\s+)?(concurso\s+(p[úu]blico\s+)?(de|do|da|para)\s+((o|a)\s+)?)?/i, '')
+    .replace(/^forma[çc][ãa]o\s+(completa\s+)?em\s+/i, '')
+    .replace(/\s+na era da (intelig[êe]ncia artificial|ia)$/i, '')
+    // parêntese final sai, salvo sigla de uma palavra: "(OAB)" fica, "(TRF-1 e demais TRFs)" e "(2026)" saem
+    .replace(/\s*\(([^()]*)\)$/, (todo, dentro) => (/^[A-Z][A-Z0-9-]{1,7}$/.test(dentro) ? todo : ''))
+    .replace(/\bDistrito Federal\b/g, 'DF')
+    .trim();
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : String(titulo || '').trim();
+}
+
+// Um nome por curso, na mesma ordem, e NUNCA dois iguais: quem colide volta ao
+// título inteiro; se até os títulos forem iguais, numera.
+function nomesCurtos(cursos) {
+  const nomes = cursos.map(c => encurtar(c.titulo));
+  const repetidos = () => {
+    const vistos = new Map();
+    nomes.forEach((n, i) => vistos.set(norm(n), [...(vistos.get(norm(n)) || []), i]));
+    return [...vistos.values()].filter(v => v.length > 1);
+  };
+  repetidos().flat().forEach(i => { nomes[i] = String(cursos[i].titulo).trim(); });
+  for (let g = repetidos(); g.length; g = repetidos()) g.forEach(v => v.slice(1).forEach((i, k) => { nomes[i] += ` (${k + 2})`; }));
+  return nomes;
+}
+
+module.exports = { agrupar, areaDe, encurtar, nomesCurtos };

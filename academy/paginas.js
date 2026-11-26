@@ -96,7 +96,7 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=3"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=4"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a class="esconde" href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
@@ -222,7 +222,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem, imagemDim, jsonld
     <meta name="twitter:card" content="summary_large_image">
     ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(/</g, '\\u003c')}</script>` : ''}
     ${HEAD_MARCA}
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=3"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=4"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
@@ -277,8 +277,22 @@ function barraDeAreas(ativa) {
 const indiceDeSecoes = (secoes) => `<nav class="pv-indice" aria-label="Áreas do catálogo"><div>
     ${secoes.map(x => `<a href="#${esc(x.id)}">${esc(x.rotulo)}<span class="n">${x.cursos.length}</span></a>`).join('')}
   </div></nav>`;
+// todos os cursos à vista antes das capas: um botão por curso, na ordem das seções
+function atalhosDeCursos(secoes) {
+  const todos = secoes.flatMap(x => x.cursos);
+  const curtos = secoesDaVitrine.nomesCurtos(todos);
+  const nomeDe = new Map(todos.map((p, i) => [p, curtos[i]]));
+  return `<nav class="pv-atalhos" aria-label="Todos os cursos">${secoes.map(x => `
+    <div><span class="area">${esc(x.curto)}</span>${x.cursos.map(p =>
+    `<a href="/academy/cursos/${esc(p.slug)}" title="${esc(p.titulo)}" aria-label="${esc(p.titulo)}">${esc(nomeDe.get(p))}</a>`).join('')}</div>`).join('')}
+  </nav>`;
+}
+const contagem = (itens) => {
+  const nome = itens.every(p => p.tipo === 'curso') ? ['curso', 'cursos'] : ['produto', 'produtos'];
+  return `${itens.length} ${nome[itens.length === 1 ? 0 : 1]}`;
+};
 const secaoHTML = (x) => `<section class="pv-secao" id="${esc(x.id)}" aria-labelledby="titulo-${esc(x.id)}">
-    <h2 id="titulo-${esc(x.id)}">${esc(x.rotulo)}</h2>
+    <h2 id="titulo-${esc(x.id)}">${esc(x.rotulo)} <span class="pv-qt">${contagem(x.cursos)}</span></h2>
     <div class="pv-vitrine">${x.cursos.map(cardProduto).join('')}</div></section>`;
 
 function marketplaceHTML({ q, categoria }) {
@@ -295,12 +309,13 @@ function marketplaceHTML({ q, categoria }) {
   // tinha o título da página em lugar nenhum do corpo.
   const corpo = `<div class="sec"><div class="wrap" style="max-width:1180px"><h1 style="font-family:'Lora',Georgia,serif;font-size:1.7rem;color:var(--villela-navy);text-align:center;margin-bottom:8px">${categoria ? `Cursos de ${esc(ct.catRotulo(categoria))}` : 'Cursos online da Villela Academy'}</h1>
     <p class="sub">Cursos e produtos digitais dos produtores da Villela Academy — currículo aberto, materiais inclusos e certificado.</p>
+    ${secoes.length ? `<p class="pv-total"><b>${contagem(itens)}</b> em ${secoes.length} ${secoes.length === 1 ? 'área' : 'áreas'}</p>` : ''}
     <form class="pv-busca" method="get" action="/academy/marketplace">
       <input name="q" value="${esc(q || '')}" placeholder="Buscar curso, e-book, mentoria..." aria-label="Buscar">
       <button type="submit">Buscar</button></form>
     ${secoes.length
       // os links ?categoria= continuam na página (no fim), para quem filtra e para o buscador
-      ? `${indiceDeSecoes(secoes)}${secoes.map(secaoHTML).join('')}
+      ? `${indiceDeSecoes(secoes)}${atalhosDeCursos(secoes)}${secoes.map(secaoHTML).join('')}
     <div class="pv-filtros"><p class="sub">Ver uma área separadamente</p>${barraDeAreas('')}</div>`
       : `${barraDeAreas(categoria)}
     ${itens.length ? `<div class="pv-vitrine">${itens.map(cardProduto).join('')}</div>`

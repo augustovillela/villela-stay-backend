@@ -13,7 +13,7 @@ async function rodar({ t, req }) {
   const { db } = require('./db');
   const repo = require('./repo');
   const ct = require('./repo-conteudo');
-  const { agrupar, areaDe } = require('./vitrine-secoes');
+  const { agrupar, areaDe, encurtar, nomesCurtos } = require('./vitrine-secoes');
 
   console.log('\n— marketplace em seções: uma área por seção, cada curso uma vez, índice fixo, filtro e busca como antes —');
   const c = (slug, titulo, categorias, extra = {}) => ({ slug, titulo, categorias, ...extra });
@@ -62,6 +62,33 @@ async function rodar({ t, req }) {
     assert.deepEqual(slugs(agrupar(ch), 'viver-de-chacara'), ['pedreiro-completo', 'construcao-com', 'irrigacao-na', 'paisagismo-na', 'piscineiro-na', 'decoracao-de']);
   });
 
+  await t('atalhos: o nome curto tira o que se repete e preserva a sigla', () => {
+    const casos = {
+      'Curso Preparatório para o Exame de Ordem (OAB)': 'Exame de Ordem (OAB)',
+      'Curso Preparatório para o Concurso de Procurador do Trabalho': 'Procurador do Trabalho',
+      'Curso Preparatório de Procurador da República': 'Procurador da República',
+      'Curso Preparatório para Defensor Público da União': 'Defensor Público da União',
+      'Curso Preparatório para a Magistratura Federal (TRF-1 e demais TRFs)': 'Magistratura Federal',
+      'Curso Preparatório para o Concurso do TRF da 3ª Região (2026)': 'TRF da 3ª Região',
+      'Curso Preparatório para o Concurso de Promotor de Justiça do Distrito Federal (MPDFT)': 'Promotor de Justiça do DF (MPDFT)',
+      'Juiz do Trabalho — Magistratura do Trabalho (TRT 10ª Região)': 'Juiz do Trabalho',
+      'Violão: do Zero ao Avançado': 'Violão',
+      'Piscineiro na Prática': 'Piscineiro na Prática',
+      'Formação Completa em Gastronomia — Villela Table': 'Gastronomia',
+      'O Locador Inteligente na era da Inteligência Artificial': 'O Locador Inteligente',
+      'Curso de culinária': 'Culinária',
+    };
+    for (const [titulo, curto] of Object.entries(casos)) assert.equal(encurtar(titulo), curto, titulo);
+  });
+
+  await t('atalhos: nunca dois botões iguais — quem colide volta ao nome inteiro', () => {
+    const k = (titulo) => ({ titulo });
+    assert.deepEqual(nomesCurtos([k('Violão: do Zero ao Avançado'), k('Violão — para crianças'), k('Piano: do Zero ao Avançado')]),
+      ['Violão: do Zero ao Avançado', 'Violão — para crianças', 'Piano']);
+    const iguais = nomesCurtos([k('Gaita'), k('Gaita'), k('Gaita (2)'), k('GAITA')]);
+    assert.equal(new Set(iguais.map(x => x.toLowerCase())).size, 4, iguais.join(' | '));
+  });
+
   // ================= a página =================
   const maria = repo.Usuarios.porEmail('maria@t.com');
   const areasCriadas = ['Concursos Públicos', 'Música'].filter(r => !ct.Categorias.existe(r === 'Música' ? 'musica' : 'concursos-publicos'));
@@ -106,7 +133,37 @@ async function rodar({ t, req }) {
       const css = fs.readFileSync(path.join(__dirname, 'publico.css'), 'utf8');
       assert.ok(/\.pv-indice\{position:sticky;top:0;/.test(css), 'o índice fica preso no topo');
       assert.ok(/\.pv-secao\{scroll-margin-top:\d+px/.test(css), 'e não cobre o título da seção');
-      assert.ok(html.includes('/academy/publico.css?v=3'), 'a folha mudou: versão nova no endereço');
+      assert.ok(html.includes('/academy/publico.css?v=4'), 'a folha mudou: versão nova no endereço');
+    });
+
+    await t('contagens: total no topo e número ao lado de cada título de seção, calculados', async () => {
+      const html = (await req('GET', '/academy/marketplace')).texto;
+      const total = cards(html).length;
+      const secoes = [...html.matchAll(/<section class="pv-secao"[\s\S]*?<\/section>/g)].map(m => m[0]);
+      // a palavra é "cursos" quando só há cursos; com e-book ou clube no meio, "produtos"
+      const topo = (h) => h.match(/<p class="pv-total"><b>(\d+) (cursos|produtos)<\/b> em (\d+) áreas<\/p>/) || [];
+      assert.deepEqual([+topo(html)[1], +topo(html)[3]], [total, secoes.length], 'total no topo');
+      secoes.forEach(x => {
+        const m = x.match(/<span class="pv-qt">(\d+) (cursos?|produtos?)<\/span><\/h2>/) || [];
+        assert.equal(+m[1], cards(x).length, 'contagem da seção');
+        assert.equal(m[2].endsWith('s'), cards(x).length !== 1, 'singular e plural');
+      });
+      criar('Seções: curso novo', ['marketing']);
+      assert.equal(+topo((await req('GET', '/academy/marketplace')).texto)[1], total + 1, 'o total acompanha o catálogo');
+    });
+
+    await t('atalhos: um botão por curso, entre o índice e as seções, na ordem delas, com o nome inteiro em title e aria-label', async () => {
+      const html = (await req('GET', '/academy/marketplace')).texto;
+      const ini = html.indexOf('<nav class="pv-atalhos"');
+      assert.ok(ini > html.indexOf('<nav class="pv-indice"') && ini < html.indexOf('<section class="pv-secao"'), 'posição');
+      const bloco = html.slice(ini, html.indexOf('</nav>', ini));
+      const botoes = [...bloco.matchAll(/<a href="\/academy\/cursos\/([^"]+)" title="([^"]*)" aria-label="([^"]*)">([^<]*)<\/a>/g)];
+      assert.deepEqual(botoes.map(m => m[1]), cards(html), 'mesmos cursos, mesma ordem');
+      assert.equal(new Set(botoes.map(m => m[4])).size, botoes.length, 'sem botões iguais');
+      const titulos = new Map(ct.Marketplace.listar({ n: 200 }).map(p => [p.slug, p.titulo]));
+      botoes.forEach(m => { assert.equal(m[2], m[3]); assert.equal(m[2].replace(/&amp;/g, '&'), titulos.get(m[1])); });
+      assert.equal((bloco.match(/class="area"/g) || []).length, (html.match(/<section class="pv-secao"/g) || []).length, 'um rótulo por área');
+      assert.ok(!/<h[1-6]/.test(bloco), 'o bloco não cria títulos');
     });
 
     await t('SEO: ItemList na ordem da página, canonical sem parâmetro e os links ?categoria= continuam', async () => {
@@ -121,7 +178,7 @@ async function rodar({ t, req }) {
     await t('filtro e busca: grade única como antes, sem índice nem seções — e o curso aparece em qualquer área dele', async () => {
       for (const rota of ['/academy/marketplace?categoria=direito', '/academy/marketplace?q=' + encodeURIComponent('Seções:')]) {
         const html = (await req('GET', rota)).texto;
-        assert.ok(!html.includes('pv-indice') && !html.includes('pv-secao'), rota);
+        assert.ok(!/pv-indice|pv-secao|pv-atalhos|pv-total|pv-qt/.test(html), rota);
         assert.ok(html.includes('pv-areas') && cards(html).includes(oab.slug) && cards(html).includes(juridica.slug), rota);
       }
       assert.ok((await req('GET', '/academy/marketplace?categoria=direito')).texto.includes('/academy/marketplace?categoria=direito">'), 'canonical do filtro');
