@@ -4755,7 +4755,7 @@
           }).join('') + '</select></label>';
         };
         var filtrado = ['tribunal', 'colecao', 'tipo', 'situacao', 'disciplina', 'q'].some(function (k) { return f[k]; });
-        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '</div><h3>🏛️ Jurisprudência</h3><p class="al-sub">Súmulas, orientações jurisprudenciais, precedentes normativos, teses e temas do TST, do TRT da 10ª Região, do STF e do STJ pertinentes ao curso, e os julgados que as aulas citam — como o tribunal os publicou, sem comentário, com a situação de cada um.</p>' +
+        alvo.innerHTML = '<div class="jr-caixa es-lj-topo"><div class="es-linha">' + voltarAAula() + '</div><h3>🏛️ Jurisprudência</h3><p class="al-sub">Súmulas, orientações jurisprudenciais, precedentes normativos, teses e temas dos tribunais pertinentes ao curso, e os julgados que as aulas citam — como o tribunal os publicou, sem comentário, com a situação de cada um.</p>' +
           '<form class="es-lj-filtros" id="es-jf">' +
           sel('tribunal', 'Tribunal', fc.tribunais.map(function (o) { return { valor: o.valor, rot: o.valor, n: o.n }; })) +
           sel('colecao', 'Coleção', fc.colecoes.map(function (o) { return { valor: o.valor, rot: o.nome, n: o.n }; })) +
