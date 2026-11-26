@@ -2888,6 +2888,9 @@ async function main() {
   // ================= PÁGINA DE VENDA (frente P): números do percurso do Estude, descrição com lista, og:image com a medida real, compra à vista no celular =================
   await require('./testes-pagina-venda').rodar({ t, req });
 
+  // ================= MARKETPLACE EM SEÇÕES (vitrine-secoes.js): uma área por seção, índice fixo, cada curso uma vez =================
+  await require('./testes-vitrine-secoes').rodar({ t, req });
+
   // ================= AMOSTRAS GRÁTIS (amostras.js): trechos públicos de vídeo =================
   await require('./testes-amostras').rodar({ t, req, base: () => BASE, emailProdutor: MARIA.email });
 

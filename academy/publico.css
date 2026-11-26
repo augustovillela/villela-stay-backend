@@ -226,6 +226,26 @@
     scrollbar-width:none;-webkit-overflow-scrolling:touch}
   .pv-areas::-webkit-scrollbar{display:none}
 }
+/* ---------- marketplace em seções, uma por área ----------
+   O índice fica preso no topo numa linha só (rola de lado quando não cabe): com
+   altura fixa, o `scroll-margin-top` da seção garante que ele não cubra o título. */
+@media(prefers-reduced-motion:no-preference){html:has(.pv-indice){scroll-behavior:smooth}}
+.pv-indice{position:sticky;top:0;z-index:30;background:#fff;border:1px solid var(--pv-borda);border-radius:14px;
+  box-shadow:0 6px 18px rgba(16,24,40,.08);margin:0 0 8px}
+.pv-indice>div{display:flex;gap:2px;overflow-x:auto;padding:7px 6px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.pv-indice a{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 9px;border-radius:99px;
+  color:var(--pv-navy);font:600 .84rem/1 'Inter',sans-serif;text-decoration:none;white-space:nowrap}
+/* margin auto nas pontas centraliza quando sobra espaço e não corta o começo quando falta */
+.pv-indice a:first-child{margin-left:auto}.pv-indice a:last-child{margin-right:auto}
+.pv-indice a:hover,.pv-indice a:focus-visible{background:var(--pv-ambar-luz);color:var(--pv-ambar2)}
+.pv-indice .n{display:inline-block;min-width:20px;padding:1px 6px;border-radius:99px;background:var(--pv-borda2);
+  color:var(--pv-tinta2);font:700 .72rem/1.5 'Inter',sans-serif;text-align:center}
+.pv-secao{scroll-margin-top:76px;padding:34px 0 8px}
+.pv-secao h2{margin:0 0 20px}
+.pv-filtros{border-top:1px solid var(--pv-borda);margin-top:44px;padding-top:26px}
+.pv-filtros .sub{text-align:center;margin:0 auto 14px}
+.pv-filtros .pv-areas{margin-bottom:0}
+
 /* busca do marketplace, ao lado dos filtros */
 .pv-busca{display:flex;gap:9px;max-width:520px;margin:0 auto 22px}
 .pv-busca input{flex:1;margin:0;padding:12px 16px;border:1px solid var(--pv-borda);border-radius:99px;
