@@ -955,7 +955,7 @@ function contestar(usuario, produto, slugEscopo, id, motivo) {
 
 // ---------------------------------------------------------------------
 // QUESTÕES ABERTAS do percurso — o que o aluno pode escrever ou gravar. Vai o que
-// `banco.paraAluno` deixa ir: critério e peso, nunca o nível 3, os erros críticos ou o comentário.
+// `banco.paraAluno` deixa ir: nada da rubrica. Critério e peso só depois da resposta (abaixo); nunca o nível 3, os erros críticos ou o comentário.
 // ---------------------------------------------------------------------
 function abertas(usuario, produto, slugEscopo) {
   const c = al.abrir(usuario, produto, slugEscopo);
@@ -971,6 +971,22 @@ function abertas(usuario, produto, slugEscopo) {
   }));
   return { disponivel: d.disponivel, motivo_indisponivel: d.motivo, transcricao: d.transcricao, cobranca: d.cobranca,
     limites: { oral_max_seg: ORAL_MAX_SEG, minimo_caracteres: MINIMO_TEXTO, audio_retencao_dias: AUDIO_ORAL_RETENCAO_DIAS }, aviso: AVISO, questoes };
+}
+
+// ---------------------------------------------------------------------
+// CRITÉRIOS DEPOIS DA RESPOSTA — para o aluno se avaliar sem pedir correção paga. Só sai com a resposta escrita
+// (o mesmo mínimo da correção) ou, na oral, com a gravação feita. Nada é gravado nem cobrado.
+// ---------------------------------------------------------------------
+const ORAL_MINIMO_SEG = 10;
+function criteriosDepoisDeResponder(usuario, produto, slugEscopo, questaoId, dados = {}) {
+  const c = al.abrir(usuario, produto, slugEscopo);
+  const q = R.Questoes.doEscopo(c.escopo.id, { situacoes: c.situacoes }).find(x => x.id === questaoId && ABERTOS.includes(x.tipo));
+  if (!q) throw erro('Questão aberta não encontrada neste percurso.', 404);
+  const respondeu = q.tipo === 'oral'
+    ? Number(dados.duracao_seg) >= ORAL_MINIMO_SEG
+    : typeof dados.resposta === 'string' && dados.resposta.trim().length >= MINIMO_TEXTO;
+  if (!respondeu) throw erro(q.tipo === 'oral' ? 'Grave a sua resposta primeiro: os critérios aparecem depois.' : 'Escreva a sua resposta inteira primeiro: os critérios aparecem depois.');
+  return { criterios: (q.rubrica || []).map(k => ({ criterio: k.criterio, peso: k.peso })) };
 }
 
 // ---------------------------------------------------------------------
@@ -1510,7 +1526,7 @@ function resolverContestacao(id, { resposta, quem }) {
 try { recuperarInterrompidos(); } catch (_) { /* nunca derruba a montagem */ }
 
 module.exports = {
-  criar, orcamento, confirmar, obter, listar, cancelar, contestar, recarga, abertas, aoCreditar, aguardar, recuperarInterrompidos,
+  criar, orcamento, confirmar, obter, listar, cancelar, contestar, recarga, abertas, criteriosDepoisDeResponder, aoCreditar, aguardar, recuperarInterrompidos,
   enviarArquivo, iniciarArquivoGrande, confirmarArquivoGrande, painelStaff, abrirParaStaff, resolverContestacao,
   promptCorrecao, montarResultado, citacaoConferida, promptCitacao, completarCitacoes, corrigir, absorcaoEsgotada,
   linkDoAudio, expurgarAudios, expurgarMidiaSolta, apagarAudiosDoTitular, apagarDoTitular, exportarDoTitular, AUDIO_ORAL_RETENCAO_DIAS,

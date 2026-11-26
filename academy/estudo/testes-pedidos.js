@@ -152,7 +152,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.equal((await painel('paula')).pedidos_disponiveis, false);
     assert.ok(!(await medalhas('paula')).includes('correcao'), 'medalha de um recurso que o aluno não tem não aparece');
     // todas as rotas de pedido, e a lista de abertas: 404, com a mesma frase — nada é criado, nenhum arquivo entra
-    const ROTAS = [['GET', '/abertas'], ['GET', '/pedidos'], ['POST', '/pedidos'], ['POST', '/pedidos/arquivo'], ['POST', '/pedidos/arquivo-grande'], ['POST', '/pedidos/arquivo-grande/x/confirmar'],
+    const ROTAS = [['GET', '/abertas'], ['POST', '/abertas/x/criterios'], ['GET', '/pedidos'], ['POST', '/pedidos'], ['POST', '/pedidos/arquivo'], ['POST', '/pedidos/arquivo-grande'], ['POST', '/pedidos/arquivo-grande/x/confirmar'],
       ['GET', '/pedidos/x'], ['POST', '/pedidos/x/confirmar'], ['POST', '/pedidos/x/cancelar'], ['GET', '/pedidos/x/audio'], ['POST', '/pedidos/x/contestar'], ['GET', '/pedidos/prova/opcoes'],
       ['POST', '/pedidos/x/paginas'], ['POST', '/pedidos/x/aplicar'], ['GET', '/pedidos/edital/opcoes'], ['POST', '/pedidos/x/previa'], ['POST', '/pedidos/x/recarga'], ['GET', '/pedidos/rota-que-ainda-nao-existe']];
     const midias = db.prepare('SELECT COUNT(*) n FROM media_files').get().n;
@@ -260,7 +260,19 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     assert.deepEqual([ab.st, ab.json.disponivel, ab.json.cobranca, ab.json.transcricao], [200, true, 'paga', true], ab.texto);
     const q = ab.json.questoes.find(x => x.id === qDisc);
     assert.ok(ab.json.questoes.length >= 3 && q, 'discursiva, peça e oral aparecem');
-    assert.deepEqual(q.rubrica_publica[0], { criterio: 'Conceito de prescrição intercorrente', peso: 3 }, 'critério e peso, sem o nível 3');
+    assert.deepEqual(q.rubrica_publica, [], 'nenhum critério antes da resposta');
+    assert.ok(!ab.texto.includes('Conceito de prescrição intercorrente'), 'o critério não vai ao navegador antes da resposta');
+    const crit = (corpo, id = qDisc, jar = 'paula') => req('POST', `${base}/abertas/${id}/criterios`, { jar, corpo });
+    assert.equal((await crit({})).st, 400, 'sem resposta não há critérios');
+    assert.equal((await crit({ resposta: '   curta   ' })).st, 400);
+    assert.equal((await crit({ resposta: RESPOSTA }, 'nao-existe')).st, 404);
+    assert.equal((await crit({ resposta: RESPOSTA }, qDisc, 'caio')).st, 403);
+    assert.equal((await crit({ resposta: RESPOSTA }, qOral)).st, 400, 'na oral, texto não vale: precisa da gravação');
+    assert.equal((await crit({ duracao_seg: 40 }, qOral)).st, 200);
+    const depois = await crit({ resposta: RESPOSTA });
+    assert.equal(depois.st, 200, depois.texto);
+    assert.deepEqual(depois.json.criterios[0], { criterio: 'Conceito de prescrição intercorrente', peso: 3 }, 'critério e peso, sem o nível 3');
+    for (const segredo of ['SEGREDO-DO-NIVEL-TRES', 'ERRO-CRITICO-OCULTO', 'COMENTARIO-INTERNO', 'nivel3']) assert.ok(!depois.texto.includes(segredo), 'vazou depois: ' + segredo);
     assert.deepEqual([q.pede, q.limite_caracteres, q.ultimo_pedido, q.disciplina], ['correcao', 8000, null, 'Direito do Trabalho']);
     assert.deepEqual([ab.json.questoes.find(x => x.id === qPeca).limite_caracteres, ab.json.questoes.find(x => x.id === qOral).pede], [30000, 'oral']);
     for (const segredo of ['SEGREDO-DO-NIVEL-TRES', 'ERRO-CRITICO-OCULTO', 'COMENTARIO-INTERNO', 'nivel3']) assert.ok(!ab.texto.includes(segredo), 'vazou: ' + segredo);
@@ -1524,7 +1536,7 @@ async function rodar({ t, req, EST, impId, mpFetch }) {
     const tela = fs.readFileSync(path.join(__dirname, '..', 'app-estudo.js'), 'utf8');
     assert.ok(tela.includes("['escrita', 'Escrita e oral']") && /escrita: escrita/.test(tela) && /LISTAS = \{[^}]*escrita: 1/.test(tela), 'a aba existe, abre e guarda o lugar da lista');
     assert.ok(/<span class="es-selo ambar">estimativa<\/span>/.test(tela) && tela.includes('es-eo-nota'), 'a nota nunca aparece sem o rótulo de estimativa');
-    for (const parte of ["'/abertas'", "'/pedidos'", "/confirmar'", "/recarga'", "/contestar'", "/cancelar'", "'/pedidos/arquivo'", 'MediaRecorder', 'Discordo da correção', 'Meus pedidos', 'Regravar', "Pagar ' + esc(o.recarga) + ' e corrigir", 'CONSULTAS_MAX']) {
+    for (const parte of ["'/abertas'", "/criterios'", 'Já respondi: ver os critérios', "'/pedidos'", "/confirmar'", "/recarga'", "/contestar'", "/cancelar'", "'/pedidos/arquivo'", 'MediaRecorder', 'Discordo da correção', 'Meus pedidos', 'Regravar', "Pagar ' + esc(o.recarga) + ' e corrigir", 'CONSULTAS_MAX']) {
       assert.ok(tela.includes(parte), 'a tela perdeu: ' + parte);
     }
     assert.ok(/api\('POST', base\(\) \+ '\/pedidos\/' \+ p\.id \+ '\/confirmar', null, o\.orcamento_milesimos/.test(tela), 'o aceite que vai ao servidor é o do valor que a tela mostrou');

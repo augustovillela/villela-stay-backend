@@ -107,6 +107,7 @@ function registrarRotasEstudo(app, { requireUsuario, requirePapel }) {
   // para a rota de pedido que nascer depois já nascer atrás da porta.
   app.use([`${base}/pedidos`, `${base}/abertas`], ...AL, (req, res, next) => (ped.liberadoPara(req.usuario) ? next() : res.status(404).json({ erro: ped.AINDA_NAO })));
   app.get(`${base}/abertas`, ...AL, h((req, res) => { semCache(res); res.json(ped.abertas(...a(req))); }));
+  app.post(`${base}/abertas/:questao/criterios`, ...AL, h((req, res) => { semCache(res); res.json(ped.criteriosDepoisDeResponder(...a(req), req.params.questao, b(req))); }));
   app.get(`${base}/pedidos`, ...AL, h((req, res) => { semCache(res); res.json(ped.listar(...a(req), { questao: req.query.questao })); }));
   app.post(`${base}/pedidos`, ...AL, h(async (req, res) => { res.json(await ped.criar(...a(req), b(req))); }));
   // envio de arquivo do aluno, só para pedido: pequeno em base64; grande direto ao storage (URL assinada)

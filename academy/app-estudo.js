@@ -3330,14 +3330,13 @@
       alvo.innerHTML = '<div class="es-linha"><button class="al-bt peq fan" id="es-eo-volta">← Voltar às questões</button></div>' +
         '<div class="jr-caixa es-eo-q"><p class="al-fino"><span class="es-selo ' + (oral ? 'azul' : 'cinza') + '">' + esc(TIPO_ABERTA[q.tipo] || q.tipo) + '</span>' + (q.disciplina ? ' ' + esc(q.disciplina) : '') + '</p>' +
         procedencia(q) + (q.apoio ? '<div class="es-apoio">' + texto(q.apoio) + '</div>' : '') + '<div class="es-enun">' + texto(q.enunciado) + '</div>' +
-        '<div class="es-eo-rub"><b>Como a resposta é avaliada</b><ul>' + q.rubrica_publica.map(function (c) { return '<li>' + esc(c.criterio) + ' <span class="al-fino">· peso ' + c.peso + '</span></li>'; }).join('') + '</ul>' +
-        '<p class="al-fino">Cada critério recebe de 0 a 3. O que vale o nível máximo de cada um não aparece antes: é o que a correção mede.</p></div></div>' +
+        '<div class="es-eo-rub" id="es-eo-rub"><p class="al-fino">Os critérios de avaliação aparecem depois que você responder: com a correção, ou pelo botão “Já respondi: ver os critérios”.</p></div></div>' +
         '<div class="jr-caixa"><h3>' + (oral ? 'Sua resposta falada' : 'Sua resposta') + '</h3>' +
-        (oral ? '<p class="al-sub">Responda em voz alta, como na arguição. A gravação é transcrita e a transcrição é corrigida pelos critérios acima — você vê as duas.</p>' +
+        (oral ? '<p class="al-sub">Responda em voz alta, como na arguição. A gravação é transcrita e a transcrição é corrigida pelos critérios da questão — você vê as duas.</p>' +
           '<p class="es-aviso es-eo-guarda">Guardamos o áudio da sua resposta por 6 meses (' + (r.limites.audio_retencao_dias || 183) + ' dias) e depois ele é apagado. A transcrição e a correção continuam com você. Se quiser manter o áudio, baixe-o na página do resultado.</p><div id="es-eo-grav"></div>'
           : '<textarea class="es-ta es-eo-ta" id="es-eo-ta" rows="' + (q.tipo === 'peca' ? 22 : 12) + '" maxlength="' + q.limite_caracteres + '" placeholder="Escreva a sua resposta inteira, como escreveria na prova."></textarea>' +
             '<p class="al-fino" id="es-eo-cont"></p>') +
-        '<div class="es-linha"><button class="al-bt" id="es-eo-pedir"' + (r.disponivel && (!oral || r.transcricao) ? '' : ' disabled') + '>Pedir correção</button><span class="al-fino" id="es-eo-msg"></span></div>' +
+        '<div class="es-linha"><button class="al-bt" id="es-eo-pedir"' + (r.disponivel && (!oral || r.transcricao) ? '' : ' disabled') + '>Pedir correção</button><button class="al-bt fan" id="es-eo-crit">Já respondi: ver os critérios</button><span class="al-fino" id="es-eo-msg"></span></div>' +
         (r.disponivel ? (oral && !r.transcricao ? '<p class="es-aviso">A correção de resposta oral está indisponível no momento.</p>' : '') : '<p class="es-aviso">' + esc(r.motivo_indisponivel) + '</p>') +
         '</div><div id="es-eo-ped"></div><div class="jr-caixa"><h3>Correções anteriores desta questão</h3><div id="es-eo-hist"><p class="al-sub">Carregando…</p></div></div>';
       var ped = el('es-eo-ped'), msg = el('es-eo-msg'), bt = el('es-eo-pedir'), ta = el('es-eo-ta');
@@ -3353,6 +3352,19 @@
         };
         ta.oninput = contar; contar();
       } else grav = gravador(el('es-eo-grav'), r.limites.oral_max_seg, function () { msg.textContent = ''; });
+
+      // ---- critérios: só depois de responder; o servidor só os manda com a resposta. Não grava nem cobra. ----
+      el('es-eo-crit').onclick = function () {
+        var rub = el('es-eo-rub');
+        msg.textContent = '';
+        if (oral && (grav.gravando() || !grav.blob())) { msg.textContent = grav.gravando() ? 'Pare a gravação antes.' : 'Grave a sua resposta primeiro.'; return; }
+        api('POST', base() + '/abertas/' + encodeURIComponent(q.id) + '/criterios', oral ? { duracao_seg: grav.seg() } : { resposta: ta.value }).then(function (x) {
+          if (!aqui()) return;
+          rub.innerHTML = '<b>Como a resposta é avaliada</b><ul>' + x.criterios.map(function (c) { return '<li>' + esc(c.criterio) + ' <span class="al-fino">· peso ' + c.peso + '</span></li>'; }).join('') + '</ul>' +
+            '<p class="al-fino">Cada critério recebe de 0 a 3. Compare com o que você respondeu.</p>';
+          rub.scrollIntoView({ block: 'nearest' });
+        }).catch(function (e) { msg.innerHTML = '<span class="es-msg-erro">' + esc(e.message) + '</span>'; });
+      };
 
       // ---- pedir: cria o pedido e mostra o orçamento. Nada é cobrado aqui. ----
       bt.onclick = function () {

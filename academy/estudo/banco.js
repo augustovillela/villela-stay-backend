@@ -181,7 +181,9 @@ function paraAluno(q, semente) {
   return {
     id: q.id, tipo: q.tipo, enunciado: q.enunciado, apoio: q.apoio, grupo: q.grupo,
     alternativas: alts.map(a => ({ id: a.id, texto: a.texto })),
-    rubrica_publica: (q.rubrica || []).map(c => ({ criterio: c.criterio, peso: c.peso })),
+    // Os criterios da rubrica NAO vao antes da resposta (26/11/2026): em muitas questoes eles entregavam a resposta.
+    // Vao depois, por pedidos.js > criteriosDepoisDeResponder. A chave fica vazia para a tela antiga nao quebrar.
+    rubrica_publica: [],
     origem: q.origem, gerada_por_ia: q.gerada_por_ia, gabarito_situacao: q.gabarito_situacao, ordem_fixa: !!q.ordem_fixa,
     procedencia: q.origem === 'autoral' ? { inspirada_em: q.procedencia.inspirada_em } : q.procedencia,
     pistas_disponiveis: (q.pistas || []).length,
