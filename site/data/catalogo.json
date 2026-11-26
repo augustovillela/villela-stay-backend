@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-23T19:59:02.838Z",
+  "coletadoEm": "2026-11-26T09:12:11.428Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -315,6 +315,14 @@
     }
   ],
   "cursos": [
+    {
+      "slug": "curso-preparatorio-para-o-exame-de-ordem-oab",
+      "titulo": "Curso Preparatório para o Exame de Ordem (OAB)",
+      "resumo": "Exame de Ordem (OAB), 1ª e 2ª fases: 501 aulas, 418 em vídeo, 540 questões, 2.004 cards, Tutor e a peça e as discursivas nas 7 áreas, com um simulado por área. Curso independente, sem promessa de aprovação. Acesso por 1 ano.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/4rqs4ClKGdag?v=v5TEOC-zlGfl",
+      "preco": 14900,
+      "url": "https://academia.villelastay.com.br/academy/cursos/curso-preparatorio-para-o-exame-de-ordem-oab"
+    },
     {
       "slug": "formacao-completa-em-gastronomia-villela-table",
       "titulo": "Formação Completa em Gastronomia — Villela Table",
