@@ -93,7 +93,7 @@ async function rodar({ t, req }) {
     const escolhidos = Object.entries(NOMES_DE_BOTAO);
     assert.deepEqual(escolhidos.map(x => x[1]), ['OAB', 'Juiz Federal', 'Juiz de Direito', 'Juiz do Trabalho', 'Procurador da República',
       'Procurador do Trabalho', 'Promotor', 'Defensor Público', 'TRF 3ª Região', 'Bandolim', 'Contrabaixo', 'Pedreiro',
-      'Construção de Contêineres', 'Irrigação', 'Paisagismo', 'Piscineiro', 'Decoração']);
+      'Contêineres', 'Irrigação', 'Paisagismo', 'Piscineiro', 'Decoração']);
     const itens = escolhidos.map(([slug]) => ({ slug, titulo: 'Título inteiro de ' + slug }));
     assert.deepEqual(nomesCurtos(itens), escolhidos.map(x => x[1]));
     const novo = { slug: 'violino-do-zero-ao-avancado', titulo: 'Violino: do Zero ao Avançado' };
@@ -147,7 +147,7 @@ async function rodar({ t, req }) {
       const css = fs.readFileSync(path.join(__dirname, 'publico.css'), 'utf8');
       assert.ok(/\.pv-indice\{position:sticky;top:0;/.test(css), 'o índice fica preso no topo');
       assert.ok(/\.pv-secao\{scroll-margin-top:\d+px/.test(css), 'e não cobre o título da seção');
-      assert.ok(html.includes('/academy/publico.css?v=5'), 'a folha mudou: versão nova no endereço');
+      assert.ok(html.includes('/academy/publico.css?v=6'), 'a folha mudou: versão nova no endereço');
     });
 
     await t('contagens: total no topo e número ao lado de cada título de seção, calculados', async () => {

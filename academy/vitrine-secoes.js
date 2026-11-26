@@ -118,7 +118,7 @@ const NOMES_DE_BOTAO = {
   'bandolim-brasileiro-do-zero-ao-avancado': 'Bandolim',
   'contrabaixo-eletrico-do-zero-ao-avancado': 'Contrabaixo',
   'pedreiro-completo-na-pratica': 'Pedreiro',
-  'construcao-com-conteineres-na-pratica': 'Construção de Contêineres',
+  'construcao-com-conteineres-na-pratica': 'Contêineres',
   'irrigacao-na-pratica': 'Irrigação',
   'paisagismo-na-pratica': 'Paisagismo',
   'piscineiro-na-pratica': 'Piscineiro',

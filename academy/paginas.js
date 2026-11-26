@@ -96,7 +96,7 @@ function landingHTML() {
     <link rel="canonical" href="${BASE_URL()}/academy">
     ${HEAD_MARCA}${GA}
     <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Villela Academy","applicationCategory":"EducationalApplication","operatingSystem":"Web","description":"Marketplace brasileiro de cursos online e produtos digitais: publicar é grátis e o produtor paga só comissão de 8,9% + R$ 1 por venda.","publisher":{"@type":"Organization","name":"Grupo Villela Stay"}}</script>
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=5"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=6"><style>${CSS}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <header class="top"><div class="wrap">
       ${marca({ escuro: true, altura: 150 })}
       <nav><a class="esconde" href="/academy#cursos">Cursos</a><a class="esconde" href="/academy/marketplace">Marketplace</a><a class="esconde" href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a> <a class="btn" style="padding:9px 16px;background:var(--villela-gold);color:var(--villela-navy)!important" href="/academy/app#cadastro">Criar conta grátis</a></nav>
@@ -222,7 +222,7 @@ function shellPublico({ titulo, descricao, url, corpo, imagem, imagemDim, jsonld
     <meta name="twitter:card" content="summary_large_image">
     ${jsonld ? `<script type="application/ld+json">${JSON.stringify(jsonld).replace(/</g, '\\u003c')}</script>` : ''}
     ${HEAD_MARCA}
-    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=5"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
+    <link rel="stylesheet" href="/assets/brand/villela-ui.css?v=7"><link rel="stylesheet" href="/academy/publico.css?v=6"><style>${CSS} .top{background:var(--villela-navy);padding:12px 0}.top a{color:#F8F9FA;text-decoration:none;margin-right:16px}
     .estrela{color:var(--villela-gold)}</style><link rel="stylesheet" href="/assets/brand/villela-saas.css?v=7"></head><body class="vx" data-vertical="academy">
     <div class="top"><div class="wrap" style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">${marca({ escuro: true, altura: 28 })}<span style="flex:1"></span><a href="/academy/marketplace">Marketplace</a><a href="https://villelastay.com.br/campanhas/cursos/">Conteúdo dos cursos</a><a href="/academy/app">Entrar</a></div></div>
     ${corpo}
