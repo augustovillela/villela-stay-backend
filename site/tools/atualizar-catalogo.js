@@ -101,6 +101,8 @@ async function cursos() {
       resumo: (c.description || '').trim(),
       capa: c.image || '',
       preco: oferta && oferta.price ? Math.round(parseFloat(oferta.price) * 100) : null,
+      // curso pausado na Academy ("em breve") sai como PreOrder: a vitrine não anuncia como à venda
+      ...(/PreOrder$/.test((oferta && oferta.availability) || '') ? { emBreve: true } : {}),
       url
     });
   }

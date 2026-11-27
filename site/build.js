@@ -3586,7 +3586,7 @@ ${blocos}
     <span class="tx-faixa"><b>${esc(b.titulo)}</b><span>${t('a partir de', 'from', 'desde')} ${brl(menorPreco(b))}</span></span></a>`;
   const itemCurso = c => `<a class="tx-item tx-item-curso" href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="esteira-curso">
     <img src="${capaDe('curso', c)}" alt="${esc(c.titulo)}" width="252" height="142" loading="lazy" decoding="async">
-    <span class="tx-faixa"><b>${esc(c.titulo)}</b><span>${c.preco ? brl(c.preco) : t('curso on-line', 'online course', 'curso on-line')}</span></span></a>`;
+    <span class="tx-faixa"><b>${esc(c.titulo)}</b><span>${c.emBreve ? t('Em breve', 'Coming soon', 'Próximamente') : c.preco ? brl(c.preco) : t('curso on-line', 'online course', 'curso on-line')}</span></span></a>`;
   const itemSistema = s => `<a class="tx-item tx-item-sis" style="--acento:${s.cor}" href="${L('/sistemas.html')}#${s.id}" data-tx-cta="esteira-sistema">
     <img src="${simboloDe(s)}" alt="" width="34" height="34" loading="lazy" decoding="async">
     <span><b>${esc(s.nome)}</b><span>${esc(t(...s.categoria))}</span></span><i></i></a>`;
@@ -3658,7 +3658,7 @@ ${blocos}
       <b>${esc(c.titulo)}</b>
       <p>${esc(c.resumo)}</p>
       <span class="tx-curso-pe">
-        <span class="tx-preco">${c.preco ? brl(c.preco) : ''}</span>
+        <span class="tx-preco">${c.emBreve ? t('Em breve', 'Coming soon', 'Próximamente') : c.preco ? brl(c.preco) : ''}</span>
         <span class="tx-btn tx-btn-lago" style="padding:9px 18px;font-size:.9rem">${t('Ver o curso', 'See the course', 'Ver el curso')} →</span>
       </span>
     </span></a>`).join('');
@@ -3791,7 +3791,7 @@ ${blocos}
   const blocosAssuntos = ASSUNTOS.map(a => {
     const itens = [
       ...a.livros.map(s => { const b = LIVROS.find(x => x.slug === s); return `<a href="${comOrigem(b.url)}" target="_blank" rel="noopener" data-tx-cta="assunto-livro-${s}"><b>${esc(b.titulo)}</b><span>${t('livro', 'book', 'libro')}</span></a>`; }),
-      ...a.cursos.map(s => { const c = CURSOS.find(x => x.slug === s); return `<a href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="assunto-curso-${s}"><b>${esc(c.titulo)}</b><span>${t('curso em vídeo', 'video course', 'curso en vídeo')}</span></a>`; }),
+      ...a.cursos.map(s => { const c = CURSOS.find(x => x.slug === s); return `<a href="${comOrigem(c.url)}" target="_blank" rel="noopener" data-tx-cta="assunto-curso-${s}"><b>${esc(c.titulo)}</b><span>${c.emBreve ? t('em breve', 'coming soon', 'próximamente') : t('curso em vídeo', 'video course', 'curso en vídeo')}</span></a>`; }),
       ...a.sistemas.map(id => { const s = TODOS_SIS.find(x => x.id === id); return `<a href="${L('/sistemas.html')}#${id}" data-tx-cta="assunto-sistema-${id}"><b>${esc(s.nome)}</b><span>${t('sistema', 'software', 'sistema')}</span></a>`; })
     ].join('');
     return `<section class="tx-assunto" id="assunto-${a.id}">
@@ -3876,7 +3876,7 @@ ${blocos}
         item: Object.assign({ '@type': 'Course', name: c.titulo, url: c.url, description: c.resumo,
           inLanguage: 'pt-BR', provider: { '@id': ORG_ID } },
           c.preco ? { offers: { '@type': 'Offer', price: (c.preco / 100).toFixed(2), priceCurrency: 'BRL',
-            availability: 'https://schema.org/InStock', url: c.url, category: t('Compra única', 'One-time purchase', 'Compra única') } } : {}) })) },
+            availability: c.emBreve ? 'https://schema.org/PreOrder' : 'https://schema.org/InStock', url: c.url, category: t('Compra única', 'One-time purchase', 'Compra única') } } : {}) })) },
     { '@context': 'https://schema.org', '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Villela Stay', item: `${SITE_URL}${LANG === 'pt' ? '/' : '/' + LANG + '/'}` },
@@ -9977,7 +9977,7 @@ Cursos em vídeo — ${CATALOGO.cursos.length} cursos na Villela Academy
 de 1 ano, com videoaula, artigo em PDF e apresentação de cada aula:
 
 ${CATALOGO.cursos.map(c => `- [${c.titulo}](${c.url}): ${cortar(c.resumo, 260)}` +
-  (c.preco ? ` R$ ${(c.preco / 100).toFixed(2).replace('.', ',')}.` : '')).join('\n')}
+  (c.emBreve ? ' Em breve: ainda não está à venda.' : c.preco ? ` R$ ${(c.preco / 100).toFixed(2).replace('.', ',')}.` : '')).join('\n')}
 
 ## Contato
 
