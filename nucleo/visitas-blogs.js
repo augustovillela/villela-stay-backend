@@ -30,6 +30,12 @@ const SERIES = {
 
 const INTERNO = 'Interno (nosso site)';
 const SEMANAS = 8;
+// Endereço que não é série nem artigo conhecido pode ser inventado: o /api/hit é
+// público. Só os mais visitados entram, para a tela não crescer sem limite.
+const MAX_DESCONHECIDOS = 20;
+
+// O id vem do endereço visitado: "constructor" e afins não podem achar nada.
+const proprio = (obj, chave) => Object.prototype.hasOwnProperty.call(obj, chave);
 
 const RE_AULA = /^\/blog\/([a-z0-9-]+?)-\d{2}-[a-z0-9-]+(\.html)?$/;
 const RE_AVULSO = /^\/blog\/([a-z0-9-]+)(\.html)?$/;
@@ -48,7 +54,7 @@ function blogDe(pagina, series = SERIES) {
   const aula = c.match(RE_AULA);
   if (aula) return { id: aula[1], tipo: 'serie' };
   const raiz = c.split('/')[1] || '';
-  if (Object.prototype.hasOwnProperty.call(series, raiz) && (c === '/' + raiz || c.startsWith('/' + raiz + '/'))) return { id: raiz, tipo: 'serie' };
+  if (proprio(series, raiz) && (c === '/' + raiz || c.startsWith('/' + raiz + '/'))) return { id: raiz, tipo: 'serie' };
   const avulso = c.match(RE_AVULSO);
   if (avulso) return { id: avulso[1], tipo: 'artigo' };
   return null;
@@ -71,23 +77,26 @@ function nomesDosArtigos() {
  * "De fora" = visita que não veio de outra página nossa: é a medida de
  * quanto o blog ATRAI, separada de quem só navega de uma aula para a outra.
  */
-function resumoBlogs(hits, { dias, hoje }) {
+function resumoBlogs(hits, { dias, hoje, retencaoDias = 120 }) {
+  // Sem o período anterior inteiro nas linhas cruas, a variação sairia inflada.
+  const comparavel = 2 * dias <= retencaoDias;
   const de = recuar(hoje, dias - 1);
   const deAnterior = recuar(de, dias);
   const deSemanas = recuar(hoje, SEMANAS * 7 - 1);
   const nomes = nomesDosArtigos();
 
+  const conhecido = (id, tipo) => proprio(tipo === 'serie' ? SERIES : nomes, id);
   const itens = {};
   const item = (id, tipo) => itens[tipo + ':' + id] = itens[tipo + ':' + id] || {
     id, tipo,
-    nome: tipo === 'hub' ? 'Página do blog (/blog.html)' : (tipo === 'serie' ? SERIES[id] : nomes[id]) || id,
+    nome: tipo === 'hub' ? 'Página do blog (/blog.html)' : conhecido(id, tipo) ? (tipo === 'serie' ? SERIES : nomes)[id] : id,
+    conhecido: tipo === 'hub' || conhecido(id, tipo),
     visitas: 0, anterior: 0, deFora: 0, leitores: new Set(),
-    semanas: new Array(SEMANAS).fill(0), origens: {}, paginas: {},
+    semanas: new Array(SEMANAS).fill(0), origens: Object.create(null), paginas: Object.create(null),
   };
   for (const id of Object.keys(SERIES)) item(id, 'serie');
   item('_hub', 'hub');
 
-  const totalLeitores = new Set();
   for (const h of hits) {
     if ((h.produto || 'outro') !== 'site') continue;
     const dia = String(h._recebido || '').slice(0, 10);
@@ -103,26 +112,33 @@ function resumoBlogs(hits, { dias, hoje }) {
     if (dia >= de) {
       x.visitas++;
       somar(x.paginas, limpar(h.pagina));
-      if (h.vid) { x.leitores.add(dia + '|' + h.vid); totalLeitores.add(dia + '|' + h.vid); }
+      if (h.vid) x.leitores.add(dia + '|' + h.vid);
       if (h.canal !== INTERNO) { x.deFora++; somar(x.origens, h.canal || 'Direto'); }
     } else if (dia >= deAnterior) x.anterior++;
   }
 
-  const blogs = Object.values(itens).map(x => ({
+  const todos = Object.values(itens);
+  const desconhecidos = todos.filter(x => !x.conhecido)
+    .sort((a, b) => (b.visitas - a.visitas) || (b.anterior - a.anterior)).slice(0, MAX_DESCONHECIDOS);
+  const mantidos = todos.filter(x => x.conhecido).concat(desconhecidos);
+
+  const blogs = mantidos.map(x => ({
     id: x.id, tipo: x.tipo, nome: x.nome,
-    visitas: x.visitas, anterior: x.anterior, delta: delta(x.visitas, x.anterior),
+    visitas: x.visitas, anterior: x.anterior, delta: comparavel ? delta(x.visitas, x.anterior) : null,
     leitores: x.leitores.size, deFora: x.deFora, semanas: x.semanas,
     origens: ordenar(x.origens, 8), paginas: ordenar(x.paginas, 10),
   })).sort((a, b) => (b.deFora - a.deFora) || (b.visitas - a.visitas) || a.nome.localeCompare(b.nome, 'pt-BR'));
 
   const soma = (campo) => blogs.reduce((s, x) => s + x[campo], 0);
   const visitas = soma('visitas'), anterior = soma('anterior');
-  const origens = {};
-  for (const x of Object.values(itens)) for (const [k, n] of Object.entries(x.origens)) somar(origens, k, n);
+  const origens = Object.create(null), leitores = new Set();
+  for (const x of mantidos) for (const v of x.leitores) leitores.add(v);
+  for (const x of mantidos) for (const [k, n] of Object.entries(x.origens)) somar(origens, k, n);
 
   return {
     periodo: { de, ate: hoje, dias },
-    total: { visitas, anterior, delta: delta(visitas, anterior), leitores: totalLeitores.size, deFora: soma('deFora') },
+    comparavel,
+    total: { visitas, anterior, delta: comparavel ? delta(visitas, anterior) : null, leitores: leitores.size, deFora: soma('deFora') },
     origens: ordenar(origens, 10),
     blogs,
   };

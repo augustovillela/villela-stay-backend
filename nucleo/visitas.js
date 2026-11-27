@@ -699,7 +699,7 @@ module.exports.montarRotas = function montarRotas(app, deps) {
       let hits = lerLinhas(DATA_DIR).map(normalizar);
       if (req.query.bots !== '1') hits = hits.filter(h => !h.bot);
       res.json({
-        ...resumoBlogs(hits, { dias, hoje: new Date().toISOString().slice(0, 10) }),
+        ...resumoBlogs(hits, { dias, hoje: new Date().toISOString().slice(0, 10), retencaoDias: RETENCAO_DIAS }),
         retencaoDias: RETENCAO_DIAS,   // além disso só sobra o total por dia, sem a página
       });
     } catch (e) { console.error('[visitas] blogs:', e); res.status(500).json({ erro: e.message }); }

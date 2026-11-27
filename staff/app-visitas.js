@@ -263,6 +263,7 @@ async function carregarBlogsVisitas() {
     const d = await api('GET', `/visitas-blogs?dias=${VIS.dias}&bots=${VIS.bots ? 1 : 0}`);
     if (VIS.aba !== 'blogs') return;
     const t = d.total;
+    const variacao = (v) => d.comparavel ? visDelta(v) : '—';
     const tabela = (titulo, lista) => `
       <h3 class="vs-h3">${titulo}</h3>
       <div class="vs-rolagem"><table class="vs-tabela">
@@ -274,7 +275,7 @@ async function carregarBlogsVisitas() {
             <td class="num"><b>${visNum(b.deFora)}</b></td>
             <td class="num">${visNum(b.visitas)}</td>
             <td class="num">${visNum(b.leitores)}</td>
-            <td class="num">${visDelta(b.delta)}</td>
+            <td class="num">${variacao(b.delta)}</td>
             <td class="suave">${b.origens.length ? esc(b.origens[0].k) : '—'}</td>
           </tr>
           <tr class="vs-detalhe-blog" data-det="${d.blogs.indexOf(b)}" hidden><td colspan="7"><div class="vs-duas">
@@ -287,7 +288,7 @@ async function carregarBlogsVisitas() {
     alvo.innerHTML = `
       <div class="cards vs-cards-alunos">
         <div class="card"><div class="n">${visNum(t.deFora)}</div><div class="rot">Chegadas de fora</div></div>
-        <div class="card"><div class="n">${visNum(t.visitas)}</div><div class="rot">Visitas aos blogs</div>${visDelta(t.delta)}</div>
+        <div class="card"><div class="n">${visNum(t.visitas)}</div><div class="rot">Visitas aos blogs</div>${d.comparavel ? visDelta(t.delta) : ''}</div>
         <div class="card"><div class="n">${visNum(t.leitores)}</div><div class="rot">Leitores (contados por dia)</div></div>
       </div>
       <h3 class="vs-h3">De onde vêm os leitores de fora</h3>${visBarras(d.origens, 'Ninguém chegou de fora no período.')}
@@ -295,7 +296,7 @@ async function carregarBlogsVisitas() {
       ${tabela('Artigos avulsos e página do blog', d.blogs.filter(b => b.tipo !== 'serie'))}
       <p class="vs-nota"><b>De fora</b> = visita que não veio de outra página nossa (busca, redes, WhatsApp, link direto): é o que mostra se o blog atrai.
       "Direto" inclui link digitado, favorito e aplicativos que não informam a origem — inclusive os seus próprios acessos.
-      As 8 semanas não mudam com o filtro de período; o filtro "Site" não se aplica aqui.${d.periodo.dias > d.retencaoDias ? ` O detalhe por página existe só para os últimos ${d.retencaoDias} dias.` : ''}</p>`;
+      As 8 semanas não mudam com o filtro de período; o filtro "Site" não se aplica aqui.${d.comparavel ? '' : ` Neste período não há variação: o registro detalhado guarda só ${d.retencaoDias} dias.`}</p>`;
     alvo.querySelectorAll('.vs-linha-blog').forEach(tr => tr.onclick = () => {
       const det = alvo.querySelector(`.vs-detalhe-blog[data-det="${tr.dataset.i}"]`);
       if (det) det.hidden = !det.hidden;

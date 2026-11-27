@@ -512,6 +512,19 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(r.total.visitas, 3, 'página que não é blog fica fora');
     assert.ok(r.blogs.some(x => x.id === 'horta-na-pratica' && x.visitas === 0), 'série sem visita aparece com zero');
 
+    // Endereço inventado por visitante anônimo não derruba nem incha o relatório.
+    const falsos = ['constructor', '__proto__', 'tostring', ...Array.from({ length: 60 }, (_, i) => 'falso-' + i)]
+      .map(s => h('/blog/' + s, 'constructor', '2026-11-27', 'z'));
+    const rf = b.resumoBlogs(falsos.concat(h('/blog/arquitetura', 'Direto', '2026-11-27', 'y')), { dias: 30, hoje: '2026-11-27' });
+    assert.ok(rf.blogs.every(x => typeof x.nome === 'string'));
+    assert.equal(rf.blogs.filter(x => x.tipo === 'artigo' && x.id !== 'arquitetura').length, 20, 'desconhecidos têm teto');
+    assert.ok(rf.blogs.some(x => x.id === 'arquitetura'), 'artigo conhecido não é cortado');
+    assert.ok(rf.origens.every(o => typeof o.n === 'number'));
+    // 90 dias pediria 180 de histórico: sem variação em vez de variação inflada.
+    const longo = b.resumoBlogs([h('/chatgpt/', 'Direto', '2026-11-27', 'a')], { dias: 90, hoje: '2026-11-27', retencaoDias: 120 });
+    assert.equal(longo.comparavel, false);
+    assert.equal(longo.total.delta, null);
+
     assert.equal((await req('GET', '/staff/api/visitas-blogs')).status, 401);
     const api = await req('GET', '/staff/api/visitas-blogs?dias=30', { cookie: adminCookie });
     assert.equal(api.status, 200); assert.ok(Array.isArray(api.json.blogs));
