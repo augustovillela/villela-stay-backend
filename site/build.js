@@ -9395,7 +9395,7 @@ ${CJ_RECURSOS.map(([arq, titulo, desc]) => `- [${titulo}](${SITE_URL}/claude-jur
 }
 
 // ---- hub /blog.html ----
-const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
+const blogCardHub = a0 => { const a = tradArtigo(a0); return `
   <a class="blog-card" href="${L(`/blog/${a.slug}.html`)}">
     <div class="blog-card-img">${blogCardImg(a0)}</div>
     <div class="blog-card-info">
@@ -9404,7 +9404,7 @@ const blogCardsHub = BLOG.map(a0 => { const a = tradArtigo(a0); return `
       <p>${esc(a.dek)}</p>
       <span class="blog-card-leia">${t('Ler artigo', 'Read article', 'Leer artículo')} · ${a.leituraMin || 7} min →</span>
     </div>
-  </a>`; }).join('\n');
+  </a>`; };
 
 // A série Claude AI na Prática entra no hub com UM card (só em PT), não com os 22 artigos:
 // 22 cards afogavam o Diário de Brasília e deixavam a página pesada. O card abre /claude/,
@@ -9643,7 +9643,7 @@ const BUSCA_JS = `(function(){
   var limpar=caixa.querySelector('.blog-busca-limpar');
   var conta=document.getElementById('blog-busca-conta');
   var lista=document.getElementById('blog-busca-res');
-  var grade=document.querySelector('.blog-grade');
+  var grade=document.querySelector('.blog-assuntos');
   var TETO=24;
   caixa.hidden=false;
   function norm(s){return (s||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');}
@@ -9746,6 +9746,64 @@ const blogLd = {
 // avulsos, e parte deles nem é sobre Brasília. Número no cabeçalho envelhece mal e passa a
 // mentir sozinho a cada série ou artigo que entra; quem conta é o card de cada série, que
 // sabe o próprio tamanho. Decisão do Augusto em 20/09/2026: só anunciar, sem número.
+// ---- hub organizado por assunto ----
+// Cada assunto lista primeiro os cards de série e depois os slugs dos artigos avulsos.
+// Série NOVA precisa entrar em `series`; artigo novo sem assunto cai sozinho em "Outros
+// assuntos", para não sumir do hub. Em EN/ES os cards de série são vazios, e assunto sem
+// nenhum card não aparece.
+const ASSUNTOS_HUB = [
+  { id: 'inteligencia-artificial', nome: t('Inteligência artificial', 'Artificial intelligence', 'Inteligencia artificial'),
+    series: [capCardsHub, cjCardsHub, cgCardsHub, gaCardsHub, soCardsHub],
+    slugs: ['quantas-vezes-pedir-para-refazer', 'ia-nao-substitui-voce'] },
+  { id: 'casa-construcao-oficios', nome: t('Casa, construção e ofícios', 'Home, building and trades', 'Casa, construcción y oficios'),
+    series: [peCardsHub, ctCardsHub, dcCardsHub, paCardsHub, htCardsHub, piCardsHub],
+    slugs: ['formacao-completa-gastronomia-villela-table', 'containers', 'domo-geodesico'] },
+  { id: 'desenvolvimento-pessoal', nome: t('Desenvolvimento pessoal', 'Personal development', 'Desarrollo personal'),
+    series: [csCardsHub, hoCardsHub, heCardsHub],
+    slugs: ['os-especialistas-mentem'] },
+  { id: 'hospedagem', nome: t('Hospedagem e renda com imóveis', 'Hosting and rental income', 'Alojamiento y renta con inmuebles'),
+    series: [lcCardsHub],
+    slugs: ['hospedagem-profissional'] },
+  { id: 'brasilia', nome: 'Brasília',
+    series: [],
+    slugs: ['arquitetura', 'roteiros', 'gastronomia', 'paisagismo', 'personalidades'] },
+  { id: 'autismo-e-direitos', nome: t('Autismo e direitos', 'Autism and rights', 'Autismo y derechos'),
+    series: [],
+    slugs: ['autismo-passo-a-passo', 'autismo-direitos-df'] },
+];
+const slugsComAssunto = new Set(ASSUNTOS_HUB.flatMap(g => g.slugs));
+const assuntosHub = [
+  ...ASSUNTOS_HUB,
+  { id: 'outros-assuntos', nome: t('Outros assuntos', 'Other topics', 'Otros temas'),
+    series: [], slugs: BLOG.map(a => a.slug).filter(s => !slugsComAssunto.has(s)) },
+].map(g => ({
+  ...g,
+  cards: [...g.series, ...g.slugs.map(s => BLOG.find(a => a.slug === s)).filter(Boolean).map(blogCardHub)].filter(Boolean),
+})).filter(g => g.cards.length);
+const assuntosHtml = `
+  <div class="blog-assuntos">
+    <nav class="blog-menu" aria-label="${t('Assuntos do blog', 'Blog topics', 'Temas del blog')}">${assuntosHub.map(g => `<a href="#${g.id}">${g.nome}</a>`).join('')}</nav>
+    ${assuntosHub.map(g => `
+    <section class="blog-assunto" id="${g.id}" aria-labelledby="${g.id}-titulo">
+      <h2 id="${g.id}-titulo">${g.nome}</h2>
+      <div class="blog-grade">${g.cards.join('')}</div>
+    </section>`).join('')}
+  </div>`;
+const ASSUNTOS_CSS = `
+.blog-menu{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:40px}
+.blog-menu a{padding:9px 16px;border:1px solid #ddd3c0;border-radius:999px;background:#fff;color:var(--petroleo);font-weight:600;font-size:14px;text-decoration:none}
+.blog-menu a:hover{border-color:#c58a39;background:#fffdf9}
+.blog-assunto{scroll-margin-top:calc(var(--blog-topo,190px) + 16px)}
+.blog-assunto + .blog-assunto{margin-top:56px}`;
+// O cabeçalho do site é fixo e a altura dele muda com a largura da tela (quebra em várias
+// linhas): a folga da âncora é medida no navegador, senão o título do assunto fica escondido.
+const ASSUNTOS_JS = `(function(){
+  var topo=document.querySelector('header'); if(!topo) return;
+  function mede(){ var fixo=/sticky|fixed/.test(getComputedStyle(topo).position); document.documentElement.style.setProperty('--blog-topo',(fixo?topo.offsetHeight:0)+'px'); }
+  mede(); window.addEventListener('resize',mede);
+  window.addEventListener('load',function(){ mede(); var alvo=location.hash&&document.getElementById(location.hash.slice(1)); if(alvo) alvo.scrollIntoView(); });
+})();`;
+
 const blogHub = layout(
   t('Blog — Brasília, hospedagem e IA na prática | Villela Stay', 'Blog — Brasília, hospitality and AI at work | Villela Stay', 'Blog — Brasília, alojamiento e IA en la práctica | Villela Stay'),
   t('O blog da Villela Stay: arquitetura, gastronomia, roteiros e paisagismo de Brasília, hospedagem profissional, gestão e inteligência artificial aplicada ao trabalho e ao Direito.', "The Villela Stay blog: architecture, food, itineraries and landscaping in Brasília, professional hospitality, management and artificial intelligence applied to work.", 'El blog de Villela Stay: arquitectura, gastronomía, itinerarios y paisajismo de Brasília, alojamiento profesional, gestión e inteligencia artificial aplicada al trabajo.'),
@@ -9757,7 +9815,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${paCardsHub}${peCardsHub}${ctCardsHub}${dcCardsHub}${htCardsHub}${blogCardsHub}</div>
+  ${assuntosHtml}
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -9765,12 +9823,12 @@ ${buscaHtml}
   <a class="btn btn-wa btn-grande" href="${waLink(t('Olá! Vim pelo blog da Villela Stay e quero saber sobre as hospedagens.', 'Hi! I came from the Villela Stay blog and would like to know about the stays.', '¡Hola! Vengo del blog de Villela Stay y quiero saber sobre los alojamientos.'))}">${t('Falar no WhatsApp', 'Chat on WhatsApp', 'Hablar por WhatsApp')}</a>
   <p style="margin-top:14px"><a href="${L('/')}#hospedagens" style="color:var(--creme);text-decoration:underline">${t('Ver as hospedagens', 'See the stays', 'Ver los alojamientos')} →</a></p>
 </section>`,
-  { caminho: '/blog.html', extraHead: `<style>${BUSCA_CSS}</style><script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
+  { caminho: '/blog.html', extraHead: `<style>${BUSCA_CSS}${ASSUNTOS_CSS}</style><script type="application/ld+json">${JSON.stringify(blogLd)}</script>` }
 );
 // A busca é progressiva: a seção nasce `hidden` e só aparece quando o script roda. Sem JS o
 // leitor não vê uma caixa morta, e a grade de cards — que é o que os buscadores leem — fica
 // intacta no HTML servido.
-fs.writeFileSync(path.join(od, 'blog.html'), blogHub.replace('</body>', `<script>${BUSCA_JS}</script>\n</body>`));
+fs.writeFileSync(path.join(od, 'blog.html'), blogHub.replace('</body>', `<script>${BUSCA_JS}</script>\n<script>${ASSUNTOS_JS}</script>\n</body>`));
 
 const BLOG_PATHS = ['/blog.html', ...BLOG.map(a => `/blog/${a.slug}.html`)];
 console.log(`Blog gerado: hub + ${BLOG.length} artigos`);
