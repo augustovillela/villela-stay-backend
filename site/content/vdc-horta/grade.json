@@ -1,0 +1,207 @@
+{
+ "titulo": "Horta na Prática",
+ "subtitulo": "Ervas em manilhas, folhas e legumes em canteiros: a horta sem agrotóxico da chácara que recebe hóspedes",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "A horta da chácara que recebe hóspedes",
+   "sub": "Para quem se planta, o que manilha e canteiro resolvem e como separar o que existe do que ainda é projeto.",
+   "capitulos": "Capítulo 1 (Para quem se planta; Manilha e canteiro; A horta do exemplo; O Cerrado como referência; O tempo se anota); elementos iniciais (apresentação; o que este livro é, e o que não é)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Segurança, alimento limpo e limites",
+   "sub": "Quem faz cada serviço, o caminho do alimento da água da rega até a cozinha e o que “sem agrotóxico” quer dizer.",
+   "capitulos": "Capítulo 2 (As três colunas; Antes de cavar; Ferramentas, luva e calçado; Sol, calor e postura; Animais peçonhentos; O caminho do alimento limpo; Água parada e fogo; Por que sem agrotóxico)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Sol, solo e água",
+   "sub": "Antes de plantar, conte as horas de sol direto, observe o solo e pergunte à terra se há água.",
+   "capitulos": "Capítulo 3 (Sol: o que decide o lugar; Como contar; O vento; Solo: solto, e que não encharca; O que você observa; Água; O teste do dedo e o teste da pá; Dois ritmos)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "O ano no Cerrado: seca, águas e veranico",
+   "sub": "O que muda em cada época do ano e por que cada conferência da horta precisa de um nome ao lado.",
+   "capitulos": "Capítulo 3 (A seca, as águas e o veranico; exercício); capítulo 1 (O Cerrado como referência; quem usa a área; o tempo se anota); capítulo 5 (planejamento do ano); capítulo 8 (religar a rega no veranico)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Erva, folha, fruto e raiz",
+   "sub": "Agrupar as plantas pelo que se colhe mostra o que vigiar em cada uma e quanto tempo ela segura o lugar.",
+   "capitulos": "Capítulo 3 (Erva, folha, fruto e raiz; Ciclo; Calor e frio); capítulo 7 (de onde vêm os números: fáceis e difíceis); capítulo 1 (Para quem se planta; o primeiro ciclo do exemplo)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Ferramentas, recipientes, semente e muda",
+   "sub": "Poucas ferramentas, uma manilha de histórico conhecido, a muda bem escolhida e o envelope lido antes de pagar.",
+   "capitulos": "Capítulo 4 (Ferramentas; Recipientes: a manilha; Semente, muda e estaca; Ler o envelope e a etiqueta; Composto, esterco curtido, corretivo e adubo; Onde comprar e como receber)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Ler o lugar e colher a amostra de solo",
+   "sub": "O lugar se registra numa ficha, e a amostra de solo vem muito antes do plantio.",
+   "capitulos": "Capítulo 5 (Primeiro o lugar, depois o desenho; a ficha do lugar; A análise de solo)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "O desenho dos canteiros e das manilhas",
+   "sub": "O desenho conta a rua, e não só o canteiro: cotas, escala, estacas e barbante antes de qualquer escavação.",
+   "capitulos": "Capítulo 5 (O croqui do exemplo)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "Quanto plantar",
+   "sub": "Primeiro a mesa, depois a conta do papel: o que a casa usa e quantas plantas o desenho comporta.",
+   "capitulos": "Capítulo 5 (O que a casa come e quanto cabe; A conta das plantas); capítulo 1 (Para quem se planta; O tempo se anota)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "Calendário e linhas de custo",
+   "sub": "Datas marcadas para trás e para a frente, e custo anotado sem inventar preço.",
+   "capitulos": "Capítulo 5 (O calendário do ano; Plantio escalonado; Linhas de custo, sem preço)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Composto: o que entra e o que não entra",
+   "sub": "Material úmido e seco, duas baias, o que fica de fora e o combinado da cozinha numa casa que recebe hóspedes.",
+   "capitulos": "Capítulo 6 (O que é composto; Onde fica a composteira; O que entra e o que não entra; A sobra da cozinha em casa com hóspede; Montar a pilha)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Composto pronto e cobertura do solo",
+   "sub": "Camadas, reviramento, os seis sinais que liberam o composto e a cobertura morta sobre a terra úmida.",
+   "capitulos": "Capítulo 6 (Montar a pilha; Como saber que está pronto; Cobertura morta)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Montar um canteiro",
+   "sub": "Saber o que há embaixo, preparar a terra em sete passos, nunca mais pisar e calcular o volume com as suas medidas.",
+   "capitulos": "Capítulo 6 (Preparar o canteiro; Volumes: quanto material buscar); capítulo 2 (Antes de cavar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Preparar uma manilha",
+   "sub": "Antes da terra, três perguntas e o teste da água; depois, nove passos para encher, cobrir e etiquetar a manilha já assentada.",
+   "capitulos": "Capítulo 6 (Encher uma manilha; Cobertura morta); capítulo 4 (as três perguntas); capítulo 2 (antes de cavar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Semear, transplantar e plantar as sete ervas",
+   "sub": "Semente no lugar ou muda, desbaste, ponto de transplante, a manilha, a etiqueta do mesmo dia e as sete fichas.",
+   "capitulos": "Capítulo 7 (Semear no lugar ou levar a muda; O transplante; Plantar a manilha; Antes das fichas; As sete ervas)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "A visita à horta: rega, capina e anotação",
+   "sub": "Pergunte à terra antes de regar, tire o mato enquanto é pequeno e deixe escrito o que viu.",
+   "capitulos": "Capítulo 7 (Conduzir: a rega dos canteiros e das manilhas; Capina, crosta e cobertura); capítulo 1 (O tempo se anota, não se promete)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Colher, continuar colhendo e girar os canteiros",
+   "sub": "Colher no ponto, só o que se vai usar, e não repetir a mesma família no mesmo lugar.",
+   "capitulos": "Capítulo 7 (Colher e continuar colhendo; Girar os canteiros; Repetir o plantio; as fichas das folhas e dos legumes)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "O hóspede na horta",
+   "sub": "Etiqueta, regra curta e caminho livre para quem colhe sem conhecer a horta.",
+   "capitulos": "Capítulo 8 (O hóspede colhe, e só colhe; Etiquetas; A regra da horta; O caminho até a horta; Tesoura, recipiente e cozinha; A véspera da chegada; A horta na foto do anúncio)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Prevenir e controlar sem agrotóxico",
+   "sub": "Prevenir, olhar cedo na ronda, catar e retirar, e saber o que fica fora do seu alcance.",
+   "capitulos": "Capítulo 9 (Antes da praga; A ronda; O que as suas mãos fazem; Os aliados; O que este livro não faz)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "A horta com a casa vazia",
+   "sub": "Antes de sair, deixe escrito o que rega sozinho, o que não rega e quem passa para olhar.",
+   "capitulos": "Capítulo 8 (A casa vazia; O teste da ausência; Antes de ninguém vir)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Diagnóstico: antes de culpar a praga",
+   "sub": "Descreva o que vê, confira água, sol e solo, e só então suspeite: o caminho do sinal à decisão, com a hora de chamar o agrônomo.",
+   "capitulos": "Capítulo 9 (Antes de culpar a praga; Como os suspeitos se apresentam; Aceitar a perda ou chamar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "O excedente e o registro da colheita",
+   "sub": "Antes de pensar em vender, dê destino ao que sobra, por congelamento, secagem ou partilha, e anote o que saiu da horta.",
+   "capitulos": "Capítulo 10 (Quando sobra: Congelar, Secar, Compartilhar, O limite da conserva; Registrar o que saiu)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Antes de vender: o que consultar",
+   "sub": "Sete consultas antes que um maço de ervas vire venda: a quem perguntar, o que perguntar e como guardar cada resposta.",
+   "capitulos": "Capítulo 10 (Antes de vender; A resolução dos serviços de alimentação; A rastreabilidade; A palavra “orgânico”; O consumidor)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Projeto integrador: o desenho e o calendário",
+   "sub": "O projeto junta numa só leitura o que existe, o que se projeta e quando: croqui, quantidades, calendário e composto.",
+   "capitulos": "Capítulo 11 (Como usar este capítulo; Projeto integrador; Gabaritos); capítulo 5 (O croqui do exemplo; O calendário do ano); capítulo 7 (Girar os canteiros)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Projeto integrador: rotina, custos e próximos passos",
+   "sub": "A rotina em quatro quadros, os custos sem preço, a rubrica para se avaliar e o primeiro serviço, com nome e data.",
+   "capitulos": "Capítulo 11 (Os oito entregáveis; Antes de entregar, confira; Rubrica; Para onde seguir); capítulo 7 (Conduzir); capítulo 8 (A véspera da chegada; A casa vazia); capítulo 9 (A ronda)",
+   "gravada": false,
+   "tem_artigo": true
+  }
+ ]
+}

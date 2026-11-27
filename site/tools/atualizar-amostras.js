@@ -35,6 +35,7 @@ const SERIES = [
   'pedreiro-completo-na-pratica',
   'construcao-com-conteineres-na-pratica',
   'decoracao-de-interiores-na-pratica',
+  'horta-na-pratica',
 ];
 const URL_OK = /^https:\/\/academia\.villelastay\.com\.br\/academy\/api\/amostras\/[A-Za-z0-9_-]+\/(video\.mp4|capa\.jpg)\?v=\d+$/;
 const limpo = s => String(s == null ? '' : s).replace(/\s+/g, ' ').trim();

@@ -48,6 +48,8 @@ let PE_PATHS = [];                      // rotas da série Pedreiro Completo na 
 let PE_LLMS = '';                       // seção da série Pedreiro Completo na Prática no llms.txt
 let CT_PATHS = [];                      // rotas da série Construção com Contêineres na Prática (só PT)
 let CT_LLMS = '';
+let HT_PATHS = [];                      // rotas da série Horta na Prática (só PT)
+let HT_LLMS = '';                       // seção da série Horta na Prática no llms.txt
 let DC_PATHS = [];                      // rotas da série Decoração de Interiores na Prática (só PT)
 let DC_LLMS = '';                       // seção da série Decoração de Interiores na Prática no llms.txt                       // seção da série Construção com Contêineres na Prática no llms.txt
 //                       // seção da série ChatGPT no llms.txt
@@ -3725,13 +3727,14 @@ ${blocos}
       livros: ['o-locador-inteligente', 'o-locador-inteligente-na-era-da-ia'], cursos: ['o-locador-inteligente-na-era-da-inteligencia-artificial'], sistemas: ['manager'] },
 
     // Coleção Viver de Chácara (Augusto, 08/10/2026): os próximos títulos (paisagismo, pedreiro, decoração,
-    // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros.
+    // contêineres, irrigação, horta, pintura, elétrica, hidráulica, hospedagem) entram aqui, no campo cursos/livros
+    // (Horta na Prática: curso desde 27/11/2026; o livro entra em `livros` depois que o catálogo for coletado).
     { id: 'chacara',
       nome: t('Chácara, casa de campo e manutenção da propriedade', 'Country house and property maintenance', 'Casa de campo y mantenimiento de la propiedad'),
-      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim, paisagismo e irrigação, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
-        'How to look after a country property with method: a clean and safe pool, garden, landscaping and irrigation, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
-        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín, paisajismo y riego, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
-      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica', 'decoracao-de-interiores-na-pratica', 'irrigacao-na-pratica'], sistemas: [] },
+      texto: t('Como cuidar de uma chácara com método: piscina limpa e segura, jardim, paisagismo e irrigação, horta sem agrotóxico, pequenas obras de alvenaria, construção com contêineres, rotina de manutenção, o que dá para fazer com as próprias mãos, o que contratar e como conferir o serviço de quem você contrata. É a coleção Viver de Chácara, para quem mora, descansa ou recebe hóspedes em uma propriedade rural.',
+        'How to look after a country property with method: a clean and safe pool, garden, landscaping and irrigation, a pesticide-free vegetable garden, small masonry jobs, building with shipping containers, a maintenance routine, what you can do yourself, what to hire out and how to check the work you pay for. This is the Viver de Chácara collection, for those who live, rest or host guests on a rural property.',
+        'Cómo cuidar una casa de campo con método: piscina limpia y segura, jardín, paisajismo y riego, huerta sin agrotóxicos, pequeñas obras de albañilería, construcción con contenedores, rutina de mantenimiento, qué se puede hacer con las propias manos, qué contratar y cómo revisar el servicio contratado. Es la colección Viver de Chácara, para quien vive, descansa o recibe huéspedes en una propiedad rural.'),
+      livros: [], cursos: ['piscineiro-na-pratica', 'paisagismo-na-pratica', 'pedreiro-completo-na-pratica', 'construcao-com-conteineres-na-pratica', 'decoracao-de-interiores-na-pratica', 'irrigacao-na-pratica', 'horta-na-pratica'], sistemas: [] },
 
     { id: 'negocios',
       nome: t('Negócios, marketing, finanças pessoais e produtos digitais', 'Business, marketing, personal finance and digital products', 'Negocios, marketing, finanzas personales y productos digitales'),
@@ -4435,6 +4438,7 @@ let paArtigos = [];
 let peArtigos = [];
 let ctArtigos = [];
 let dcArtigos = [];
+let htArtigos = [];
 let capCss = '';
 const CAP_LIVRO = 'https://livros.villelastay.com.br/livros/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
 const CAP_CURSO = 'https://academia.villelastay.com.br/academy/cursos/claude-ai-na-pratica?utm_source=villelastay&utm_medium=blog-claude';
@@ -8984,6 +8988,381 @@ ${dcArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho})
     console.log(`Blog Decoração de Interiores na Prática: hub + ${dcNoAr} de ${dcTotal} artigos + ${dcApoio.length} material(is) de apoio + ${dcAmo.total} amostra(s) grátis em vídeo`);
   }
 
+  // ---- Série Horta na Prática (coleção Viver de Chácara; bloco HT_*) ----
+  // Mesmo desenho do bloco DC_* logo acima. O que é próprio deste título está marcado com [HT]:
+  //  - o curso (produto nT5YqxNrYLJ1) foi publicado pelo autor em 27/11/2026 e o livro está à venda na
+  //    Livraria: a série anuncia os dois, com capa, chamada curta e botão, no hub e em todos os artigos
+  //    (sem valor em reais; sem promessa; o livro não tem fotos);
+  //  - o conteúdo NÃO passou por revisão de agrônomo: nenhum texto pode dizer o contrário (trava HT_REVISAO),
+  //    e os avisos de limite ficam no aviso do artigo, no hub e no llms.txt;
+  //  - na camada aberta não entra número técnico (medida, dose, prazo, horas de sol, norma) nem valor; nas
+  //    aulas 8, 9, 10, 12, 13 e 24 o único desenho traz número e fica no desenvolvimento protegido.
+  // Amostras grátis: cortadas em dados/cursos/vdc-horta/blog; depois de enviar à Academy,
+  // `node tools/atualizar-amostras.js` + `node build.js`.
+  const HT_PUBLICADO_EM = '2026-11-27';
+  const HT_DIR = path.join(__dirname, 'content', 'vdc-horta');
+  const HT_CURSO = 'https://academia.villelastay.com.br/academy/cursos/horta-na-pratica?utm_source=villelastay&utm_medium=blog-horta-na-pratica';
+  const HT_LIVRO = 'https://livros.villelastay.com.br/livros/horta-na-pratica?utm_source=villelastay&utm_medium=blog-horta-na-pratica';
+  const HT_ALT_LIVRO = 360; // altura da miniatura da capa do livro (240 px de largura)
+  const htDestexto = s => String(s).replace(/<[^>]+>/g, '')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&([a-z]+);/gi, (m, n) => ENTS[n.toLowerCase()] !== undefined ? ENTS[n.toLowerCase()] : m);
+
+  if (fs.existsSync(HT_DIR)) {
+    const htCss = fs.readFileSync(path.join(HT_DIR, 'artigo.css'), 'utf8');
+    const htLe = n => JSON.parse(fs.readFileSync(path.join(HT_DIR, n), 'utf8').replace(/^﻿/, ''));
+    const htGrade = htLe('grade.json');
+    let htFaq = {}, htApoio = [];
+    try { htFaq = htLe('faq.json'); } catch (e) { console.warn('[horta-na-pratica] sem faq.json — artigos sairão sem perguntas frequentes'); }
+    try { htApoio = htLe('apoio.json'); } catch (e) { console.warn('[horta-na-pratica] sem apoio.json — hub sairá sem material de apoio'); }
+
+    const htFigs = vdcFiguras(HT_DIR, 'horta-na-pratica');
+    htArtigos = fs.readdirSync(HT_DIR).filter(f => /^\d\d-.+\.html$/.test(f)).sort().map(f => {
+      const raw = fs.readFileSync(path.join(HT_DIR, f), 'utf8');
+      const metaMatch = raw.match(/^<!--META (.*?) -->/);
+      if (!metaMatch) throw new Error(`[horta-na-pratica] META ausente em ${f}`);
+      const meta = JSON.parse(metaMatch[1]);
+      const corpoBruto = vdcFigInserir(raw.replace(/^<!--META .*? -->\r?\n?/, ''), htFigs.porArtigo[f.replace(/\.html$/, '')] || [], 'horta-na-pratica', f, htDestexto);
+      // "Material de apoio" longo é fatiado nos <h3>, em blocos de ~7 mil caracteres (mesmo remédio da
+      // série O Homem Contemporâneo), para a paginação por partes não gerar uma parte interminável.
+      const corpo = corpoBruto.replace(/<section class="apoio"><h2>Material de apoio<\/h2>([\s\S]*?)<\/section>/, (m0, dentro) => {
+        const tam = h => h.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length;
+        if (tam(dentro) <= 9000) return m0;
+        const blocos = [];
+        for (const pedaco of dentro.split(/(?=<h3>)/)) {
+          const ult = blocos[blocos.length - 1];
+          if (ult !== undefined && tam(ult) + tam(pedaco) <= 7000) blocos[blocos.length - 1] = ult + pedaco;
+          else blocos.push(pedaco);
+        }
+        return blocos.map((b, k) => `<section class="apoio"><h2>Material de apoio${k ? ' (continuação)' : ''}</h2>${b}</section>`).join(String.fromCharCode(10));
+      });
+      const secoes = corpo.split(/(?=<h2>)/).map(s => s.trim()).filter(Boolean).map(p => {
+        const m = p.match(/^<h2>(.*?)<\/h2>/);
+        return { titulo: m ? htDestexto(m[1]) : 'Abertura', html: p };
+      });
+      if (meta.aplicar_html) secoes.push({ titulo: 'Para aplicar hoje', html: `<div class="box aplicar"><h2>Para aplicar hoje</h2>${meta.aplicar_html}</div>`, final: true });
+      const txt = s => s.html.replace(/<figure[\s\S]*?<\/figure>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length; // a figura não conta no tamanho da parte
+      const fim = secoes.filter(s => s.final);
+      const meio = secoes.filter(s => !s.final);
+      const porParte = Math.max(1500, Math.ceil(meio.reduce((n, s) => n + txt(s), 0) / Math.max(1, 6 - fim.length)));
+      const grupos = [];
+      for (const s of meio) {
+        const ult = grupos[grupos.length - 1];
+        if (ult && txt(ult) < porParte) ult.html += String.fromCharCode(10) + s.html;
+        else grupos.push({ titulo: s.titulo, html: s.html });
+      }
+      const chave = f.replace(/\.html$/, '');
+      const slug = `horta-na-pratica-${chave}`;
+      return {
+        ...meta, chave, slug,
+        figAberta: (htFigs.porArtigo[chave] || []).find(x => x.aberta) || null,
+        tituloTexto: htDestexto(meta.titulo), subtituloTexto: htDestexto(meta.subtitulo),
+        secoes: [...grupos, ...fim],
+        indice: (meta.indice || []).map(t => htDestexto(t)),
+        faq: htFaq[chave] || [],
+        min: parseInt((meta.meta.match(/Leitura de (\d+) min/) || [])[1], 10) || 10,
+        caminho: `/blog/${slug}.html`,
+        n: parseInt(meta.modulo, 10),
+      };
+    });
+
+    // Trava: casca vazia não vai ao ar (corpo, resumo e índice), e a grade tem de bater com os arquivos.
+    const htComArtigo = htGrade.aulas.filter(a => a.tem_artigo).map(a => a.n);
+    for (const a of htArtigos) {
+      if (!a.secoes.length || !a.resumo_html || !a.indice.length) {
+        throw new Error(`[horta-na-pratica] aula ${a.n} exportada sem material completo (corpo/resumo/índice)`);
+      }
+      if (!htComArtigo.includes(a.n)) throw new Error(`[horta-na-pratica] aula ${a.n} tem artigo mas a grade diz que não`);
+    }
+    if (htArtigos.length !== htComArtigo.length) throw new Error(`[horta-na-pratica] grade diz ${htComArtigo.length} aulas com artigo, mas há ${htArtigos.length} artigos exportados`);
+    const htSemFaq = htArtigos.filter(a => !a.faq.length).map(a => a.chave);
+    if (htSemFaq.length) throw new Error(`[horta-na-pratica] SEM perguntas frequentes: ${htSemFaq.join(', ')} — escrever em content/vdc-horta/faq.json`);
+    // Trava de conteúdo: o que é ESCRITO para o blog (perguntas frequentes) não pode trazer número nenhum
+    // (medida, dose, prazo, norma ou valor), nem prazo por extenso, marca, lei, promessa de resultado, de
+    // saúde ou de renda. Olha o texto que SAIU. "Certificado da Villela Academy" é a única forma de "certific-".
+    const HT_PROMESSA = /\bgarant(?!ia\b)|\bcertific(?!ado da Villela Academy\b|ado\b(?=:)|ação é facultativa)|\bhabilita(?!do\b|da\b|dos\b|das\b)/i;
+    const HT_EXTENSO = /\b(um|uma|dois|duas|tr[eê]s|quatro|cinco|seis|sete|oito|nove|dez|doze|quinze|vinte|trinta|\w+enta)\s+(dias?|horas?|minutos?|semanas?|meses|mil[ií]metros?|cent[ií]metros?|metros?|litros?|quilos?|gramas?|por cento)\b/i;
+    // [HT] Comuns às duas travas: valem para tudo o que vai aberto.
+    const HT_VETO_COMUM = [
+      [/R\$|\breais\b/i, 'valor em reais'],
+      [HT_EXTENSO, 'prazo, medida ou peso por extenso'],
+      [HT_PROMESSA, 'promessa (garante/certifica/habilita)'],
+      [/\beconomiz|\bmais barat|\blucr|\brentab|\bautossufici|\brenda (extra|certa|garantida|passiva)/i, 'promessa de economia, de resultado ou de renda'],
+      [/\bfaz bem [àa] sa[uú]de|\bmais saud[aá]vel|\bmedicina|\bcura\b|propriedades terap/i, 'promessa de saúde'],
+      [/Bras[ií]lia|Distrito Federal|\bDF\b|\bGDF\b|\blei n|\bdecreto\b|\bportaria\b|\bresolu[cç][aã]o\b/i, 'lugar ou norma pelo número'],
+      [/vital[ií]ci|valida[cç][aã]o p[uú]blica/i, '"vitalício" ou "validação pública"'],
+      [/Grupo Villela(?! Stay)/, '"Grupo Villela" isolado'],
+    ];
+    // [HT] Nenhuma camada pode dizer que houve revisão de agrônomo (não houve), nem citar nome real de
+    // unidade, casa ou empresa de hospedagem do autor.
+    const HT_REVISAO = /revisad[oa]s? (t[eé]cnic[oa]mente )?por (um |uma )?(engenheir[oa] )?agr[oô]nom|com revis[aã]o (t[eé]cnica |de )(um )?agr[oô]nom|agr[oô]nomo respons[aá]vel (pelo|por este)/i;
+    const HT_NOMES = /Flat d[oa]s?\b|Gran Villela|Casa Modernista|Casa Villela|Villa Kubitschek|Villa Catetinho|Jardim dos Sentidos|Lago Sul|\bSMDB\b|\bQI ?\d|(?<!Grupo )Villela Stay|Augusto Villela Ltda/i;
+    for (const a of htArtigos) {
+      const tudo = [a.tituloTexto, a.subtituloTexto, a.descricao, a.resumo_html, a.aplicar_html || '', a.indice.join(' | '),
+        ...a.secoes.map(s => s.titulo + ' ' + s.html), ...a.faq.map(([q, r]) => q + ' ' + r),
+        ...(htFigs.porArtigo[a.chave] || []).map(f => f.arq + ' ' + f.legenda)].join(' | ');
+      const m = htDestexto(tudo).match(HT_NOMES);
+      if (m) throw new Error(`[horta-na-pratica] ${a.chave} traz nome real de unidade, casa ou empresa do autor: "${m[0]}"`);
+      const rv = htDestexto(tudo).match(HT_REVISAO);
+      if (rv) throw new Error(`[horta-na-pratica] ${a.chave} afirma revisão de agrônomo que não houve: "${rv[0]}"`);
+    }
+    const HT_VETO = [
+      [/\d/, 'número (medida, dose, prazo, norma ou valor)'],
+      [/\b(mm|cm|ml|mililitros?|litros?|kg|quilos?|toneladas?|gramas?)\b|%/i, 'unidade de medida ou percentual'],
+      [/\bNBR\b|\bNR\b|\bABNT\b|\blei\b/i, 'lei ou norma'],
+      ...HT_VETO_COMUM,
+    ];
+    for (const a of htArtigos) for (const [q, r] of a.faq) for (const [re, oQue] of HT_VETO) {
+      const m = (q + ' ' + r).match(re);
+      if (m) throw new Error(`[horta-na-pratica] faq de ${a.chave} traz ${oQue}: "${m[0]}" em "${q}"`);
+    }
+    for (const a of htArtigos) if (a.faq.length !== 3) throw new Error(`[horta-na-pratica] ${a.chave} precisa de 3 perguntas frequentes; tem ${a.faq.length}`);
+    // Segunda trava: a camada ABERTA que vem do artigo (título, subtítulo, resumo e índice). Há contagens
+    // legítimas (sete ervas, nove passos), então a recusa é pelo TIPO. O exportador da série
+    // (dados\cursos\vdc-horta\blog\exportar_blog.py) faz as trocas declaradas.
+    // "S5" é o nome do setor de rega do exemplo; "em um dia e em um ano" (índice da aula 3) e "folha de doze
+    // meses" (o calendário, índice da aula 10) não são prazo.
+    const htPreparar = t => String(t).replace(/\bS5\b/g, 'da horta').replace(/em um dia e em um ano/gi, 'ao longo do tempo').replace(/(folha de|ano em) doze meses/gi, '$1 todo o ano');
+    const HT_VETO_ABERTA = [
+      [/\d\s*(dias?|horas?|h|min|minutos?|semanas?|meses|m[eê]s|anos?)\b|\b\d+ e de \d+ horas\b/i, 'prazo ou horas em número'],
+      [/\d[\d.,]*\s*(mm|cm|m|m²|m³|ml|l|litros?|kg|g|gramas?|t|°c)(?![\wà-ÿ])|\d\s*%|\bpor cento\b/i, 'medida, dose, temperatura ou percentual em número'],
+      [/\bNBR\b|\bNR[- ]?\d|\bABNT\b|\bRDC\b|\bInstru[cç][aã]o Normativa\b/i, 'número ou sigla de norma'],
+      [/\d/, 'número'],
+      ...HT_VETO_COMUM,
+    ];
+    for (const a of htArtigos) {
+      let aberto = [a.tituloTexto, a.subtituloTexto, a.descricao, htDestexto(a.resumo_html), a.indice.join(' | ')].join(' | ');
+      aberto = htPreparar(aberto);
+      for (const [re, oQue] of HT_VETO_ABERTA) {
+        const m = aberto.match(re);
+        if (m) throw new Error(`[horta-na-pratica] camada aberta de ${a.chave} traz ${oQue}: "${m[0]}" em "…${aberto.slice(Math.max(0, m.index - 50), m.index + 40)}…"`);
+      }
+    }
+
+    // Anúncios: livro e curso, cada um com a capa, uma chamada curta e o botão.
+    const htAnuncio = (qual, min = false) => qual === 'livro'
+      ? `<a class="cap-ad cap-ad-livro cap-ad-ht${min ? ' cap-ad-min' : ''}" href="${HT_LIVRO}" target="_blank" rel="noopener">
+          <img class="cap-ad-capa cap-ad-capa-livro" src="/blog-img/horta-na-pratica-livro.jpg" alt="Capa do livro Horta na Prática" width="240" height="${HT_ALT_LIVRO}" loading="lazy" decoding="async">
+          <span class="cap-ad-txt"><strong>Livro Horta na Prática</strong><span>149 páginas em PDF, com desenhos, fichas e listas, na Livraria Villela.</span></span>
+          <span class="cap-ad-btn">Comprar o livro →</span></a>`
+      : `<a class="cap-ad cap-ad-curso cap-ad-ht${min ? ' cap-ad-min' : ''}" href="${HT_CURSO}" target="_blank" rel="noopener">
+          <img class="cap-ad-capa cap-ad-capa-curso" src="/blog-img/horta-na-pratica-1.jpg" alt="Capa do curso Horta na Prática" width="1920" height="1080" loading="lazy" decoding="async">
+          <span class="cap-ad-txt"><strong>Curso Horta na Prática</strong><span>25 videoaulas animadas, com artigo em PDF e checklists. A aula 14 é grátis.</span></span>
+          <span class="cap-ad-btn">Conhecer o curso →</span></a>`;
+    const HT_JS = CAP_JS.replace(/var ads=\[[^\n]+\];/, `var ads=[${JSON.stringify(htAnuncio('livro', true))},${JSON.stringify(htAnuncio('curso', true))}];`);
+    const HT_CSS = `${htCss}${CAP_CSS_EXTRA}
+.cap-hero .cap-trilha a{color:#e8d3a6}
+.cap-hero .cap-trilha a:hover{color:#fff}
+/* Celular: tabela larga e código inline alargavam a página (viewport de 708px num aparelho de 375px). */
+/* Endereço longo não quebra sozinho e alargava a página no celular. */
+@media (max-width:640px){.cap-corpo table{display:block;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.cap-corpo code,.cap-corpo li,.cap-corpo p{overflow-wrap:anywhere;word-break:break-word}}
+.cg-estado{display:inline-block;font:700 10px/1.6 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;padding:1px 8px;border-radius:999px;background:#eee8de;color:#7a746b;vertical-align:middle;white-space:nowrap}
+.cap-card .cg-estado{margin-left:6px}
+.cg-estado.no-ar{background:#e6f1ec;color:#1f6b52}
+.cap-sumario-lista .cg-estado{display:block;width:fit-content;margin:4px 0 0}
+.cap-sumario-lista a{flex-wrap:nowrap}
+.cap-sumario-lista a>span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta{color:#7a746b}
+.cap-sumario-lista li.falta span.tit{display:flex;flex-wrap:nowrap;gap:10px;align-items:baseline;padding:8px 10px;font-size:15px;line-height:1.35}
+.cap-sumario-lista li.falta span.tx{flex:1 1 auto;min-width:0}
+.cap-sumario-lista li.falta b{flex:0 0 auto;min-width:22px;color:#b3aa9c;font-variant-numeric:tabular-nums}
+.cg-apoio{max-width:1080px;margin:34px auto;padding:26px 24px;border:1px solid var(--line);border-radius:18px;background:#fff}
+.cg-apoio h2{margin:0 0 6px;font:700 24px/1.25 Georgia,serif;color:var(--navy)}
+.cg-apoio>p{color:#675f56;margin:0 0 16px}
+.cg-apoio .cap-grade{padding:0}
+.cg-doc{max-width:820px;margin:0 auto;padding:30px 24px 60px}
+.cg-doc h2{font:700 26px/1.25 Georgia,serif;color:var(--navy);margin:34px 0 12px}${VDC_FIG_CSS}
+.cap-ad-ht .cap-ad-capa{flex:0 0 auto;display:block;height:auto;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.cap-ad-ht .cap-ad-capa-livro{width:72px}
+.cap-ad-ht .cap-ad-capa-curso{width:132px}
+.cap-ad-ht.cap-ad-min .cap-ad-txt span{display:block}
+.cap-ad-ht .cap-ad-txt{min-width:150px}
+.cap-faixa .cap-ad-ht{flex-wrap:wrap}
+.cap-ad-ht .cap-ad-btn{margin-left:auto}
+@media (max-width:600px){.cap-ad-ht{gap:12px}.cap-ad-ht .cap-ad-capa-curso{width:104px}.cap-ad-ht .cap-ad-capa-livro{width:60px}}`;
+
+    vdcFigTravas('horta-na-pratica', htArtigos, htFigs, HT_VETO_ABERTA, htPreparar);
+    const htAmo = vdcAmoPreparar('horta-na-pratica', htArtigos, HT_CURSO, HT_VETO_ABERTA, htPreparar);
+    const htTotal = htGrade.total;
+    const htLinhaGrade = (aula, atual) => {
+      const art = htArtigos.find(a => a.n === aula.n);
+      if (!art) return `<li class="falta"><span class="tit"><b>${aula.n}</b> <span class="tx">${esc(aula.titulo)}</span></span></li>`;
+      return `<li${atual === aula.n ? ' class="aqui"' : ''}><a href="${art.caminho}"><b>${aula.n}</b> <span class="tx">${esc(art.tituloTexto)}</span></a></li>`;
+    };
+
+    fs.mkdirSync(path.join(od, 'horta-na-pratica'), { recursive: true });
+    fs.mkdirSync(path.join(od, 'horta-na-pratica', 'apoio'), { recursive: true });
+
+    for (const [iArt, a] of htArtigos.entries()) {
+      const url = `${SITE_URL}${a.caminho}`;
+      const ant = htArtigos[iArt - 1], prox = htArtigos[iArt + 1];
+      const dados = Buffer.from(JSON.stringify({ secoes: a.secoes.map(s => ({ t: s.titulo, h: s.html })) }), 'utf8').toString('base64');
+      const lds = [{
+        '@context': 'https://schema.org', '@type': 'BlogPosting', headline: a.tituloTexto, description: a.descricao, ...vdcLdImagem(serieImagem('horta-na-pratica').ld, a.figAberta),
+        abstract: a.subtituloTexto, url, mainEntityOfPage: url, inLanguage: 'pt-BR',
+        datePublished: HT_PUBLICADO_EM, dateModified: capHojeISO,
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+        isPartOf: { '@type': 'Blog', '@id': `${SITE_URL}/horta-na-pratica/#serie` },
+        articleSection: 'Horta na Prática', keywords: a.indice.slice(0, 8).join(', '),
+        isBasedOn: { '@type': 'Book', name: 'Horta na Prática — Viver de Chácara', author: { '@type': 'Person', name: 'Augusto Villela' } },
+        speakable: { '@type': 'SpeakableSpecification', cssSelector: ['.cap-resumo', '.cap-faq'] },
+      }, {
+        '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Início', item: SITE_URL },
+          { '@type': 'ListItem', position: 2, name: 'Blog', item: `${SITE_URL}/blog.html` },
+          { '@type': 'ListItem', position: 3, name: 'Horta na Prática', item: `${SITE_URL}/horta-na-pratica/` },
+          { '@type': 'ListItem', position: 4, name: a.tituloTexto, item: url },
+        ]
+      }];
+      lds.push(...vdcAmoLd(a, url));
+      if (a.faq.length) lds.push({
+        '@context': 'https://schema.org', '@type': 'FAQPage',
+        mainEntity: a.faq.map(([q, r]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: r } })),
+      });
+
+      const corpo = `
+<div class="cap cap-artigo">
+  <header class="cap-hero"><div class="in">
+    <nav class="cap-trilha" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/horta-na-pratica/">Horta na Prática</a> <span aria-hidden="true">›</span> <span>Aula ${a.n} de ${htTotal}</span></nav>
+    <h1>${a.titulo}</h1>
+    <p class="sub">${a.subtitulo}</p>
+    <div class="meta">${a.meta}</div>
+  </div></header>
+  <div class="cap-faixa">${htAnuncio('livro')}${htAnuncio('curso')}</div>
+  <section class="cap-publico">
+    ${a.resumo_html ? `<div class="cap-resumo"><h2>Resumo da aula</h2>${a.resumo_html}</div>` : ''}
+    ${vdcAmoHtml(a)}
+    ${a.figAberta ? vdcFigHtml(a.figAberta, 1) : ''}
+    ${a.indice.length ? `<div class="cap-indice"><h2>Neste artigo</h2><ol>${a.indice.map(t => `<li>${esc(t)}</li>`).join('')}</ol></div>` : ''}
+  </section>
+  <div class="cap-progresso"><i id="cap-prog"></i></div>
+  <p class="cap-aviso">O artigo é lido por partes. Use os botões abaixo para avançar. Material educacional: não é recomendação agronômica, nem orientação nutricional, sanitária, contábil ou jurídica, e não forma profissional. Corretivo e adubo seguem a análise do solo e o agrônomo; mover manilha é serviço contratado; poço, bomba, parte elétrica e ponto de água são de contratado ou de profissional. O artigo em PDF e as videoaulas ficam no curso.</p>
+  <noscript><div class="cap-nojs">O desenvolvimento deste artigo é montado no navegador e precisa de JavaScript. O resumo e as perguntas frequentes aqui em cima já respondem o essencial; o artigo completo em PDF está no <a href="${HT_CURSO}">curso Horta na Prática</a>.</div></noscript>
+  <div class="cap-corpo" id="cap-corpo"></div>
+  <nav class="cap-nav" aria-label="Partes do artigo">
+    <button type="button" id="cap-ant">← Anterior</button>
+    <div class="cap-passos" id="cap-passos"></div>
+    <button type="button" id="cap-prox" class="prim">Continuar lendo →</button>
+  </nav>
+  ${a.faq.length ? `<section class="cap-faq"><h2>Perguntas frequentes</h2>${a.faq.map(([q, r]) => `<h3>${esc(q)}</h3><p>${esc(r)}</p>`).join('')}</section>` : ''}
+  <div class="cap-faixa">${htAnuncio('livro')}${htAnuncio('curso')}</div>
+  <nav class="cap-irmaos" aria-label="Outros artigos da série">
+    ${ant ? `<a class="cap-irmao cap-irmao-ant" href="${ant.caminho}"><span class="rot">← Aula ${ant.n}</span><span class="tit">${esc(ant.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+    <a class="cap-irmao cap-irmao-indice" href="/horta-na-pratica/"><span class="rot">☰ Índice</span><span class="tit">${htArtigos.length === 1 ? 'O artigo publicado' : `Os ${htArtigos.length} artigos publicados`}</span></a>
+    ${prox ? `<a class="cap-irmao cap-irmao-prox" href="${prox.caminho}"><span class="rot">Aula ${prox.n} →</span><span class="tit">${esc(prox.tituloTexto)}</span></a>` : '<span class="cap-irmao cap-irmao-vazio"></span>'}
+  </nav>
+  <details class="cap-sumario">
+    <summary>Ir direto para outra aula</summary>
+    <ol class="cap-sumario-lista">${htGrade.aulas.map(g => htLinhaGrade(g, a.n)).join('')}</ol>
+  </details>
+  <div class="cap-rodape-art"><div class="in"><span>Material do livro e do curso <strong>Horta na Prática</strong>, da coleção Viver de Chácara, de Augusto Villela. Conteúdo educacional.</span><span><a href="/blog.html">← Voltar ao Blog</a></span></div></div>
+  <script type="application/json" id="cap-dados">${dados}</script>
+</div>`;
+      const html = layout(`${a.tituloTexto} | Blog Horta na Prática`, a.descricao, corpo, {
+        caminho: a.caminho, semIdiomas: true, ogType: 'article', ...serieImagem('horta-na-pratica').og,
+        extraHead: `<meta name="robots" content="index,follow,noarchive"><style>${HT_CSS}</style>`
+          + lds.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join(''),
+      }).replace('</body>', `<script>${HT_JS}</script>\n</body>`);
+      fs.writeFileSync(path.join(od, 'blog', `${a.slug}.html`), html);
+    }
+
+    // Material de apoio aberto (se houver em apoio.json): referência, não o desenvolvimento da aula.
+    for (const doc of htApoio) {
+      const cam = `/horta-na-pratica/apoio/${doc.chave}.html`;
+      const urlDoc = `${SITE_URL}${cam}`;
+      const ldDoc = {
+        '@context': 'https://schema.org', '@type': 'WebPage', name: doc.titulo, url: urlDoc,
+        inLanguage: 'pt-BR', isPartOf: { '@id': `${SITE_URL}/horta-na-pratica/#serie` },
+        author: { '@type': 'Person', name: 'Augusto Villela' }, publisher: { '@id': ORG_ID },
+      };
+      fs.writeFileSync(path.join(od, 'horta-na-pratica', 'apoio', `${doc.chave}.html`), layout(
+        `${doc.titulo} — Horta na Prática | Villela Stay`,
+        `${doc.titulo}: material de apoio aberto da série Horta na Prática, de Augusto Villela.`,
+        `<div class="cap">
+  <section class="cap-hub-hero"><h1>${esc(doc.titulo)}</h1><p>Material de apoio da série <strong>Horta na Prática</strong>, de Augusto Villela.</p></section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <a href="/horta-na-pratica/">Horta na Prática</a> <span aria-hidden="true">›</span> <span>${esc(doc.titulo)}</span></nav>
+  <div class="cg-doc">${doc.html}</div>
+  <div class="cap-faixa">${htAnuncio('livro')}${htAnuncio('curso')}</div>
+</div>`,
+        { caminho: cam, semIdiomas: true, extraHead: `<style>${HT_CSS}</style><script type="application/ld+json">${JSON.stringify(ldDoc)}</script>` }
+      ));
+    }
+
+    // hub da série: /horta-na-pratica/
+    const htCards = htArtigos.map(a => `
+  <a class="cap-card" href="${a.caminho}">
+    <span class="n">Aula ${a.n}</span>
+    <h3>${esc(a.tituloTexto)}</h3>
+    <p>${esc(a.subtituloTexto)}</p>
+    <span class="min">Leitura de ${a.min} min · ${a.secoes.length} partes</span>
+  </a>`).join('\n');
+    const htApoioCards = htApoio.map(d => `
+  <a class="cap-card" href="/horta-na-pratica/apoio/${d.chave}.html">
+    <span class="n">Material de apoio</span>
+    <h3>${esc(d.titulo)}</h3>
+    <p>Aberto, para consultar a qualquer momento — vale para o curso inteiro.</p>
+  </a>`).join('\n');
+    const htNoAr = htArtigos.length;
+    const htHubLd = [{
+      '@context': 'https://schema.org', '@type': 'Blog', '@id': `${SITE_URL}/horta-na-pratica/#serie`,
+      name: 'Horta na Prática — a série', inLanguage: 'pt-BR', publisher: { '@id': ORG_ID },
+      blogPost: htArtigos.map(a => ({ '@type': 'BlogPosting', headline: a.tituloTexto, url: `${SITE_URL}${a.caminho}`, description: a.descricao })),
+    }, {
+      '@context': 'https://schema.org', '@type': 'ItemList',
+      name: `Horta na Prática — ${htNoAr} ${htNoAr === 1 ? 'artigo publicado' : 'artigos publicados'}`,
+      numberOfItems: htNoAr,
+      itemListElement: htArtigos.map((a, i) => ({ '@type': 'ListItem', position: i + 1, url: `${SITE_URL}${a.caminho}`, name: a.tituloTexto })),
+    }];
+    fs.writeFileSync(path.join(od, 'horta-na-pratica', 'index.html'), layout(
+      'Horta na Prática: a série do curso | Villela Stay',
+      `A série Horta na Prática, da coleção Viver de Chácara: a horta sem agrotóxico da chácara que recebe hóspedes — lugar, solo e água, desenho, composto, canteiros e manilhas, plantio, colheita, o hóspede na horta e a casa vazia. ${htNoAr} artigos no ar.`,
+      `
+<div class="cap">
+  <section class="cap-hub-hero">
+    <h1>Horta na Prática <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Ervas em manilhas, folhas e legumes em canteiros: a horta sem agrotóxico da chácara que recebe hóspedes</span></h1>
+    <p>Da coleção <strong>Viver de Chácara</strong>. São ${htTotal} artigos, um para cada aula do curso: para quem se planta, a segurança e o alimento limpo, sol, solo e água, o ano no Cerrado, as ferramentas, a manilha, a semente e a muda, o lugar e a amostra de solo, o desenho e a quantidade, o calendário, o composto, os canteiros, o plantio das ervas, a visita, a colheita, o hóspede na horta, a prevenção sem agrotóxico, a casa vazia, o diagnóstico, o excedente, o que consultar antes de vender e o projeto da horta, sempre em um mesmo exemplo: a área de hóspedes da Chácara-Modelo. Cada artigo abre com resumo, índice e perguntas frequentes e fecha com o que aplicar hoje. Conteúdo educacional: não é recomendação agronômica nem orientação nutricional, sanitária, contábil ou jurídica. Corretivo e adubo seguem a análise do solo e o agrônomo, e o que é pesado, enterrado, elétrico ou de ponto de água fica com contratado ou profissional.</p>
+  </section>
+  <nav class="cap-trilha cap-trilha-hub" aria-label="Trilha"><a href="/blog.html">Blog</a> <span aria-hidden="true">›</span> <span>Horta na Prática</span></nav>
+  <div class="cap-faixa">${htAnuncio('livro')}${htAnuncio('curso')}</div>
+  ${vdcAmoHub(htArtigos)}
+  ${vdcFigHub(htFigs, htArtigos)}
+  <section class="cap-sumario-hub">
+    <h2>Índice da série</h2>
+    <p>As ${htTotal} aulas do curso, na ordem. Cada uma tem o seu artigo.</p>
+    <ol class="cap-sumario-lista">${htGrade.aulas.map(g => htLinhaGrade(g)).join('')}</ol>
+  </section>
+  <div class="cap-grade">${htCards}</div>
+  ${htApoio.length ? `<section class="cg-apoio"><h2>Material de apoio</h2><p>Aberto para qualquer leitor, sem login.</p><div class="cap-grade">${htApoioCards}</div></section>` : ''}
+  <div class="cap-faixa">${htAnuncio('livro')}${htAnuncio('curso')}</div>
+</div>`,
+      { caminho: '/horta-na-pratica/', semIdiomas: true, ...serieImagem('horta-na-pratica').og, extraHead: `<style>${HT_CSS}</style>` + htHubLd.map(l => `<script type="application/ld+json">${JSON.stringify(l)}</script>`).join('') }
+    ));
+
+    vdcConfereImagens('horta-na-pratica', [...htArtigos.map(a => path.join(od, 'blog', `${a.slug}.html`)), path.join(od, 'horta-na-pratica', 'index.html')]);
+    vdcConfereVideos('horta-na-pratica', htArtigos, od, path.join(od, 'horta-na-pratica', 'index.html'));
+    HT_PATHS = ['/horta-na-pratica/', ...htArtigos.map(a => a.caminho), ...htApoio.map(d => `/horta-na-pratica/apoio/${d.chave}.html`)];
+    HT_LLMS = `## Blog: Horta na Prática (${htNoAr} artigos, em português)
+
+Série do livro e do curso *Horta na Prática*, da coleção Viver de Chácara, de Augusto Villela:
+a horta sem agrotóxico da chácara que recebe hóspedes, com ervas em manilhas e folhas e legumes em
+canteiros — para quem se planta, segurança e alimento limpo, sol, solo e água, o ano no Cerrado,
+ferramentas, recipientes, sementes e mudas, o lugar e a amostra de solo, o desenho dos canteiros,
+quanto plantar, calendário, composto, preparo de canteiro e de manilha, plantio, rega e capina,
+colheita e rotação, o hóspede na horta, prevenção, a casa vazia, diagnóstico, excedente, o que
+consultar antes de vender e o projeto da horta.
+Conteúdo educacional: não é recomendação agronômica, nem orientação nutricional, sanitária,
+contábil ou jurídica, e não forma profissional. Corretivo e adubo seguem a análise do solo e o
+agrônomo. Os resumos e as perguntas frequentes não trazem dose, medida, prazo nem valor.
+Índice da série: ${SITE_URL}/horta-na-pratica/
+Livro: ${HT_LIVRO.split('?')[0]}
+Curso on-line (25 aulas na Villela Academy): ${HT_CURSO.split('?')[0]}
+
+${htArtigos.map(a => `- [Aula ${a.n}: ${a.tituloTexto}](${SITE_URL}${a.caminho}): ${a.descricao}`).join('\n')}
+`;
+    console.log(`Blog Horta na Prática: hub + ${htNoAr} de ${htTotal} artigos + ${htApoio.length} material(is) de apoio + ${htAmo.total} amostra(s) grátis em vídeo`);
+  }
+
 
   CAP_PATHS = ['/claude/', ...capArtigos.map(a => a.caminho), '/claude-juridico/', ...cjArtigos.map(a => a.caminho),
     ...['01-central-atualizacao-normativa.html', '02-diretorio-pesquisa-juridica.html', '03-atualizacoes-tecnologicas.html'].map(f => `/claude-juridico/recursos/${f}`)];
@@ -9202,6 +9581,18 @@ const dcCardsHub = LANG !== 'pt' || !dcArtigos.length ? '' : `
     </div>
   </a>`;
 
+// Série Horta na Prática (coleção Viver de Chácara). Card com a capa do curso.
+const htCardsHub = LANG !== 'pt' || !htArtigos.length ? '' : `
+  <a class="blog-card blog-card-serie" href="/horta-na-pratica/">
+    <div class="blog-card-img">${img('/blog-img/horta-na-pratica-1.jpg', { alt: 'Capa do curso Horta na Prática, da coleção Viver de Chácara: o título em letras claras sobre fundo verde-escuro, ao lado de manilhas de concreto com ervas atrás de uma tela, num gramado, ao fim da tarde, com a casa ao fundo', width: 1920, height: 1080, sizes: '(max-width: 640px) 100vw, 400px' })}</div>
+    <div class="blog-card-info">
+      <span class="tema-tag tema-chatgpt">🌿 Série · Viver de Chácara</span>
+      <h3>Horta na Prática</h3>
+      <p>Ervas em manilhas, folhas e legumes em canteiros: a horta sem agrotóxico da chácara que recebe hóspedes, do lugar e do desenho ao composto, à colheita e à casa vazia. Com curso na Villela Academy e livro na Livraria Villela.</p>
+      <span class="blog-card-leia">Ver os ${htArtigos.length} artigos →</span>
+    </div>
+  </a>`;
+
 // ---- busca do blog ----
 // O hub mostra 16 cards, mas o blog já tem quase cem textos: os 13 do Diário e os das três
 // séries, que moram nos hubs próprios. Procurar só nos cards seria inútil — o índice cobre
@@ -9345,6 +9736,7 @@ const blogLd = {
         ...(peArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/pedreiro-completo-na-pratica/#serie`, name: 'Pedreiro Completo na Prática — a série', url: `${SITE_URL}/pedreiro-completo-na-pratica/` }] : []),
         ...(ctArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/construcao-com-conteineres-na-pratica/#serie`, name: 'Construção com Contêineres na Prática — a série', url: `${SITE_URL}/construcao-com-conteineres-na-pratica/` }] : []),
         ...(dcArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/decoracao-de-interiores-na-pratica/#serie`, name: 'Decoração de Interiores na Prática — a série', url: `${SITE_URL}/decoracao-de-interiores-na-pratica/` }] : []),
+        ...(htArtigos.length ? [{ '@type': 'Blog', '@id': `${SITE_URL}/horta-na-pratica/#serie`, name: 'Horta na Prática — a série', url: `${SITE_URL}/horta-na-pratica/` }] : []),
       ]
     : undefined,
 };
@@ -9365,7 +9757,7 @@ const blogHub = layout(
 </section>
 ${buscaHtml}
 <section class="grade-wrap">
-  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${paCardsHub}${peCardsHub}${ctCardsHub}${dcCardsHub}${blogCardsHub}</div>
+  <div class="blog-grade">${capCardsHub}${cjCardsHub}${cgCardsHub}${lcCardsHub}${csCardsHub}${soCardsHub}${gaCardsHub}${hoCardsHub}${heCardsHub}${piCardsHub}${paCardsHub}${peCardsHub}${ctCardsHub}${dcCardsHub}${htCardsHub}${blogCardsHub}</div>
 </section>
 <section class="venda-bloco cta-final blog-cta" style="max-width:1000px;margin:0 auto 64px">
   <h2>${t('Pronto para conhecer Brasília de perto?', 'Ready to experience Brasília up close?', '¿Listo para conocer Brasília de cerca?')}</h2>
@@ -9841,7 +10233,7 @@ const SALTO = String.fromCharCode(10);
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${rotas.flatMap(r => IDIOMAS.map(lang => `  <url><loc>${absLoc(lang, r.loc)}</loc><lastmod>${hoje}</lastmod><changefreq>${r.changefreq}</changefreq><priority>${r.priority}</priority>${IDIOMAS.map(l => `<xhtml:link rel="alternate" hreflang="${HTML_LANG[l]}" href="${absLoc(l, r.loc)}"/>`).join('')}<xhtml:link rel="alternate" hreflang="x-default" href="${absLoc('pt', r.loc)}"/></url>`)).join('\n')}
-${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PI_PATHS.length ? SALTO : ''}${PI_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/piscineiro-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PA_PATHS.length ? SALTO : ''}${PA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/paisagismo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PE_PATHS.length ? SALTO : ''}${PE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/pedreiro-completo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CT_PATHS.length ? SALTO : ''}${CT_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/construcao-com-conteineres-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${DC_PATHS.length ? SALTO : ''}${DC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/decoracao-de-interiores-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
+${CAP_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/claude/' || loc === '/claude-juridico/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SALTO}${CG_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>${loc === '/chatgpt/' ? 'weekly' : 'monthly'}</changefreq><priority>${loc === '/chatgpt/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${LC_PATHS.length ? SALTO : ''}${LC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/locador/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CS_PATHS.length ? SALTO : ''}${CS_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/conexoes-de-sucesso/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${SO_PATHS.length ? SALTO : ''}${SO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/segunda-onda-da-ia/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${GA_PATHS.length ? SALTO : ''}${GA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/google-ai/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HO_PATHS.length ? SALTO : ''}${HO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-contemporaneo/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HE_PATHS.length ? SALTO : ''}${HE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/homem-essencial/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PI_PATHS.length ? SALTO : ''}${PI_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/piscineiro-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PA_PATHS.length ? SALTO : ''}${PA_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/paisagismo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${PE_PATHS.length ? SALTO : ''}${PE_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/pedreiro-completo-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${CT_PATHS.length ? SALTO : ''}${CT_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/construcao-com-conteineres-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${DC_PATHS.length ? SALTO : ''}${DC_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/decoracao-de-interiores-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}${HT_PATHS.length ? SALTO : ''}${HT_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/horta-na-pratica/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 ${GASTRO_PATHS.map(loc => `  <url><loc>${SITE_URL}${loc}</loc><lastmod>${hoje}</lastmod><changefreq>monthly</changefreq><priority>${loc === '/gastronomia-villela-table/' ? '0.7' : '0.6'}</priority></url>`).join(SALTO)}
 </urlset>`;
 fs.writeFileSync(path.join(DIST, 'sitemap.xml'), sitemap);
@@ -9960,7 +10352,7 @@ ${PI_LLMS}
 ${PA_LLMS}
 ${PE_LLMS}
 ${CT_LLMS}
-${DC_LLMS}
+${DC_LLMS}${HT_LLMS ? String.fromCharCode(10) + HT_LLMS : ''}
 ## Livros e cursos do autor
 
 Vitrine conjunta dos três acervos (livros, cursos e sistemas), com links diretos

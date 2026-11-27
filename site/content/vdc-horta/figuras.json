@@ -1,0 +1,406 @@
+{
+ "_nota": "Gerado por dados/cursos/vdc-horta/blog/htBL_figuras.py (posicao e figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram o desenho no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "I-01",
+  "I-07",
+  "I-23",
+  "I-26",
+  "I-30"
+ ],
+ "01-a-horta-que-recebe-hospedes": [
+  {
+   "id": "I-01",
+   "arq": "horta-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 496,
+   "legenda": "Manilha e canteiro lado a lado, em corte: M é o diâmetro interno e h, a altura de terra. A água da manilha sai por baixo; o canteiro, no chão, é mais largo e tem a rua ao lado",
+   "aberta": true,
+   "secao": "Manilha e canteiro",
+   "apos": "O canteiro é uma faixa de terra preparada no chão, com ruas em volta, "
+  },
+  {
+   "id": "I-02",
+   "arq": "horta-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 593,
+   "legenda": "O exemplo em planta, sem norte: os grupos de oito e de seis manilhas, que existem, a cerca de 40 m um do outro; os canteiros A a D e a composteira de duas baias, de lado b, são o que o exemplo projeta",
+   "aberta": false,
+   "secao": "O que o exemplo projeta",
+   "apos": "O exemplo projeta também uma composteira de duas baias, os compartimen"
+  }
+ ],
+ "02-seguranca-e-alimento-limpo": [
+  {
+   "id": "I-03",
+   "arq": "horta-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 533,
+   "legenda": "O caminho do alimento em sete passos, da água na raiz ao alimento guardado; no passo da desinfecção, quem manda é o rótulo do produto",
+   "aberta": true,
+   "secao": "O caminho do alimento limpo",
+   "apos": "O desinfetante é produto próprio para hortifrutícolas, regularizado na"
+  }
+ ],
+ "03-sol-solo-e-agua": [
+  {
+   "id": "I-04",
+   "arq": "horta-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 489,
+   "legenda": "O sol de manhã e à tarde: a sombra da árvore muda de lado. S é o total de horas de sol, que se observa na seca e nas águas",
+   "aberta": true,
+   "secao": "Como contar o sol",
+   "apos": "Uma observação só não basta, porque o caminho do sol muda ao longo do "
+  },
+  {
+   "id": "I-05",
+   "arq": "horta-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 474,
+   "legenda": "O solo em corte: na terra solta há ar, as raízes entram e a água desce; sobre a camada dura, as raízes dobram e a água fica parada",
+   "aberta": false,
+   "secao": "Solo solto, que não encharca",
+   "apos": "O solo desejável é solto, fácil de trabalhar, profundo e rico em matér"
+  },
+  {
+   "id": "I-06",
+   "arq": "horta-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 496,
+   "legenda": "A água na manilha, com gotejador, e no canteiro, com crivo fino: confira a zona úmida com o dedo ou com a pá e anote o tempo, t",
+   "aberta": false,
+   "secao": "Água: perguntar à terra",
+   "apos": "Na manilha, a peça de concreto usada como recipiente, entre na terra a"
+  }
+ ],
+ "04-o-ano-no-cerrado": [
+  {
+   "id": "I-08",
+   "arq": "horta-na-pratica-fig-03-05.webp",
+   "w": 1200,
+   "h": 400,
+   "legenda": "O ano em doze meses: as águas, de outubro a abril, e a seca, de maio a setembro. O veranico marcado é um exemplo: quando ele vem, é hora de religar a rega",
+   "aberta": true,
+   "secao": "Duas estações e a época da semente",
+   "apos": "No Cerrado, a referência deste curso, as águas vão de outubro a abril,"
+  }
+ ],
+ "05-erva-folha-fruto-e-raiz": [
+  {
+   "id": "I-07",
+   "arq": "horta-na-pratica-fig-03-04.webp",
+   "w": 1200,
+   "h": 474,
+   "legenda": "Os quatro grupos de plantas, em corte, com a parte que se colhe destacada: erva, folha, fruto e raiz",
+   "aberta": true,
+   "secao": "Quatro grupos, quatro perguntas",
+   "apos": "As hortaliças podem ser agrupadas pela parte que se come. A Embrapa us"
+  }
+ ],
+ "06-ferramentas-manilha-semente-e-muda": [
+  {
+   "id": "I-09",
+   "arq": "horta-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 556,
+   "legenda": "As ferramentas da horta pequena, agrupadas pela função, com a luva de couro e o calçado fechado ao lado",
+   "aberta": true,
+   "secao": "Ferramentas pensadas pela função",
+   "apos": "De perto trabalham o sacho, uma enxada pequena de duas lâminas, e a co"
+  },
+  {
+   "id": "I-10",
+   "arq": "horta-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 921,
+   "legenda": "A manilha já assentada, em corte: M é o diâmetro interno, h é a altura de terra, e a água sai pela base aberta",
+   "aberta": false,
+   "secao": "Profundidade, saída de água e quem move",
+   "apos": "O dreno é o caminho de saída da água que sobra. A manilha drena sem fu"
+  },
+  {
+   "id": "I-11",
+   "arq": "horta-na-pratica-fig-04-03.webp",
+   "w": 1200,
+   "h": 556,
+   "legenda": "O que procurar no envelope de sementes; e₁ é a distância entre linhas e e₂, a distância entre plantas",
+   "aberta": false,
+   "secao": "Ler o envelope antes de pagar",
+   "apos": "Antes de pagar, procure o nome da planta e da cultivar, que é a varied"
+  }
+ ],
+ "07-o-lugar-e-a-amostra-de-solo": [
+  {
+   "id": "I-13",
+   "arq": "horta-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 467,
+   "legenda": "A ficha da amostra de solo em branco, com o material da coleta: balde limpo, ferramenta, saco com etiqueta e luvas",
+   "aberta": true,
+   "secao": "Falar com o laboratório, coletar e identificar",
+   "apos": "A ficha da amostra fica em branco de propósito, para receber os seus d"
+  }
+ ],
+ "08-o-desenho-dos-canteiros": [
+  {
+   "id": "I-12",
+   "arq": "horta-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 593,
+   "legenda": "Croqui do que o exemplo projeta: quatro canteiros de 3,00 m × 1,00 m, com ruas de 0,50 m, num bloco de 6,50 m × 4,00 m; as oito manilhas existem e a composteira fica à parte",
+   "aberta": false,
+   "secao": "Quatro canteiros e as manilhas no mesmo papel",
+   "apos": "As manilhas entram no mesmo croqui, no lugar onde estão, com o nome da"
+  }
+ ],
+ "09-quanto-plantar": [
+  {
+   "id": "I-14",
+   "arq": "horta-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 604,
+   "legenda": "A conta do canteiro A: 4 linhas de 12 plantas, 48 no total. O número de linhas e de plantas por linha sai das distâncias e₁ e e₂",
+   "aberta": false,
+   "secao": "A alface no canteiro A",
+   "apos": "É a conta do papel, o máximo que o desenho comporta; não é colheita pr"
+  }
+ ],
+ "10-calendario-e-custo": [
+  {
+   "id": "I-15",
+   "arq": "horta-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 576,
+   "legenda": "A folha do calendário, mês a mês, com as águas e a seca; a data da amostra de solo se conta para trás, a partir do plantio",
+   "aberta": false,
+   "secao": "A folha de doze meses",
+   "apos": "Não é um calendário para decorar. É uma folha para consultar antes de "
+  }
+ ],
+ "11-composto-o-que-entra": [
+  {
+   "id": "I-16",
+   "arq": "horta-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 544,
+   "legenda": "As duas baias de lado b: uma enchendo, em camadas, com palha por baixo e por cima; a outra fechada, curtindo",
+   "aberta": true,
+   "secao": "As duas baias e o lugar da composteira",
+   "apos": "Com duas baias, o resto novo não se mistura ao que já está quase pront"
+  },
+  {
+   "id": "I-17",
+   "arq": "horta-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 545,
+   "legenda": "O que entra no composto e o que não entra",
+   "aberta": false,
+   "secao": "O que entra e o que não entra",
+   "apos": "O que entra cabe em três grupos: restos crus de cozinha, como cascas d"
+  }
+ ],
+ "12-composto-pronto-e-cobertura": [
+  {
+   "id": "I-18",
+   "arq": "horta-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 459,
+   "legenda": "Composto pronto e composto cru, com os seis sinais para conferir antes de usar",
+   "aberta": false,
+   "secao": "Os seis sinais do composto pronto",
+   "apos": "Meça no miolo e em mais de um ponto, porque a borda esfria antes. Para"
+  }
+ ],
+ "13-montar-um-canteiro": [
+  {
+   "id": "I-19",
+   "arq": "horta-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 501,
+   "legenda": "O canteiro em corte: o solo de baixo, a camada solta com composto, de espessura g, e a cobertura morta por cima; a rua fica sem plantio",
+   "aberta": false,
+   "secao": "O volume da camada",
+   "apos": "Multiplique o comprimento pela largura e pela espessura g, a da camada"
+  }
+ ],
+ "14-preparar-uma-manilha": [
+  {
+   "id": "I-20",
+   "arq": "horta-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 489,
+   "legenda": "A manilha já assentada, depois de cheia: terra e composto misturados, abaixo da borda, cobertura morta e gotejador por cima, água saindo pela base",
+   "aberta": true,
+   "secao": "Gotejador, cobertura e etiqueta",
+   "apos": "Antes de ir embora, confira: a água sai por baixo, a terra ficou abaix"
+  }
+ ],
+ "15-semear-e-plantar-as-ervas": [
+  {
+   "id": "I-21",
+   "arq": "horta-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 474,
+   "legenda": "O transplante em três tempos: a muda com folhas definitivas, a cova na linha do barbante e a rega com crivo fino",
+   "aberta": false,
+   "secao": "O ponto do transplante",
+   "apos": "Raiz ferida atrasa a planta, então deixe linhas marcadas, cova aberta "
+  },
+  {
+   "id": "I-22",
+   "arq": "horta-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 489,
+   "legenda": "A etiqueta da horta: na frente, o nome da planta; no verso, a data do plantio, a origem e a primeira colheita",
+   "aberta": false,
+   "secao": "Etiqueta e envelope",
+   "apos": "Ponha a etiqueta no mesmo dia, com o nome da erva e a data. Muda nova "
+  },
+  {
+   "id": "I-23",
+   "arq": "horta-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 400,
+   "legenda": "As sete ervas, uma por manilha. As folhagens são genéricas: quem identifica a planta é o nome escrito",
+   "aberta": true,
+   "secao": "As sete ervas das manilhas",
+   "apos": "No exemplo, a área de hóspedes da Chácara-Modelo, as manilhas recebem "
+  }
+ ],
+ "17-colher-e-girar-os-canteiros": [
+  {
+   "id": "I-24",
+   "arq": "horta-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 489,
+   "legenda": "Três modos de colher: a planta que sai inteira, a que rebrota depois do corte e a que se colhe folha a folha",
+   "aberta": true,
+   "secao": "Três jeitos de a colheita terminar",
+   "apos": "A planta que sai inteira, como a alface, a cenoura e o rabanete, liber"
+  },
+  {
+   "id": "I-25",
+   "arq": "horta-na-pratica-fig-07-05.webp",
+   "w": 1200,
+   "h": 504,
+   "legenda": "A rotação nos canteiros que o exemplo projeta: de A para B, C, D e de volta a A, com o grupo de cada canteiro no primeiro ciclo",
+   "aberta": false,
+   "secao": "A rotação dos quatro grupos",
+   "apos": "Assim, nenhuma família volta ao mesmo canteiro antes de os quatro gira"
+  }
+ ],
+ "18-o-hospede-na-horta": [
+  {
+   "id": "I-26",
+   "arq": "horta-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 459,
+   "legenda": "As etiquetas que falam com o hóspede: pode colher, ainda não e, na torneira da rede do poço, se houver, água de poço — rega",
+   "aberta": true,
+   "secao": "Etiquetas que não deixam dúvida",
+   "apos": "A torneira alimentada pela rede do poço, se houver junto à horta, leva"
+  },
+  {
+   "id": "I-27",
+   "arq": "horta-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 541,
+   "legenda": "O caminho do hóspede, sem escala: da cozinha comum à horta, a uma distância D, com as ferramentas e a composteira fora do percurso",
+   "aberta": false,
+   "secao": "O caminho até a horta",
+   "apos": "Percorra o trajeto da cozinha comum até as manilhas e anote a distânci"
+  },
+  {
+   "id": "I-28",
+   "arq": "horta-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 519,
+   "legenda": "A véspera da chegada, em sete pontos a conferir",
+   "aberta": false,
+   "secao": "A véspera da chegada",
+   "apos": "Não prometa um tempero determinado, porque a erva pode estar em troca "
+  }
+ ],
+ "19-prevenir-sem-agrotoxico": [
+  {
+   "id": "I-29",
+   "arq": "horta-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 519,
+   "legenda": "A ronda: os oito pontos de olhar, na manilha e no canteiro, e a anotação no caderno, com a data",
+   "aberta": true,
+   "secao": "A ronda na mesma ordem",
+   "apos": "Olhe a terra, a face de baixo das folhas, os brotos, o colo da planta,"
+  }
+ ],
+ "21-diagnostico": [
+  {
+   "id": "I-30",
+   "arq": "horta-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "Nove sinais de que algo vai mal; o desenho mostra o sinal, não a espécie nem a causa",
+   "aberta": true,
+   "secao": "Como olhar a planta",
+   "apos": "Fotografe de longe, para saber onde é, e de perto, para ver o que é. R"
+  },
+  {
+   "id": "I-31",
+   "arq": "horta-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 556,
+   "legenda": "Da observação à decisão: o que conferir antes de agir e as saídas possíveis, entre elas chamar o agrônomo",
+   "aberta": false,
+   "secao": "Aceitar a perda ou chamar o agrônomo",
+   "apos": "Chame o agrônomo quando o problema se espalha, volta depois de retirad"
+  }
+ ],
+ "22-excedente-e-registro": [
+  {
+   "id": "I-32",
+   "arq": "horta-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 510,
+   "legenda": "A folha de registro da colheita, em branco e sem coluna de preço",
+   "aberta": true,
+   "secao": "A folha de colheita e destino",
+   "apos": "O destino pode ser cozinha, congelador, secagem, partilha ou perda. Pr"
+  }
+ ],
+ "23-antes-de-vender": [
+  {
+   "id": "I-33",
+   "arq": "horta-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "Antes de vender: sete perguntas, cada uma com espaço para a resposta, quem respondeu e a data",
+   "aberta": true,
+   "secao": "Perguntas, e quem responde",
+   "apos": "São sete consultas: quatro têm endereço certo, e três são temas que pe"
+  }
+ ],
+ "24-projeto-desenho-e-calendario": [
+  {
+   "id": "I-34",
+   "arq": "horta-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 593,
+   "legenda": "O projeto do exemplo montado, sem norte: os canteiros e a composteira que o exemplo projeta, o grupo de oito manilhas, que existe, e o de seis em quadro separado",
+   "aberta": false,
+   "secao": "O croqui, com cada cota",
+   "apos": "A rua ocupa mais chão que o canteiro. Quem mede o espaço pensando só n"
+  }
+ ],
+ "25-projeto-rotina-e-proximos-passos": [
+  {
+   "id": "I-35",
+   "arq": "horta-na-pratica-fig-11-02.webp",
+   "w": 1200,
+   "h": 559,
+   "legenda": "A rotina da horta em uma folha: o que fazer em cada momento, com espaço para quem faz e para a data",
+   "aberta": true,
+   "secao": "As folhas que alimentam a rotina",
+   "apos": "Com essas páginas, a rotina cabe em quatro quadros, em uma folha só. E"
+  }
+ ]
+}

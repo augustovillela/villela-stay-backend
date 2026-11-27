@@ -1,0 +1,127 @@
+{
+ "01-a-horta-que-recebe-hospedes": [
+  ["Para quem a horta de uma chácara que recebe hóspedes deve plantar primeiro?", "Primeiro para a casa e para o hóspede. O excedente, o que sobra depois dos dois, fica para depois e pede decisão própria."],
+  ["Qual é a diferença entre plantar em manilha e em canteiro?", "A manilha, um anel de concreto usado como recipiente, separa e identifica uma planta. O canteiro é uma faixa de terra preparada no chão, recebe várias plantas e permite mudar o plantio."],
+  ["Posso mudar uma manilha de lugar com ajuda da família?", "Não é o que o curso propõe. A peça é pesada e pode rolar: descarregar, mover e assentar manilha é serviço contratado."]
+ ],
+ "02-seguranca-e-alimento-limpo": [
+  ["Horta sem agrotóxico dispensa lavar o que se colhe?", "Não. A expressão descreve como se cultiva e não dispensa nenhum cuidado de higiene: o alimento segue um caminho que vai da água da rega até a lavagem na cozinha e a secagem antes de guardar."],
+  ["Posso escrever “orgânico” na etiqueta do que planto sem agrotóxico?", "Não por conta própria. A palavra, para vender, tem regra própria, que precisa ser consultada antes de ir para etiqueta ou anúncio. Cultivar sem agrotóxico não é a mesma coisa."],
+  ["Que serviços da horta não devem ser feitos por quem cuida da casa?", "Mover peça pesada, mexer em quadro elétrico ou bomba, capturar animal e decidir sobre produto, poço ou laudo. Em caso de dúvida, o serviço passa para a coluna mais restrita: contratar ou consultar quem responde pelo assunto."]
+ ],
+ "03-sol-solo-e-agua": [
+  ["Como saber se o lugar recebe sol suficiente para uma horta?", "Observando o próprio terreno num dia de céu aberto, de manhã e à tarde, e repetindo em outra época do ano. Referências publicadas orientam a pergunta, mas não substituem a contagem no lugar."],
+  ["Como perceber que o solo não está deixando a água descer?", "Depois de uma chuva forte, ande pelo lugar. Poça que continua quando o resto já secou deve ser anotada. O que falta no solo é assunto do profissional, com análise."],
+  ["Como saber se a horta precisa de água?", "Perguntando à terra antes de regar: com o dedo de luva ou uma vareta na manilha e com um corte de pá no canteiro, sabendo antes o que há enterrado."]
+ ],
+ "04-o-ano-no-cerrado": [
+  ["Como é o ano da horta no Cerrado?", "Há uma estação das águas e uma seca, e no meio das chuvas pode vir o veranico, um período sem chuva. O curso usa o Cerrado como referência; em outra região, o calendário muda."],
+  ["O que costuma dar errado no veranico?", "O esquecimento. A rega que foi interrompida por causa da chuva precisa voltar, e alguém precisa ter essa conferência como tarefa."],
+  ["O hóspede pode ajudar a regar quando não houver ninguém da casa?", "O curso não deixa rega nem conferência a cargo do hóspede. Cada situação do ano recebe o nome de quem cuida."]
+ ],
+ "05-erva-folha-fruto-e-raiz": [
+  ["Por que separar a horta em erva, folha, fruto e raiz?", "Porque a parte que se colhe indica o que vigiar e quanto tempo a planta ocupa o lugar. É um jeito de organizar o trabalho, e há sobreposição entre os grupos."],
+  ["Existe hortaliça mais fácil para quem está começando?", "Há publicações que apontam culturas com menos obstáculos, e o artigo as apresenta com a fonte. Fácil não quer dizer que dispensa cuidado nem promete colheita."],
+  ["Como escolher o que plantar?", "Comece pela lista de quem cozinha e separe os itens por grupo. De pouco adianta plantar o que cresce bem se ninguém na casa gosta. Dúvida sobre época vai ao viveirista ou ao agrônomo."]
+ ],
+ "06-ferramentas-manilha-semente-e-muda": [
+  ["Qualquer manilha antiga serve para plantar tempero?", "Não. Peça usada pode ter servido a esgoto, drenagem ou depósito de produto. Em recipiente de histórico desconhecido não se planta alimento."],
+  ["O que olhar antes de comprar uma muda no viveiro?", "O torrão com as raízes, o estado das folhas e o nome da planta. Compre perto do dia de plantar, para a muda não ficar esquecida na embalagem."],
+  ["Composto, esterco, corretivo e adubo são a mesma coisa?", "Não. São materiais com funções diferentes, e a decisão sobre corretivo e adubo segue a análise de solo e a orientação do agrônomo."]
+ ],
+ "07-o-lugar-e-a-amostra-de-solo": [
+  ["Quando fazer a análise de solo da horta?", "Com antecedência, bem antes do plantio, porque o resultado pode pedir uma correção que leva tempo para agir. O artigo mostra o prazo e a fonte."],
+  ["Posso colher a amostra de solo sem falar com o laboratório?", "O curso recomenda ligar antes. O laboratório informa como coletar e identificar, e uma amostra sem identificação perde o valor."],
+  ["Quem interpreta o resultado da análise?", "O agrônomo. Leve o laudo junto com a ficha do lugar; só depois se decide sobre corretivo e adubo."]
+ ],
+ "08-o-desenho-dos-canteiros": [
+  ["Por que desenhar os canteiros antes de cavar?", "Porque o espaço que a horta pede é o dos canteiros somado ao das ruas, e isso só aparece quando as medidas são escritas. No papel ainda dá para mudar de ideia."],
+  ["Para que servem as ruas entre os canteiros?", "Para trabalhar de fora, sem pisar na terra onde a raiz cresce, e para passar com o que for preciso carregar."],
+  ["Posso marcar os canteiros no chão sozinho?", "Marcar com estacas e barbante é serviço seu quando se sabe o que há enterrado. Máquina, escavação funda, cerca com mourão e corte de árvore são de contratado, e o corte se consulta antes no órgão competente."]
+ ],
+ "09-quanto-plantar": [
+  ["Como calcular quantas plantas cabem num canteiro?", "Dividindo a largura e o comprimento pelos espaçamentos entre linhas e entre plantas, e usando só a parte inteira. O resultado é o máximo que o desenho comporta."],
+  ["O número que cabe no canteiro é o que a casa deve plantar?", "Não necessariamente. Ele se compara com o que a cozinha usa. Plantar menos de cada vez e semear em datas diferentes pode ser a melhor resposta."],
+  ["Como saber quanto a casa consome?", "Anotando por algumas semanas o que de folha, fruto, raiz e erva entra na cozinha e o que sobra, separando os dias em que há hóspedes."]
+ ],
+ "10-calendario-e-custo": [
+  ["Para que serve o calendário da horta?", "Para contar datas nos dois sentidos: para trás, do plantio até o que precisa vir antes, e para a frente, da semeadura até a colheita prevista."],
+  ["Posso copiar o calendário de plantio de outra região?", "Não sem conferir. As publicações variam, e o envelope da semente e o que acontece no seu lugar corrigem a tabela."],
+  ["O curso informa quanto custa montar a horta?", "Não traz preço. Ele ensina a abrir as linhas de gasto e a preencher cada uma com cotação de verdade."]
+ ],
+ "11-composto-o-que-entra": [
+  ["O que entra no composto de uma casa que recebe hóspedes?", "Restos crus de cozinha, sobras como pó de café e cascas de ovos e material das áreas verdes. O que traz risco ou produto químico fica de fora, e o artigo traz a lista."],
+  ["Por que usar duas baias?", "Para que o resto novo não se misture ao que já está quase pronto: uma recebe material enquanto a outra descansa."],
+  ["O hóspede pode levar a sobra até a composteira?", "O curso propõe que não. Se quiser colaborar, ele usa um pote identificado na cozinha, e uma pessoa definida leva até a pilha e a cobre."]
+ ],
+ "12-composto-pronto-e-cobertura": [
+  ["O composto fica pronto numa data certa?", "Não. A data só lembra de ir olhar. Quem libera o material são os sinais observados e medidos, descritos no artigo, todos eles."],
+  ["O que fazer se o composto ainda não passou nos sinais?", "Ele volta para a baia, mesmo com o canteiro esperando. Composto imaturo continua se decompondo no solo e pode prejudicar as plantas."],
+  ["Posso mexer na pilha com a mão?", "Não. A pilha pode abrigar bicho e o miolo esquenta: use ferramenta, luva e calçado fechado, e termômetro próprio para acompanhar o calor."]
+ ],
+ "13-montar-um-canteiro": [
+  ["O que verificar antes do primeiro golpe de enxada?", "O que há enterrado: cano, fio ou ramal de irrigação. Onde ninguém sabe, não se abre o chão; localizar é serviço contratado."],
+  ["Pode pisar no canteiro depois de pronto?", "A regra do curso é não pisar. Trabalha-se pelas ruas, para não apertar a terra que foi solta."],
+  ["Quanto composto colocar no canteiro?", "Conforme a análise de solo e o agrônomo. O artigo ensina a calcular o volume da camada com as suas medidas, mas não define a mistura."]
+ ],
+ "14-preparar-uma-manilha": [
+  ["O que fazer antes de colocar terra na manilha?", "Confirmar de onde a peça veio, se está assentada e firme e se a água sai por baixo. O teste se faz com a peça ainda vazia."],
+  ["E se a água ficar parada dentro da manilha?", "Não encha e chame quem assentou a peça. Não invente camada no fundo para disfarçar o problema; isso se pergunta ao agrônomo."],
+  ["Que mistura de terra usar na manilha?", "Terra de origem conhecida com composto pronto, conforme a análise e o agrônomo. A mistura se prepara fora da peça."]
+ ],
+ "15-semear-e-plantar-as-ervas": [
+  ["É melhor começar a horta por semente ou por muda?", "Depende da cultura: há planta semeada direto no lugar e há planta que nasce em outro recipiente e depois é transplantada. O artigo separa os caminhos."],
+  ["Como saber que a muda está pronta para o transplante?", "Quem diz o momento é a planta, pelas folhas e pela altura, e não só o calendário. O artigo traz a referência publicada."],
+  ["Posso plantar várias ervas na mesma manilha?", "No exemplo do curso, cada manilha recebe uma erva só, com etiqueta no mesmo dia. Assim fica claro o que é cada planta e como cuidar dela."]
+ ],
+ "16-a-visita-a-horta": [
+  ["Quantas vezes por dia a horta deve ser regada?", "O curso não dá essa receita. A cada visita, confira se a terra está úmida onde está a raiz, e só então decida a rega."],
+  ["A rega automática dispensa a visita?", "Não. É preciso olhar a saída da água, a terra e as plantas. A saída do gotejador se confere antes de mudar o tempo de rega."],
+  ["O que anotar no caderno da horta?", "O que foi plantado, quando e onde, o que o teste da terra mostrou, o que foi feito e quando olhar de novo."]
+ ],
+ "17-colher-e-girar-os-canteiros": [
+  ["Quando colher uma hortaliça?", "Quando a planta mostra o ponto. A ficha e o calendário dizem quando começar a olhar, e vale colher só o que a casa vai usar logo."],
+  ["O que é rotação de canteiros?", "É não repetir em seguida a mesma família de plantas no mesmo lugar, trocando os grupos de canteiro a cada ciclo."],
+  ["O que fazer com a etiqueta depois da colheita?", "Atualizar no mesmo dia. Etiqueta que continua anunciando uma planta onde já há outra engana mais do que a falta dela."]
+ ],
+ "18-o-hospede-na-horta": [
+  ["O hóspede pode colher na horta?", "Pode colher o que a etiqueta libera, levar à cozinha e lavar. Rega e cuidado continuam com quem tem nome para isso."],
+  ["O que escrever nas etiquetas?", "O nome da planta em letras grandes e uma frase curta que diga se pode colher ou se ainda não. Torneira de água que não é a da cozinha também leva aviso."],
+  ["Que cuidado ter com crianças e ferramentas?", "Guardar o que corta e não deixar na horta planta que não se come. Antes de cada chegada, quem cuida percorre o caminho e confere."]
+ ],
+ "19-prevenir-sem-agrotoxico": [
+  ["O curso indica receita caseira contra pragas?", "Não. Receita caseira também é produto: pode ferir a folha, matar o inseto aliado e ficar no que se come."],
+  ["O que dá para fazer quando aparece um bicho na horta?", "Observar, catar à mão com luva o que se reconhece e retirar a planta doente. Bicho desconhecido não se pega: fotografe e pergunte."],
+  ["Como evitar problemas antes que apareçam?", "Com variedade de culturas, rotação, muda sadia, água na terra, limpeza, época adequada, solo cuidado e uma ronda regular na mesma ordem."]
+ ],
+ "20-a-casa-vazia": [
+  ["Como deixar a horta quando a casa vai ficar vazia?", "Escrevendo o que rega sozinho, o que não rega e quem passa para olhar, com o nome da pessoa. A lista de saída ajuda a não esquecer."],
+  ["Com programador de rega, preciso mesmo de alguém para olhar?", "Sim. O programador abre a água, mas não vê entupimento, vazamento, planta caída nem chuva."],
+  ["E se ninguém puder cuidar por muito tempo na seca?", "Reduza o que depende de gente: menos canteiro plantado nesse período e a terra coberta."]
+ ],
+ "21-diagnostico": [
+  ["Folha amarela é sinal de praga?", "Não necessariamente. Antes de dar nome, descreva o que vê e confira a água, a drenagem e o sol."],
+  ["Quando chamar um agrônomo?", "Quando o problema se espalha, volta depois de retirado, atinge várias espécies ou quando ninguém reconhece o que é. Leve fotos datadas e as anotações."],
+  ["Dá para identificar uma doença só pela tabela de sinais?", "A tabela ajuda a ordenar o olhar, mas vários sinais se parecem. O diagnóstico de doença é do agrônomo ou do técnico agrícola."]
+ ],
+ "22-excedente-e-registro": [
+  ["O que fazer com a sobra da horta?", "Primeiro ajustar o plantio e a colheita. O que ainda passar do consumo pode ser congelado, seco à sombra, no caso de erva de tempero, ou compartilhado."],
+  ["O curso ensina a fazer conserva, molho ou geleia?", "Não. Alimento fechado e guardado pede preparo controlado, com orientação própria."],
+  ["Posso colocar verdura da horta na cesta de boas-vindas do hóspede?", "Consulte antes a vigilância sanitária. Entregar alimento a quem paga a estadia é uma pergunta diferente de dividir com a família."]
+ ],
+ "23-antes-de-vender": [
+  ["Posso vender o excedente da horta para um vizinho?", "Pergunte antes a quem responde: vigilância sanitária, prefeitura, contador e extensão rural. O curso não diz que alguém está dispensado de exigências."],
+  ["O que é rastreabilidade de um vegetal fresco?", "É poder saber, pelos registros, de onde o produto veio e para onde foi. Há norma sobre o assunto, que o artigo apresenta e que deve ser consultada na versão vigente."],
+  ["Posso anunciar que o produto é “sem agrotóxico”?", "Consulte antes de levar a expressão a etiqueta ou anúncio. Quem anuncia precisa poder mostrar o que fez e o que entrou na horta, e “orgânico” tem regra própria."]
+ ],
+ "24-projeto-desenho-e-calendario": [
+  ["O que o projeto da horta reúne?", "O croqui, as quantidades, o calendário e o composto, separando o que já existe do que ainda é plano."],
+  ["O que fazer com uma medida que ainda não tomei?", "Deixe a letra no lugar do número. O que não foi medido não vira palpite."],
+  ["Para quem o projeto é escrito?", "Para você, para quem cuida quando a casa está vazia e para quem for contratado ou consultado. Outra pessoa deve entender a folha sem perguntar o básico."]
+ ],
+ "25-projeto-rotina-e-proximos-passos": [
+  ["Como transformar o projeto em rotina?", "Em quadros curtos numa folha: o que fazer a cada visita, na ronda, quando há hóspede e antes de ninguém vir, sempre com quem faz."],
+  ["Preciso entregar o projeto para concluir o curso?", "Não. O Certificado da Villela Academy é emitido pela conclusão das aulas. O projeto serve à sua própria horta."],
+  ["Por onde começar depois do curso?", "Por um primeiro serviço pequeno, com nome e data, e pelo tamanho de horta que a rotina da casa sustenta."]
+ ]
+}
