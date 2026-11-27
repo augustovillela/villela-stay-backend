@@ -485,6 +485,38 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(l.canal, 'Busca Google');
   });
 
+  await t('visitas por blog: agrupa série, artigo e hub, e separa quem veio de fora', async () => {
+    const b = require('./nucleo/visitas-blogs');
+    assert.deepEqual(b.blogDe('/claude/'), { id: 'claude', tipo: 'serie' });
+    assert.equal(b.blogDe('/blog/claude-juridico-01-abertura.html').id, 'claude-juridico', 'não confunde com a série claude');
+    assert.equal(b.blogDe('/en/blog/arquitetura.html').tipo, 'artigo', 'idioma soma no mesmo artigo');
+    assert.equal(b.blogDe('/serie-nova/'), null);
+    assert.equal(b.blogDe('/blog/serie-nova-01-abertura.html').id, 'serie-nova', 'série nova aparece pelas aulas');
+    assert.equal(b.blogDe('/blog.html').tipo, 'hub');
+    assert.equal(b.blogDe('/eventos.html'), null);
+
+    const h = (pagina, canal, dia, vid) => ({ produto: 'site', pagina, canal, vid, _recebido: dia + 'T12:00:00.000Z' });
+    const r = b.resumoBlogs([
+      h('/chatgpt/', 'Busca Google', '2026-11-27', 'a'),
+      h('/blog/chatgpt-02-prompts.html', 'Interno (nosso site)', '2026-11-27', 'a'),
+      h('/blog/chatgpt-02-prompts.html', 'WhatsApp', '2026-11-10', 'b'),
+      h('/chatgpt/', 'Direto', '2026-10-20', 'c'),
+      h('/eventos.html', 'Busca Google', '2026-11-27', 'd'),
+    ], { dias: 30, hoje: '2026-11-27' });
+    const gpt = r.blogs.find(x => x.id === 'chatgpt');
+    assert.equal(gpt.visitas, 3);
+    assert.equal(gpt.anterior, 1);
+    assert.equal(gpt.deFora, 2, 'navegação interna não conta como atração');
+    assert.equal(gpt.leitores, 2);
+    assert.equal(gpt.semanas[7], 2, 'semana atual é a última posição');
+    assert.equal(r.total.visitas, 3, 'página que não é blog fica fora');
+    assert.ok(r.blogs.some(x => x.id === 'horta-na-pratica' && x.visitas === 0), 'série sem visita aparece com zero');
+
+    assert.equal((await req('GET', '/staff/api/visitas-blogs')).status, 401);
+    const api = await req('GET', '/staff/api/visitas-blogs?dias=30', { cookie: adminCookie });
+    assert.equal(api.status, 200); assert.ok(Array.isArray(api.json.blogs));
+  });
+
   // ---------- Backup do DATA_DIR ----------
   await t('backup: lista admin=200/anônimo=401; arquivo bloqueia path traversal, serve válido', async () => {
     const l = await req('GET', '/staff/api/backup/lista', { cookie: adminCookie });

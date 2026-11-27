@@ -180,7 +180,7 @@ function visitasHtml(d) {
   </div>
 
   <div class="vs-abas">
-    ${[['origem', '🧭 Origem'], ['local', '📍 Localidade'], ['publico', '📱 Público'], ['paginas', '📄 Páginas'], ['funil', '🎯 Funil'], ['casas', '🏡 Casas']]
+    ${[['blogs', '📚 Blogs'], ['origem', '🧭 Origem'],['local', '📍 Localidade'], ['publico', '📱 Público'], ['paginas', '📄 Páginas'], ['funil', '🎯 Funil'], ['casas', '🏡 Casas']]
       // relatório nominal dos alunos: só admin (a rota responde 403 aos demais)
       .concat(ESTADO.me && ESTADO.me.papel === 'admin' ? [['alunos', '🎓 Alunos dos cursos'], ['musique', '🎵 Alunos do Musique'], ['produtos', '📊 Uso dos produtos']] : [])
       .map(([id, rot]) => `<button data-aba="${id}" class="${VIS.aba === id ? 'ativa' : ''}">${rot}</button>`).join('')}
@@ -222,6 +222,7 @@ function visitasAbaHtml(aba, d) {
       <div><h3 class="vs-h3">Por onde entram</h3>${visBarras(d.entradas)}</div>
       <div><h3 class="vs-h3">Onde abandonam</h3>${visBarras(d.saidas)}</div>
     </div>`;
+  if (aba === 'blogs') return '<p class="vazio">Carregando blogs…</p>';
   if (aba === 'funil') return '<p class="vazio">Carregando funil…</p>';
   if (aba === 'casas') return '<p class="vazio">Carregando casas…</p>';
   if (aba === 'alunos') return '<p class="vazio">Carregando alunos…</p>';
@@ -235,6 +236,7 @@ function ligarAbasVisitas() {
     VIS.aba = b.dataset.aba;
     document.querySelectorAll('.vs-abas button').forEach(x => x.classList.toggle('ativa', x === b));
     $('#vs-aba').innerHTML = visitasAbaHtml(VIS.aba, VIS.dados);
+    if (VIS.aba === 'blogs') carregarBlogsVisitas();
     if (VIS.aba === 'funil') carregarFunilVisitas();
     if (VIS.aba === 'casas') carregarCasasVisitas();
     if (VIS.aba === 'alunos') carregarAlunosVisitas();
@@ -246,11 +248,59 @@ function ligarAbasVisitas() {
     const sel = $('#vs-produto'); if (sel) sel.value = VIS.produto;
     carregarVisitas();
   });
+  if (VIS.aba === 'blogs') carregarBlogsVisitas();
   if (VIS.aba === 'funil') carregarFunilVisitas();
   if (VIS.aba === 'casas') carregarCasasVisitas();
   if (VIS.aba === 'alunos') carregarAlunosVisitas();
   if (VIS.aba === 'musique') carregarAlunosMusique();
   if (VIS.aba === 'produtos') carregarUsoProdutos();
+}
+
+/** 📚 Blogs: quanto cada série e artigo atrai. Clique na linha abre origens e páginas. */
+async function carregarBlogsVisitas() {
+  const alvo = $('#vs-aba'); if (!alvo) return;
+  try {
+    const d = await api('GET', `/visitas-blogs?dias=${VIS.dias}&bots=${VIS.bots ? 1 : 0}`);
+    if (VIS.aba !== 'blogs') return;
+    const t = d.total;
+    const tabela = (titulo, lista) => `
+      <h3 class="vs-h3">${titulo}</h3>
+      <div class="vs-rolagem"><table class="vs-tabela">
+        <thead><tr><th>Blog</th><th>Últimas 8 semanas</th><th class="num">De fora</th><th class="num">Visitas</th><th class="num">Leitores</th><th class="num">Variação</th><th>Principal origem</th></tr></thead>
+        <tbody>${lista.length ? lista.map(b => `
+          <tr class="vs-linha-site vs-linha-blog" data-i="${d.blogs.indexOf(b)}" title="Ver origens e páginas">
+            <td><b>${esc(b.nome)}</b></td>
+            <td>${visSparkline(b.semanas)}</td>
+            <td class="num"><b>${visNum(b.deFora)}</b></td>
+            <td class="num">${visNum(b.visitas)}</td>
+            <td class="num">${visNum(b.leitores)}</td>
+            <td class="num">${visDelta(b.delta)}</td>
+            <td class="suave">${b.origens.length ? esc(b.origens[0].k) : '—'}</td>
+          </tr>
+          <tr class="vs-detalhe-blog" data-det="${d.blogs.indexOf(b)}" hidden><td colspan="7"><div class="vs-duas">
+            <div><h3 class="vs-h3">De onde vieram os de fora</h3>${visBarras(b.origens, 'Ninguém chegou de fora no período.')}</div>
+            <div><h3 class="vs-h3">Páginas mais lidas</h3>${visBarras(b.paginas)}</div>
+          </div></td></tr>`).join('')
+          : '<tr><td colspan="7" class="vazio">Nenhuma visita no período.</td></tr>'}
+        </tbody>
+      </table></div>`;
+    alvo.innerHTML = `
+      <div class="cards vs-cards-alunos">
+        <div class="card"><div class="n">${visNum(t.deFora)}</div><div class="rot">Chegadas de fora</div></div>
+        <div class="card"><div class="n">${visNum(t.visitas)}</div><div class="rot">Visitas aos blogs</div>${visDelta(t.delta)}</div>
+        <div class="card"><div class="n">${visNum(t.leitores)}</div><div class="rot">Leitores (contados por dia)</div></div>
+      </div>
+      <h3 class="vs-h3">De onde vêm os leitores de fora</h3>${visBarras(d.origens, 'Ninguém chegou de fora no período.')}
+      ${tabela('Séries', d.blogs.filter(b => b.tipo === 'serie'))}
+      ${tabela('Artigos avulsos e página do blog', d.blogs.filter(b => b.tipo !== 'serie'))}
+      <p class="vs-nota"><b>De fora</b> = visita que não veio de outra página nossa (busca, redes, WhatsApp, link direto): é o que mostra se o blog atrai.
+      "Direto" inclui link digitado, favorito e aplicativos que não informam a origem — inclusive os seus próprios acessos.
+      As 8 semanas não mudam com o filtro de período; o filtro "Site" não se aplica aqui.${d.periodo.dias > d.retencaoDias ? ` O detalhe por página existe só para os últimos ${d.retencaoDias} dias.` : ''}</p>`;
+    alvo.querySelectorAll('.vs-linha-blog').forEach(tr => tr.onclick = () => {
+      const det = alvo.querySelector(`.vs-detalhe-blog[data-det="${tr.dataset.i}"]`);
+      if (det) det.hidden = !det.hidden;
+    });
+  } catch (e) { alvo.innerHTML = `<p class="erro">${esc(e.message)}</p>`; }
 }
 
 /** Funil por canal: visita → lead → reserva. É o que diz qual origem dá dinheiro. */

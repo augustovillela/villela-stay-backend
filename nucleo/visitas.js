@@ -31,6 +31,7 @@ const crypto = require('crypto');
 const { fork } = require('child_process');
 const atribuicao = require('./atribuicao-aluno');
 const atribuicaoMusique = atribuicao.musique;
+const { resumoBlogs } = require('./visitas-blogs');
 
 const ARQ_HITS = 'hits.jsonl';
 const ARQ_HIST = 'visitas-historico.json';   // dias antigos já agregados
@@ -688,6 +689,20 @@ module.exports.montarRotas = function montarRotas(app, deps) {
     try {
       res.json(relatorio({ dias, produto: String(req.query.produto || ''), incluirBots: req.query.bots === '1' }));
     } catch (e) { console.error('[visitas] relatório:', e); res.status(500).json({ erro: e.message }); }
+  });
+
+  // ---- Visitas por blog (séries, artigos avulsos e a página do blog)
+  app.get('/staff/api/visitas-blogs', requireAuth, (req, res) => {
+    if (!podeVer(req, res)) return;
+    const dias = Math.min(400, Math.max(1, parseInt(req.query.dias, 10) || 30));
+    try {
+      let hits = lerLinhas(DATA_DIR).map(normalizar);
+      if (req.query.bots !== '1') hits = hits.filter(h => !h.bot);
+      res.json({
+        ...resumoBlogs(hits, { dias, hoje: new Date().toISOString().slice(0, 10) }),
+        retencaoDias: RETENCAO_DIAS,   // além disso só sobra o total por dia, sem a página
+      });
+    } catch (e) { console.error('[visitas] blogs:', e); res.status(500).json({ erro: e.message }); }
   });
 
   // ---- Funil: visita → lead → reserva, por canal de origem
