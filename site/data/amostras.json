@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-10-13T14:23:55.830Z",
+  "coletadoEm": "2026-11-27T18:58:18.293Z",
   "series": {
     "piscineiro-na-pratica": {
       "curso_url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica",
@@ -1398,6 +1398,286 @@
           "video_url": "https://academia.villelastay.com.br/academy/api/amostras/VVW16AjTiidl/video.mp4?v=2",
           "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/VVW16AjTiidl/capa.jpg?v=2",
           "visto_em": "2026-10-12"
+        }
+      }
+    },
+    "horta-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/horta-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "w96IlB_5jiut",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — A horta da chácara que recebe hóspedes",
+          "titulo": "Antes de decidir o tamanho, conte quem cuida da horta e quando.",
+          "ponte": "No curso, os destinos da horta e o que existe separado do que é projeto.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/w96IlB_5jiut/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/w96IlB_5jiut/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "2": {
+          "id": "QNT_IQ19yJ9S",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Segurança, alimento limpo e limites",
+          "titulo": "Antes de cavar, saiba o que há embaixo, mesmo para um canteiro raso.",
+          "ponte": "A aula completa mostra quem faz cada serviço e o caminho do alimento limpo.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/QNT_IQ19yJ9S/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/QNT_IQ19yJ9S/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "3": {
+          "id": "hoqF1EJqM1U8",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Sol, solo e água",
+          "titulo": "O dedo na manilha e a pá no canteiro respondem antes do regador.",
+          "ponte": "No curso, como observar o sol, o vento, o solo e a água do lugar.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/hoqF1EJqM1U8/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/hoqF1EJqM1U8/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "4": {
+          "id": "nuv24hKf7grW",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — O ano no Cerrado: seca, águas e veranico",
+          "titulo": "Cada época do ano pede um nome ao lado, e não só uma tarefa.",
+          "ponte": "A aula completa trata das águas, da seca e do veranico.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/nuv24hKf7grW/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/nuv24hKf7grW/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "5": {
+          "id": "PrUF0XzdqNt_",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Erva, folha, fruto e raiz",
+          "titulo": "Erva, folha, fruto e raiz fazem perguntas diferentes a quem cuida.",
+          "ponte": "No curso, o ciclo de cada grupo e a lista da cozinha.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/PrUF0XzdqNt_/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/PrUF0XzdqNt_/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "6": {
+          "id": "7-oQ0rLeqYQ-",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Ferramentas, recipientes, semente e muda",
+          "titulo": "Poucas ferramentas, escolhidas pela função, limpas e com lugar certo.",
+          "ponte": "A aula inteira vai da ferramenta à manilha, à semente e à muda.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/7-oQ0rLeqYQ-/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/7-oQ0rLeqYQ-/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "7": {
+          "id": "X6u7pdDoMY3U",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Ler o lugar e colher a amostra de solo",
+          "titulo": "Ler o lugar é anotar o que se viu, e não o que se imagina.",
+          "ponte": "No curso, a ficha do lugar e a amostra de solo identificada.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/X6u7pdDoMY3U/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/X6u7pdDoMY3U/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "8": {
+          "id": "B5T9VJN8Kzex",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — O desenho dos canteiros e das manilhas",
+          "titulo": "No papel quadriculado, árvores e canos entram antes dos canteiros.",
+          "ponte": "A aula completa mostra o croqui com as ruas e a marcação no chão.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/B5T9VJN8Kzex/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/B5T9VJN8Kzex/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "9": {
+          "id": "684MMTemNIKA",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — Quanto plantar",
+          "titulo": "Duas distâncias e três passos dizem quantas plantas o desenho comporta.",
+          "ponte": "No curso, a conta é comparada com o que a casa realmente come.",
+          "duracao_seg": 38,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/684MMTemNIKA/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/684MMTemNIKA/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "10": {
+          "id": "SiUY14MH94qK",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — Calendário e linhas de custo",
+          "titulo": "Linha de custo com preço em branco mostra o que ainda falta cotar.",
+          "ponte": "A aula inteira monta o calendário e as linhas de gasto sem inventar preço.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/SiUY14MH94qK/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/SiUY14MH94qK/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "11": {
+          "id": "IG6fb6fGjDOz",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Composto: o que entra e o que não entra",
+          "titulo": "A composteira tem lugar certo, longe de quarto, cozinha e poço.",
+          "ponte": "No curso, o que entra, o que fica fora e o combinado da cozinha.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/IG6fb6fGjDOz/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/IG6fb6fGjDOz/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "12": {
+          "id": "wfbrAah3xDm6",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Composto pronto e cobertura do solo",
+          "titulo": "Cobertura morta: o material seco que protege a superfície da terra.",
+          "ponte": "A aula completa mostra a pilha em camadas e os sinais do composto pronto.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/wfbrAah3xDm6/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/wfbrAah3xDm6/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "13": {
+          "id": "01C__UY8Qilt",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Montar um canteiro",
+          "titulo": "Canteiro pronto é canteiro em que ninguém pisa.",
+          "ponte": "No curso, a montagem passo a passo, do que há embaixo à primeira rega.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/01C__UY8Qilt/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/01C__UY8Qilt/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "14": {
+          "id": "qHsei0Ber27U",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Preparar uma manilha",
+          "titulo": "O primeiro dos nove passos é conferir se a água sai da manilha.",
+          "ponte": "Esta aula é a degustação grátis do curso, na Villela Academy.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/qHsei0Ber27U/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/qHsei0Ber27U/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "15": {
+          "id": "xkVKjn0jW5Kw",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Semear, transplantar e plantar as sete ervas",
+          "titulo": "Muda plantada, gotejador no lugar e etiqueta no mesmo dia.",
+          "ponte": "No curso, semente e muda e o plantio das ervas, uma por manilha.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xkVKjn0jW5Kw/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xkVKjn0jW5Kw/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "16": {
+          "id": "EsccIsRE3hr3",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — A visita à horta: rega, capina e anotação",
+          "titulo": "A manilha e o canteiro não secam juntos.",
+          "ponte": "A aula inteira mostra a visita à horta: rega, capina e anotação.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EsccIsRE3hr3/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EsccIsRE3hr3/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "17": {
+          "id": "oWzMAcRJcQb4",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Colher, continuar colhendo e girar os canteiros",
+          "titulo": "O jeito de colher muda o que se faz com o lugar depois.",
+          "ponte": "No curso, o ponto de colheita e a rotação dos canteiros.",
+          "duracao_seg": 37,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/oWzMAcRJcQb4/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/oWzMAcRJcQb4/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "18": {
+          "id": "PdF6hhUBz0jR",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — O hóspede na horta",
+          "titulo": "A regra da horta para o hóspede cabe numa folha curta.",
+          "ponte": "A aula completa trata das etiquetas, do caminho e da véspera da chegada.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/PdF6hhUBz0jR/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/PdF6hhUBz0jR/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "19": {
+          "id": "OYc-VWuNQDLS",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Prevenir e controlar sem agrotóxico",
+          "titulo": "Planta doente que avança sai inteira da horta, sem espalhar.",
+          "ponte": "No curso, as frentes de prevenção sem agrotóxico e a ronda.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/OYc-VWuNQDLS/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/OYc-VWuNQDLS/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "20": {
+          "id": "8048n7p2yYOY",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — A horta com a casa vazia",
+          "titulo": "O teste da ausência pergunta quem olha quando ninguém aparece.",
+          "ponte": "A aula inteira monta a lista de saída da casa.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/8048n7p2yYOY/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/8048n7p2yYOY/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "21": {
+          "id": "oMIFL9q82-3g",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Diagnóstico: antes de culpar a praga",
+          "titulo": "Vários sintomas se parecem, e o nome certo pede quem entende.",
+          "ponte": "No curso, o caminho do sinal à decisão e a hora de chamar o agrônomo.",
+          "duracao_seg": 43,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/oMIFL9q82-3g/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/oMIFL9q82-3g/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "22": {
+          "id": "AZudyq8tX1XF",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — O excedente e o registro da colheita",
+          "titulo": "Dividir a sobra é simples; pôr na cesta do hóspede pede consulta.",
+          "ponte": "A aula completa trata de congelar, secar, compartilhar e registrar.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/AZudyq8tX1XF/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/AZudyq8tX1XF/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "23": {
+          "id": "qGnssp0wGJc7",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Antes de vender: o que consultar",
+          "titulo": "Antes de vender um maço de ervas, há perguntas e quem responda.",
+          "ponte": "No curso, as consultas e o registro de cada resposta.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/qGnssp0wGJc7/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/qGnssp0wGJc7/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "24": {
+          "id": "xVji8nysf_mw",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Projeto integrador: o desenho e o calendário",
+          "titulo": "O projeto da horta pode ser todo feito no papel.",
+          "ponte": "A aula inteira junta o desenho, as quantidades, o calendário e o composto.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/xVji8nysf_mw/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/xVji8nysf_mw/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
+        },
+        "25": {
+          "id": "H2m0sz3E0hw0",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Projeto integrador: rotina, custos e próximos passos",
+          "titulo": "A rotina começa no que se anota a cada visita.",
+          "ponte": "No curso, os quadros da rotina, os custos sem preço e a avaliação.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/H2m0sz3E0hw0/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/H2m0sz3E0hw0/capa.jpg?v=1",
+          "visto_em": "2026-11-27"
         }
       }
     }
