@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-27T18:44:07.694Z",
+  "coletadoEm": "2026-11-27T19:03:39.382Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -195,6 +195,19 @@
       "precoCombo": null,
       "destaque": false,
       "url": "https://livros.villelastay.com.br/livros/guitarra-do-zero-ao-avancado"
+    },
+    {
+      "slug": "horta-na-pratica",
+      "titulo": "Horta na Prática",
+      "subtitulo": "Ervas em manilhas, folhas e legumes em canteiros: a horta sem agrotóxico da chácara que recebe hóspedes",
+      "resumo": "Como planejar, implantar e cuidar de uma horta pequena, sem agrotóxico, na chácara que recebe hóspedes. Coleção Viver de Chácara na Prática. PDF.",
+      "categoria": "Desenvolvimento Pessoal",
+      "capa": "https://livros.villelastay.com.br/assets/livros/horta-na-pratica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/horta-na-pratica"
     },
     {
       "slug": "o-homem-essencial",
