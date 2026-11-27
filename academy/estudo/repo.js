@@ -650,6 +650,38 @@ function importar_(produto, dados = {}, opcoes = {}) {
       }
     }
 
+    // RETIRAR VÍNCULO item ↔ competência (26/11/2026): `vinculos` só soma, então MOVER uma competência de item deixava
+    // o antigo para sempre. Tira só a linha de `est_vinculos` DESTE escopo (o herdado de aula incluída não é linha, e
+    // não se tira daqui); competência, evidência, questão e aula ficam. Vem depois de `vinculos`: o mesmo envio liga o
+    // item novo e solta o antigo. Competência que ficaria sem nenhum item do programa vigente desfaz o envio inteiro.
+    if (dados.desvincular_competencias != null) {
+      const pedidos = dados.desvincular_competencias;
+      if (!Array.isArray(pedidos)) throw erro('desvincular_competencias deve ser uma lista de { competencia, itens: [...] }.');
+      if (pedidos.length > 2000) throw erro('desvincular_competencias: no máximo 2000 competências por envio.');
+      const des = rel.competencias_desvinculadas = { competencias: 0, removidos: 0, ausentes: [] };
+      const propria = db.prepare('SELECT 1 FROM est_competencias WHERE escopo_id = ? AND codigo = ?');
+      const tirar = db.prepare('DELETE FROM est_vinculos WHERE escopo_id = ? AND item_codigo = ? AND competencia_codigo = ?');
+      const restantes = db.prepare('SELECT item_codigo FROM est_vinculos WHERE escopo_id = ? AND competencia_codigo = ?');
+      const mexidas = new Set();
+      for (const [i, p] of pedidos.entries()) {
+        const comp = typeof (p && p.competencia) === 'string' ? slug(p.competencia) : '';
+        const its = Array.isArray(p && p.itens) ? p.itens.map(x => (typeof x === 'string' ? x.trim() : '')) : [];
+        if (!comp) throw erro(`desvincular_competencias ${i + 1}: informe a "competencia".`);
+        if (!its.length || its.some(x => !x)) throw erro(`desvincular_competencias ${i + 1}: informe "itens" como lista de códigos.`);
+        if (!propria.get(escopo.id, comp)) throw erro(`desvincular_competencias ${i + 1}: a competência "${comp}" não é própria deste percurso.`);
+        for (const item of new Set(its)) {
+          if (tirar.run(escopo.id, item, comp).changes) { des.removidos++; mexidas.add(comp); }
+          else des.ausentes.push({ competencia: comp, item });
+        }
+      }
+      for (const comp of mexidas) {
+        if (!restantes.all(escopo.id, comp).some(x => codItem.has(x.item_codigo))) {
+          throw erro(`desvincular_competencias: "${comp}" ficaria sem nenhum item do programa — ligue o item novo em "vinculos" no mesmo envio. Nada foi alterado.`, 409);
+        }
+      }
+      des.competencias = mexidas.size;
+    }
+
     if (dados.unidades) {
       rel.unidades = { novas: 0, atualizadas: 0 };
       const ordemUn = ordenador('est_unidades');

@@ -160,6 +160,8 @@ function registrarRotasEstudoStaff(app, { requirePublishOrAdmin, requireAuth, re
     const reescritas = r.questoes && r.questoes.reescritas_outro_curso;
     if (reescritas) aud(req, 'estudo.importar.reescrita-compartilhada', produto.id, `${r.escopo}: ${reescritas.n} questões; ${reescritas.hashes.join(',')}`);
     if (r.arquivadas_outro_curso) aud(req, 'estudo.importar.arquivada-compartilhada', produto.id, `${r.escopo}: ${r.arquivadas_outro_curso.n} questões; ${r.arquivadas_outro_curso.hashes.join(',')}`);
+    const soltas = r.competencias_desvinculadas;
+    if (soltas && soltas.removidos) aud(req, 'estudo.importar.desvincular-competencias', produto.id, `${r.escopo}: ${soltas.removidos} vínculos de ${soltas.competencias} competências; ${(b.desvincular_competencias || []).map(p => `${s(p.competencia, 60)}-${(p.itens || []).join('+')}`).join(',')}`);
     const volta = r.questoes_desarquivadas;
     if (volta && volta.n) aud(req, 'estudo.importar.desarquivar', produto.id, `${r.escopo}: ${volta.n} para ${volta.situacao}; de outro curso também: ${volta.reescritas_outro_curso.length}; ${volta.hashes.join(',')}`);
     res.json({ ok: true, importado: r, resumo: est.resumo(produto.id).find(e => e.slug === r.escopo) });

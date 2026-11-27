@@ -142,6 +142,56 @@ async function rodar({ t, req }) {
     }
   });
 
+  await t('desvincular_competencias: move a competência de item no mesmo envio, só no escopo pedido, sem apagar competência nem questão; refazer é seguro; deixar sem item desfaz tudo', async () => {
+    const idA = eA().id, idB = eB().id;
+    const vins = (id) => db.prepare('SELECT item_codigo FROM est_vinculos WHERE escopo_id = ? AND competencia_codigo = ? ORDER BY item_codigo').all(id, 'k1').map(x => x.item_codigo);
+    const contar = () => ['est_competencias', 'est_questoes', 'est_questao_vinculos', 'est_evidencias'].map(x => db.prepare(`SELECT COUNT(*) n FROM ${x}`).get().n);
+    assert.deepEqual([vins(idA), vins(idB)], [['P1'], ['P1']]);
+    const antes = contar(), tirarP1 = [{ competencia: 'k1', itens: ['P1'] }];
+    // o último vínculo não sai sozinho
+    let r = await importar(pidB, { escopo: ESCOPO(SB), desvincular_competencias: tirarP1 });
+    assert.equal(r.st, 409, r.texto);
+    assert.deepEqual(vins(idB), ['P1']);
+    // com o item novo no mesmo envio, move
+    r = await importar(pidB, { escopo: ESCOPO(SB), vinculos: [{ item: 'P2', competencia: 'k1', justificativa: 'Mudou de ponto.' }], desvincular_competencias: [{ competencia: 'k1', itens: ['P1', 'P1', 'NAO-EXISTE'] }] });
+    assert.equal(r.st, 200, r.texto);
+    assert.deepEqual(r.json.importado.competencias_desvinculadas, { competencias: 1, removidos: 1, ausentes: [{ competencia: 'k1', item: 'NAO-EXISTE' }] });
+    assert.deepEqual([vins(idB), vins(idA)], [['P2'], ['P1']], 'o P1 do outro curso, com o mesmo código, fica');
+    assert.deepEqual(contar(), antes, 'competência, questão, vínculo de questão e evidência intactos');
+    const reg = db.prepare(`SELECT detalhe FROM audit_logs WHERE acao = 'estudo.importar.desvincular-competencias' ORDER BY rowid DESC LIMIT 1`).get();
+    assert.ok(reg && reg.detalhe.includes('k1-P1'), 'fica na trilha');
+    r = await importar(pidB, { escopo: ESCOPO(SB), desvincular_competencias: tirarP1 });
+    assert.deepEqual(r.json.importado.competencias_desvinculadas, { competencias: 0, removidos: 0, ausentes: [{ competencia: 'k1', item: 'P1' }] }, 'refazer não é erro');
+    // desfaz: volta B para P1
+    r = await importar(pidB, { escopo: ESCOPO(SB), vinculos: [{ item: 'P1', competencia: 'k1', justificativa: 'O item é a própria regra.' }], desvincular_competencias: [{ competencia: 'k1', itens: ['P2'] }] });
+    assert.deepEqual([r.st, vins(idB)], [200, ['P1']], r.texto);
+  });
+
+  await t('desvincular_competencias: escopo de outro curso é recusado, pedido torto é 400 e nada muda; sem chave 401, sem admin 403', async () => {
+    const idA = eA().id;
+    const tudo = () => db.prepare('SELECT escopo_id, item_codigo, competencia_codigo FROM est_vinculos ORDER BY 1, 2, 3').all();
+    const escopos = () => db.prepare('SELECT COUNT(*) n FROM est_escopos').get().n;
+    const antes = tudo(), nEscopos = escopos(), pedido = [{ competencia: 'k1', itens: ['P1'] }];
+    // o produto B pedindo o slug do escopo de A: não alcança A (o escopo é procurado dentro do produto)
+    let r = await importar(pidB, { escopo: ESCOPO(SA), desvincular_competencias: pedido });
+    assert.equal(r.st, 400, r.texto);
+    assert.ok(/não é própria deste percurso/.test(r.json.erro), r.texto);
+    r = await importar(pidB, { escopo: { slug: SA }, desvincular_competencias: pedido });
+    assert.equal(r.st, 400, r.texto);
+    assert.deepEqual([tudo(), escopos()], [antes, nEscopos], 'nem vínculo nem escopo novo');
+    for (const [corpo, msg] of [['nao-lista', /deve ser uma lista/], [[{ itens: ['P1'] }], /informe a "competencia"/], [[{ competencia: 'k1' }], /informe "itens"/], [[{ competencia: 'k1', itens: [] }], /informe "itens"/], [[{ competencia: 'k1', itens: [7] }], /informe "itens"/],
+      [[{ competencia: 'nao-existe', itens: ['P1'] }], /não é própria/], [Array(2001).fill(pedido[0]), /no máximo 2000/]]) {
+      r = await importar(pidA, { escopo: ESCOPO(SA), vinculos: [{ item: 'P2', competencia: 'k1', justificativa: 'Some junto.' }], desvincular_competencias: corpo });
+      assert.equal(r.st, 400, r.texto);
+      assert.ok(msg.test(r.json.erro), r.texto);
+      assert.deepEqual(tudo(), antes, 'a transação desfaz o envio inteiro');
+    }
+    const corpo = { produtor_email: PROD, produto_id: pidA, escopo: ESCOPO(SA), vinculos: [{ item: 'P2', competencia: 'k1', justificativa: 'Não entra.' }], desvincular_competencias: pedido };
+    assert.equal((await req('POST', '/staff/api/academy/estudo/importar', { semUser: true, corpo, ip: IP })).st, 401);
+    assert.equal((await req('POST', '/staff/api/academy/estudo/importar', { user: 'op', corpo, ip: IP })).st, 403);
+    assert.deepEqual([tudo(), idA], [antes, eA().id]);
+  });
+
   await t('leitura para auditoria: com_dados traz o conteúdo gravado e com_blocos o texto das aulas próprias; sem o parâmetro, a resposta é a de sempre; sem chave, 401; sem admin, 403; aula incluída fica só como referência', async () => {
     const aula = { codigo: 'aula-trava', titulo: 'Aula da trava', competencias: ['k1'], itens: ['P1'], tempo_min: 30, fontes: [{ titulo: 'Lei de teste, art. 1º', url: 'https://exemplo.test/lei' }],
       blocos: [{ tipo: 'explicacao', texto: 'Texto próprio da aula, gravado no servidor.' }, { tipo: 'pratica', titulo: 'Exercício', texto: 'Aplique a regra da aula.', solucao: 'Solução.' }] };
