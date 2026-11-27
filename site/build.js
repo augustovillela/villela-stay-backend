@@ -10246,9 +10246,17 @@ for (const v of GASTRO_GRADE.volumes) {
 const gastroHub = `<div class="cap"><section class="cap-hub-hero gastro-hero"><h1>Gastronomia Villela Table <span style="display:block;font-size:.5em;font-weight:500;margin-top:8px">Formação Completa em Gastronomia</span></h1><p>Uma coleção em cinco volumes, de Augusto Villela, com técnicas, cultura, cozinha brasileira e internacional, confeitaria e panificação.</p></section><nav class="cap-trilha cap-trilha-hub"><a href="/blog.html">Blog</a> <span>›</span> <span>Gastronomia Villela Table</span></nav>${gastroLinks}<section class="cap-sumario-hub"><h2>Índice da coleção</h2><p>Os cinco PDFs do curso, cada um com seu HTML de apoio.</p></section><div class="cap-grade">${gastroCards}</div>${gastroLinks}</div>`;
 fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', 'index.html'), layout('Gastronomia Villela Table — Formação Completa | Villela Stay', 'Formação Completa em Gastronomia Villela Table, de Augusto Villela: cinco volumes com técnicas, gastronomia brasileira e internacional, confeitaria e panificação.', gastroHub, { caminho: '/gastronomia-villela-table/', semIdiomas: true, extraHead: `<style>${GASTRO_CSS}</style>` }));
 fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', 'index.html'), '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=/blog/formacao-completa-gastronomia-villela-table.html"><link rel="canonical" href="https://villelastay.com.br/blog/formacao-completa-gastronomia-villela-table.html"><title>Formação Completa em Gastronomia — Villela Table</title></head><body><p>Redirecionando para a entrada principal do curso… <a href="/blog/formacao-completa-gastronomia-villela-table.html">abrir curso</a></p></body></html>');
+// As aulas são HTML pronto, que não passa pelo layout(): sem isto elas ficam fora do contador
+// próprio (/api/hit) e do Google Analytics.
+const GASTRO_GA = `<script async src="https://www.googletagmanager.com/gtag/js?id=G-5L2YQ2BPQW"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-5L2YQ2BPQW');</script>`;
+const GASTRO_HIT = `<script>window.addEventListener('load', function(){ try { fetch('${BACKEND}/api/hit?p=' + encodeURIComponent(location.pathname) + '&r=' + encodeURIComponent(document.referrer) + '&q=' + encodeURIComponent(location.search) + '&l=' + encodeURIComponent(navigator.language || ''), { keepalive: true }).catch(function(){}); } catch (e) {} });</script>`;
 if (fs.existsSync(GASTRO_AULAS_DIR)) {
   for (const nome of fs.readdirSync(GASTRO_AULAS_DIR).filter(n => n.endsWith('.html') && n !== 'index.html')) {
-    fs.copyFileSync(path.join(GASTRO_AULAS_DIR, nome), path.join(DIST, 'gastronomia-villela-table', nome));
+    const aula = fs.readFileSync(path.join(GASTRO_AULAS_DIR, nome), 'utf8');
+    if (!aula.includes('</head>') || !aula.includes('</body>')) throw new Error(`Aula de gastronomia sem </head> ou </body>: ${nome}`);
+    fs.writeFileSync(path.join(DIST, 'gastronomia-villela-table', nome),
+      aula.replace('</head>', () => `${GASTRO_GA}</head>`).replace('</body>', () => `${GASTRO_HIT}</body>`));
   }
 }
 if (fs.existsSync(GASTRO_ILLUSTRATIONS_DIR)) {

@@ -493,6 +493,7 @@ const comIp = (ip, extra) => Object.assign({ 'X-Forwarded-For': ip }, extra || {
     assert.equal(b.blogDe('/serie-nova/'), null);
     assert.equal(b.blogDe('/blog/serie-nova-01-abertura.html').id, 'serie-nova', 'série nova aparece pelas aulas');
     assert.equal(b.blogDe('/blog.html').tipo, 'hub');
+    assert.equal(b.blogDe('/gastronomia-villela-table/1-seguranca.html').id, 'gastronomia-villela-table', 'aula solta conta no curso');
     assert.equal(b.blogDe('/eventos.html'), null);
 
     const h = (pagina, canal, dia, vid) => ({ produto: 'site', pagina, canal, vid, _recebido: dia + 'T12:00:00.000Z' });
