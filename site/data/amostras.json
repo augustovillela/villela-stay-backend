@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-27T18:58:18.293Z",
+  "coletadoEm": "2026-11-28T10:30:18.312Z",
   "series": {
     "piscineiro-na-pratica": {
       "curso_url": "https://academia.villelastay.com.br/academy/cursos/piscineiro-na-pratica",
@@ -1678,6 +1678,286 @@
           "video_url": "https://academia.villelastay.com.br/academy/api/amostras/H2m0sz3E0hw0/video.mp4?v=1",
           "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/H2m0sz3E0hw0/capa.jpg?v=1",
           "visto_em": "2026-11-27"
+        }
+      }
+    },
+    "pintura-na-pratica": {
+      "curso_url": "https://academia.villelastay.com.br/academy/cursos/pintura-na-pratica",
+      "amostras": {
+        "1": {
+          "id": "MUtxEnfq-FEk",
+          "aula": 1,
+          "aula_titulo": "Aula 01 — A pintura na chácara",
+          "titulo": "Antes de cobrir um defeito, registre o que a tinta esconderia.",
+          "ponte": "No curso, o que se pinta, o que a tinta não corrige e as quatro frentes.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/MUtxEnfq-FEk/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/MUtxEnfq-FEk/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "2": {
+          "id": "df10QLviHMs3",
+          "aula": 2,
+          "aula_titulo": "Aula 02 — Segurança, a regra do chão e quando parar",
+          "titulo": "Fio ou luminária ao alcance do cabo é sinal de parar.",
+          "ponte": "A aula completa traz as três colunas, a regra do chão e os casos de pare e chame.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/df10QLviHMs3/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/df10QLviHMs3/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "3": {
+          "id": "EBeRBpJi1aOL",
+          "aula": 3,
+          "aula_titulo": "Aula 03 — Tinta velha: chumbo, amianto e poeira",
+          "titulo": "Com material suspeito, a regra é distância, foto de longe e nada de presumir.",
+          "ponte": "No curso, o que se sabe e o que se pergunta sobre chumbo e amianto.",
+          "duracao_seg": 48,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EBeRBpJi1aOL/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EBeRBpJi1aOL/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "4": {
+          "id": "u06QGzs2YD2K",
+          "aula": 4,
+          "aula_titulo": "Aula 04 — Vapor, ventilação, guarda e descarte",
+          "titulo": "Antes de marcar o dia, veja por onde o ar entra e por onde sai.",
+          "ponte": "A aula completa trata do vapor, da ventilação, da guarda e do descarte.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/u06QGzs2YD2K/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/u06QGzs2YD2K/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "5": {
+          "id": "qDdjVMYYityG",
+          "aula": 5,
+          "aula_titulo": "Aula 05 — Superfície, umidade e o sistema de pintura",
+          "titulo": "Pintura antiga pede perguntas antes de receber outra camada.",
+          "ponte": "No curso, a superfície, a água que vem de trás e o sistema de pintura.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/qDdjVMYYityG/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/qDdjVMYYityG/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "6": {
+          "id": "Rc4WPFjqeB0j",
+          "aula": 6,
+          "aula_titulo": "Aula 06 — Ferramentas, tintas e a embalagem",
+          "titulo": "Antes de montar o extensor, olhe para cima e em volta.",
+          "ponte": "A aula inteira vai das ferramentas à leitura da embalagem.",
+          "duracao_seg": 52,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/Rc4WPFjqeB0j/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/Rc4WPFjqeB0j/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "7": {
+          "id": "6uoGekDinfRj",
+          "aula": 7,
+          "aula_titulo": "Aula 07 — Esta parede está pronta para pintar?",
+          "titulo": "Com gente por perto de tinta descascando, primeiro se afasta e se isola.",
+          "ponte": "Esta aula é a degustação grátis do curso, na Villela Academy.",
+          "duracao_seg": 40,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/6uoGekDinfRj/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/6uoGekDinfRj/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "8": {
+          "id": "fbyw8qFih34X",
+          "aula": 8,
+          "aula_titulo": "Aula 08 — Medir, descontar e calcular",
+          "titulo": "A história da superfície muda o que pode ser feito nela.",
+          "ponte": "No curso, a ficha da superfície, as medidas do chão e a conta de tinta.",
+          "duracao_seg": 36,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/fbyw8qFih34X/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/fbyw8qFih34X/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "9": {
+          "id": "4BiAnp2rYYLT",
+          "aula": 9,
+          "aula_titulo": "Aula 09 — O ano no Cerrado, a ordem e o calendário",
+          "titulo": "Poder tocar na tinta ainda não é poder passar outra camada.",
+          "ponte": "A aula completa trata de secagem, cura, clima e calendário.",
+          "duracao_seg": 35,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/4BiAnp2rYYLT/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/4BiAnp2rYYLT/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "10": {
+          "id": "fcOaYlXW2RY6",
+          "aula": 10,
+          "aula_titulo": "Aula 10 — O plano do depósito",
+          "titulo": "Um plano de pintura começa pelo que fica de fora do seu trabalho.",
+          "ponte": "No curso, o plano do depósito em uma folha, com quem faz cada passo.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/fcOaYlXW2RY6/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/fcOaYlXW2RY6/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "11": {
+          "id": "4zxUj1EAchqX",
+          "aula": 11,
+          "aula_titulo": "Aula 11 — Proteger e limpar",
+          "titulo": "Há uma lista do que não se lixa, e ela vem antes da lixa.",
+          "ponte": "A aula inteira mostra o que sai, o que se cobre e como limpar.",
+          "duracao_seg": 40,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/4zxUj1EAchqX/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/4zxUj1EAchqX/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "12": {
+          "id": "SW0Z90yw6MfL",
+          "aula": 12,
+          "aula_titulo": "Aula 12 — Corrigir, selar e emassar",
+          "titulo": "No alto, o selador vai com extensor e os pés no chão, sem fio por perto.",
+          "ponte": "No curso, o furo pequeno, o selador e a massa onde cabe.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/SW0Z90yw6MfL/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/SW0Z90yw6MfL/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "13": {
+          "id": "B-B64qAJ7gZf",
+          "aula": 13,
+          "aula_titulo": "Aula 13 — Preparar madeira",
+          "titulo": "Madeira já pintada pede história conhecida antes de qualquer lixa.",
+          "ponte": "A aula completa prepara uma peça de estudo nova e solta.",
+          "duracao_seg": 47,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/B-B64qAJ7gZf/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/B-B64qAJ7gZf/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "14": {
+          "id": "48TuNYbIr_Ne",
+          "aula": 14,
+          "aula_titulo": "Aula 14 — Preparar metal",
+          "titulo": "Grade com tinta antiga descascando e sem história não é para lixar.",
+          "ponte": "No curso, o que descobrir sobre a grade e o que fica com o serralheiro.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/48TuNYbIr_Ne/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/48TuNYbIr_Ne/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "15": {
+          "id": "isW4Czu1tdyx",
+          "aula": 15,
+          "aula_titulo": "Aula 15 — Trincha, rolo e extensor",
+          "titulo": "O cabo sobe e você fica no chão, olhando para cima antes.",
+          "ponte": "A aula inteira propõe um ensaio de trincha e rolo em chapa de teste.",
+          "duracao_seg": 44,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/isW4Czu1tdyx/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/isW4Czu1tdyx/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "16": {
+          "id": "YBSGSjUont39",
+          "aula": 16,
+          "aula_titulo": "Aula 16 — Teto, do chão",
+          "titulo": "No teto, é o cabo que sobe, e não você.",
+          "ponte": "No curso, o que o chão permite no teto e o que se contrata.",
+          "duracao_seg": 50,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/YBSGSjUont39/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/YBSGSjUont39/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "17": {
+          "id": "7Z7H9uAS-TN8",
+          "aula": 17,
+          "aula_titulo": "Aula 17 — Paredes internas",
+          "titulo": "Parede antiga pede bom estado e história conhecida, as duas coisas juntas.",
+          "ponte": "A aula completa planeja o pano, as demãos e a emenda.",
+          "duracao_seg": 40,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/7Z7H9uAS-TN8/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/7Z7H9uAS-TN8/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "18": {
+          "id": "XQoITHVntKke",
+          "aula": 18,
+          "aula_titulo": "Aula 18 — O trecho de fachada térrea",
+          "titulo": "Do lado de fora, tempo e entorno são conferidos antes da lata.",
+          "ponte": "No curso, quando o trecho de fachada é seu e quando é contratado.",
+          "duracao_seg": 49,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/XQoITHVntKke/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/XQoITHVntKke/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "19": {
+          "id": "R7Aq1Dn8Ijln",
+          "aula": 19,
+          "aula_titulo": "Aula 19 — Porta e janela",
+          "titulo": "Porta simples de madeira só entra com história, bom estado e alcance.",
+          "ponte": "A aula inteira trata da peça de estudo e da proteção do alumínio.",
+          "duracao_seg": 45,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/R7Aq1Dn8Ijln/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/R7Aq1Dn8Ijln/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "20": {
+          "id": "IwbTnsv42kJG",
+          "aula": 20,
+          "aula_titulo": "Aula 20 — Grade",
+          "titulo": "Antes de pintar uma grade, preencha o que se sabe sobre ela.",
+          "ponte": "No curso, o preparo, o fundo e a volta barra por barra.",
+          "duracao_seg": 39,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/IwbTnsv42kJG/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/IwbTnsv42kJG/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "21": {
+          "id": "kYFHlmjANkaZ",
+          "aula": 21,
+          "aula_titulo": "Aula 21 — Limpar, guardar e identificar",
+          "titulo": "A ficha de cor se preenche no mesmo dia, antes que a memória troque tudo.",
+          "ponte": "A aula completa trata de limpar, guardar a sobra e isolar o ambiente.",
+          "duracao_seg": 46,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/kYFHlmjANkaZ/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/kYFHlmjANkaZ/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "22": {
+          "id": "V1vnPyzG4FIT",
+          "aula": 22,
+          "aula_titulo": "Aula 22 — Defeitos e causas",
+          "titulo": "Descascamento, bolha e mofo: cada sinal pede uma pergunta diferente.",
+          "ponte": "No curso, o registro do defeito e as perguntas antes do remédio.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/V1vnPyzG4FIT/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/V1vnPyzG4FIT/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "23": {
+          "id": "I99O_l62CmBs",
+          "aula": 23,
+          "aula_titulo": "Aula 23 — Conservar, retocar e repintar",
+          "titulo": "O retoque só cabe quando a base e a história são conhecidas.",
+          "ponte": "A aula inteira mostra o retoque, o pano inteiro e a revisão.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/I99O_l62CmBs/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/I99O_l62CmBs/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "24": {
+          "id": "jPRBK7dKdJ5O",
+          "aula": 24,
+          "aula_titulo": "Aula 24 — Contratar e receber",
+          "titulo": "Antes do orçamento vêm as consultas a quem responde por cada causa.",
+          "ponte": "No curso, o escopo igual para todos, a comparação e o aceite.",
+          "duracao_seg": 41,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/jPRBK7dKdJ5O/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/jPRBK7dKdJ5O/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
+        },
+        "25": {
+          "id": "EtmjWQWlF8hj",
+          "aula": 25,
+          "aula_titulo": "Aula 25 — Projeto integrador e próximos passos",
+          "titulo": "O plano começa pelo que ainda não se pinta.",
+          "ponte": "A aula completa junta o plano de pintura em nove partes.",
+          "duracao_seg": 42,
+          "video_url": "https://academia.villelastay.com.br/academy/api/amostras/EtmjWQWlF8hj/video.mp4?v=1",
+          "capa_url": "https://academia.villelastay.com.br/academy/api/amostras/EtmjWQWlF8hj/capa.jpg?v=1",
+          "visto_em": "2026-11-28"
         }
       }
     }
