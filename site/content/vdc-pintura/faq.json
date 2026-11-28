@@ -1,0 +1,127 @@
+{
+"01-a-pintura-na-chacara": [
+ ["Pintar resolve parede com umidade ou trinca?", "Não. A pintura protege, limpa e apresenta, mas não corrige umidade, trinca, camada solta nem material estragado. Primeiro se descobre o que há por trás."],
+ ["Quais são as frentes de pintura de uma chácara?", "Dentro, fora, madeira e metal. Cada uma tem o seu sistema de pintura, que é o conjunto de camadas escolhido para aquela superfície."],
+ ["Em que momento da obra entra a pintura?", "Por último, e ela ainda precisa caber no clima da época e nas reservas de quem se hospeda na casa."]
+],
+"02-seguranca-e-regra-do-chao": [
+ ["Posso subir em banco ou escada para alcançar o canto do alto?", "Neste curso, não. Você trabalha com os dois pés no piso, com cabo extensor quando preciso. O que o extensor não faz bem se contrata."],
+ ["O que fazer se há fio ou luminária ao alcance do cabo extensor?", "Parar. Dentro do cômodo, chame o eletricista, e apagar no interruptor não conta. Do lado de fora, o trecho é contratado."],
+ ["Posso pintar com produto a solvente?", "Não é o que o curso propõe. Você pratica só com produto à base de água, o que não quer dizer inofensivo. Quando o sistema de pintura pede solvente, o serviço é contratado."]
+],
+"03-chumbo-amianto-e-poeira": [
+ ["Dá para saber pela aparência se a tinta antiga tem chumbo?", "Não. O olho não informa o que há numa camada antiga, e a resposta é de laboratório. Sem história conhecida, não se lixa, não se raspa e não se aquece."],
+ ["Como identificar uma telha ou caixa com amianto?", "A data e a aparência não identificam a peça. Na dúvida, considere que contém: não lixe, não fure, não quebre, não lave com pressão e chame um profissional."],
+ ["O que fazer diante de suspeita de intoxicação?", "Procurar uma unidade de saúde, sem esperar a certeza sobre a tinta. Quem avalia a pessoa é o atendimento de saúde."]
+],
+"04-ventilacao-guarda-e-descarte": [
+ ["Tinta à base de água precisa de ventilação?", "Precisa. Há vapor na aplicação e na secagem, e base de água não quer dizer produto inofensivo. Ventile antes, durante e depois, e saia se houver mal-estar."],
+ ["Onde guardar a tinta que sobrou?", "Na embalagem original, fechada e em pé, longe de calor, de chama, de criança, de animal e dos produtos de piscina."],
+ ["Posso jogar a sobra de tinta no ralo ou no lixo de obra?", "Não. A sobra fica fechada até haver destino. Ralo, solo e fogo ficam sempre de fora, e o local de entrega se pergunta à prefeitura ou ao órgão ambiental."]
+],
+"05-superficie-e-umidade": [
+ ["O que olhar antes de escolher a tinta?", "A superfície: de que ela é, se é nova ou antiga, qual a sua história e se há água chegando por algum lado."],
+ ["Posso cobrir uma mancha de umidade com tinta?", "Não. A origem da água precisa ser explicada antes. Mancha que volta é caso de parar e chamar quem avalie."],
+ ["O que é o sistema de pintura?", "É o conjunto de camadas, como fundo, massa e acabamento, que precisam combinar entre si. A conferência se faz nas embalagens."]
+],
+"06-ferramentas-e-embalagem": [
+ ["Rótulo e ficha com dados de segurança são a mesma coisa?", "Não. São documentos diferentes. O rótulo orienta o uso do produto, e a ficha traz perigos, proteção e primeiros socorros."],
+ ["Quem diz onde o produto pode ser usado?", "A embalagem e a ficha do produto que você comprou. O nome da família do produto só ajuda a conversar na loja."],
+ ["Posso usar uma lata antiga sem rótulo?", "Não. Produto sem identidade não se usa, e o campo que a embalagem não responde vira pergunta ao fabricante."]
+],
+"07-a-parede-esta-pronta": [
+ ["O que a parede precisa mostrar antes de receber tinta?", "Que está curada, seca, firme e sem pó. Também se olha gordura, sabão, bolor e trinca."],
+ ["Posso testar qualquer parede antiga antes de pintar?", "Não. Onde a história da tinta é desconhecida, ou pode haver fibrocimento, ninguém testa, bate, lixa, raspa nem aquece."],
+ ["E se só uma das respostas for não?", "Um único não já para a pintura e indica o próximo passo: esperar, procurar a água, chamar quem avalie ou limpar de novo."]
+],
+"08-medir-e-calcular": [
+ ["Como medir uma parede sem subir em nada?", "As medidas saem do chão. Os vãos, como portas e janelas, são descontados, e o que não se consegue medir fica anotado como pendente."],
+ ["De que depende a quantidade de tinta?", "Da área, do número de demãos e do rendimento que a embalagem informa, mais a reserva que você declara."],
+ ["Para que serve a ficha da superfície?", "Para registrar o estado, a história e a decisão de cada superfície, separando o que existe do que ainda é projeto."]
+],
+"09-o-ano-e-o-calendario": [
+ ["Secar e curar são a mesma coisa?", "Não. A tinta pode parecer seca antes de ter curado, e a base também precisa curar. Os tempos são os da embalagem do seu produto."],
+ ["Qual é a época para pintar fora de casa?", "O curso separa a seca e as águas e pede tempo firme, observando o sol e a sombra de cada face. Os limites de aplicação são os da embalagem."],
+ ["Como marcar a pintura numa casa que recebe hóspedes?", "Primeiro entram as reservas, depois a observação das manchas e os prazos de cura, e só então os dias de serviço, com folga antes da chegada."]
+],
+"10-o-plano-do-deposito": [
+ ["Por que o plano começa pelo que não se pinta?", "Porque dizer o que espera, e por quê, evita comprar tinta para uma superfície que ainda não pode recebê-la."],
+ ["O que entra numa folha de plano de pintura?", "A sequência, quem faz cada passo, a proteção, a ventilação, as quantidades e o destino da sobra, com o que ainda falta levantar."],
+ ["Qual é a ordem diante de uma parede com defeito?", "Registro primeiro; depois se olham trinca, umidade e descascamento, antes de qualquer decisão de produto."]
+],
+"11-proteger-e-limpar": [
+ ["Por onde começar antes de pintar um ambiente?", "Saiba o que ainda não se prepara. Depois esvazie o ambiente, proteja de baixo para cima o que não sai, ventile e combine o caminho."],
+ ["Como limpar a superfície antes da tinta?", "Começando pelo seco, de cima para baixo, e só terminando quando a superfície tiver secado."],
+ ["Posso lixar tinta antiga que parece firme?", "Parecer firme não informa o que há na camada. Sem história conhecida, não se lixa, não se raspa e não se aquece."]
+],
+"12-corrigir-selar-e-emassar": [
+ ["Que furo posso corrigir por conta própria?", "O furo pequeno em base firme e de história conhecida, em camadas finas, lixando só depois de seca a massa e retirando o pó."],
+ ["Massa corrida esconde trinca ou umidade?", "Não é para isso. Onde há trinca, água sem explicação ou tinta solta desconhecida, a correção espera."],
+ ["Quem lixa a parte alta da parede?", "O que a mão não alcança do chão, na massa e na lixa, é serviço contratado."]
+],
+"13-preparar-madeira": [
+ ["Em que peça aprender a pintar madeira?", "Numa peça de estudo nova, solta e bem apoiada, medida antes de qualquer compra."],
+ ["Tinta ou verniz: muda o cuidado?", "Nos dois casos o conjunto é à base de água, e a embalagem informa o fundo, as demãos, o intervalo e a cura."],
+ ["Qual é a ideia do preparo da madeira?", "Conferir história e estado, lixar de leve, retirar o pó, passar o fundo e lixar de novo depois de seco. Se ficar dúvida, a peça espera."]
+],
+"14-preparar-metal": [
+ ["O que descobrir antes de lixar uma grade?", "De que ela é, o que já passaram nela e em que estado está. Grade que você ainda não conhece espera."],
+ ["E se a grade tiver ferrugem que fura ou solta em lascas?", "É caso de parar. Essa grade, assim como a de tinta antiga desconhecida, vai para outras mãos, como as do serralheiro."],
+ ["Qualquer fundo serve para metal?", "Não. O fundo é o à base de água que o fabricante indica pelo nome. Sem essa indicação, o serviço é contratado."]
+],
+"15-trincha-rolo-e-extensor": [
+ ["Onde treinar com trincha e rolo?", "Numa chapa de teste ou em outro lugar onde errar não custe uma parede inteira."],
+ ["Os gestos de aplicação ensinados são norma técnica?", "Não. São uma proposta de ensaio, sem fonte lida, a conferir com um pintor. A embalagem diz o produto e o preparo."],
+ ["O que verificar antes de levantar o cabo extensor?", "Olhe para cima e para os lados. Fio ou luminária ao alcance param o serviço, e a bandeja fica fora do caminho."]
+],
+"16-teto-do-chao": [
+ ["O teto é pintado antes ou depois da parede?", "Antes, e passando pela mesma conferência de qualquer superfície."],
+ ["Dá para pintar o teto sem escada?", "Selar e rolar podem ser feitos do chão, com extensor. O recorte no alto depende de ensaio, e massa e lixa onde a mão não chega são do contratado."],
+ ["O que fazer se há luminária no teto ao alcance do rolo?", "Parar e chamar o eletricista. Não se desmonta luminária nem se confia no interruptor desligado."]
+],
+"17-paredes-internas": [
+ ["Posso parar a pintura no meio da parede?", "Planeje antes de abrir a lata: a demão vai inteira até um canto ou uma aresta, onde se pode parar."],
+ ["E se parte da demão já começou a secar?", "O que começou a secar espera a camada seguinte, em vez de ser retocado por cima."],
+ ["Parede antiga pode ser repintada por quem cuida da casa?", "Só com bom estado e história conhecida. A parede nova, por sua vez, espera a cura."]
+],
+"18-fachada-terrea": [
+ ["Quando um trecho de fachada térrea pode ser pintado por você?", "Quando há tempo firme, parede conferida, história conhecida, nenhum fio por perto e o pano cabe inteiro no alcance do chão."],
+ ["E se passa um fio perto da fachada?", "Não há retomada por conta própria: o trecho é contratado, e nenhuma haste ou cabo extensor se levanta ali."],
+ ["O que entregar a quem vai orçar a fachada?", "Fotos, medidas tiradas do chão, vãos, defeitos, o escopo do serviço e o aviso por escrito sobre o fio."]
+],
+"19-porta-e-janela": [
+ ["Porta ou janela de alumínio deve ser pintada?", "No exemplo do curso, não: o alumínio se protege e se limpa."],
+ ["Quando uma porta de madeira minha entra na prática?", "Só se for simples, com história conhecida, em bom estado e ao alcance do chão. O restante fica na peça de estudo."],
+ ["Posso fechar a porta logo depois de pintar?", "Não antes da cura que o fabricante indica."]
+],
+"20-grade": [
+ ["Toda grade pode ser pintada no lugar?", "Não. Primeiro se descobre o material, o que já passaram nela e o estado. Grade que não reúne as condições sai das suas mãos."],
+ ["O que significa pintar barra por barra?", "Dar a volta em cada peça, face por face, e deixar escrito o que não se alcança."],
+ ["Posso retirar a grade para pintar com mais conforto?", "Não é o que o curso propõe. Retirar, soldar ou recolocar grade é serviço contratado."]
+],
+"21-limpar-e-guardar": [
+ ["Quando pensar na limpeza e na sobra?", "Antes de abrir a lata. No dia, a ferramenta é limpa como a embalagem manda, o que se descarta é separado e a sobra é etiquetada."],
+ ["O que fazer com a água que lavou o rolo?", "Ela contém tinta. Consulte sobre o destino, porque o curso não dá receita, e ralo e solo ficam de fora."],
+ ["Para que serve a ficha de cor e produto?", "Para que outra pessoa saiba o que foi usado, onde foi usado e onde está o que sobrou."]
+],
+"22-defeitos-e-causas": [
+ ["O que fazer ao notar um defeito na pintura?", "Registrar antes de mexer: foto, medida, marca no lugar e uma volta para comparar."],
+ ["Tinta descascando se resolve com nova demão?", "Não antes de saber a causa. O sinal se transforma em perguntas, e o remédio é a última coisa que se escolhe."],
+ ["Quando parar diante de um defeito?", "As perguntas de conduta mostram os casos. História desconhecida, umidade que volta e trinca pedem parar e chamar quem avalie."]
+],
+"23-conservar-e-repintar": [
+ ["Quando o retoque é suficiente?", "Quando o dano é um ponto, em base e história conhecidas, e o ensaio mostra que ele não vai aparecer."],
+ ["Por que a mesma tinta fica diferente no retoque?", "A cor igual na lata pode ter aparência diferente na parede. Se o retoque apareceria, o serviço é o pano inteiro."],
+ ["Existe data certa para repintar?", "O curso não se guia por data de repintura. Cuidar é olhar com constância, mexer pouco e marcar a próxima revisão com um responsável."]
+],
+"24-contratar-e-receber": [
+ ["O que preparar antes de pedir orçamento de pintura?", "Saber o que não é seu, levar as causas a quem avalia e escrever um escopo igual para todos."],
+ ["Como comparar propostas de pintores?", "Marque o que cada uma diz sobre os itens do mesmo escopo. A ordem de grandeza da tinta serve para abrir perguntas, não para decidir sozinha."],
+ ["Quando conferir o serviço contratado?", "Durante, a cada demão, enquanto ainda dá para ver o que foi feito. O aceite termina com as pendências escritas."]
+],
+"25-projeto-integrador": [
+ ["O que reúne o plano de pintura do curso?", "Nove partes, com o que existe separado do que é projeto, começando pelo que ainda não se pinta."],
+ ["O plano precisa estar completo para valer?", "O que ainda espera resposta fica escrito como pendência, com nome de quem responde e data para perguntar."],
+ ["O curso me torna pintor profissional?", "Não. É material educacional, que não forma profissional nem substitui laudo ou parecer técnico."]
+]
+}

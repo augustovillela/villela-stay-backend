@@ -1,0 +1,440 @@
+{
+ "_nota": "Gerado por dados/cursos/vdc-pintura/blog/ptBL_figuras.py (posicao e figura aberta conferidas a mao). \"secao\" e \"apos\" ancoram o desenho no artigo; \"aberta\": true = camada publica.",
+ "_hub": [
+  "I-03",
+  "I-07",
+  "I-18",
+  "I-23",
+  "I-30"
+ ],
+ "01-a-pintura-na-chacara": [
+  {
+   "id": "I-01",
+   "arq": "pintura-na-pratica-fig-01-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "O depósito em planta, sem ponto cardeal: o retângulo, o ralo e a porta de entrada existem; a parede nova, o vão e as salas A e B o exemplo projeta. Janelas, grade, fio, beiral e torneira têm posição a levantar",
+   "aberta": false,
+   "secao": "O depósito: o que existe",
+   "apos": "Os exemplos acontecem no depósito da Chácara-Modelo, o mesmo do Pedrei"
+  },
+  {
+   "id": "I-02",
+   "arq": "pintura-na-pratica-fig-01-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "A frente do depósito em elevação: o comprimento F, a altura H e a porta de alumínio de área P, que não se pinta. À parte, o que tem posição a levantar e a peça de estudo, com as medidas l, a e esp",
+   "aberta": true,
+   "secao": "O que o exemplo projeta, o que falta e a peça de estudo",
+   "apos": "Pelo projeto publicado no Pedreiro Completo, o exemplo projeta uma par"
+  }
+ ],
+ "02-seguranca-e-regra-do-chao": [
+  {
+   "id": "I-03",
+   "arq": "pintura-na-pratica-fig-02-01.webp",
+   "w": 1200,
+   "h": 570,
+   "legenda": "As três colunas: o que você faz, com os pés no chão; o que você contrata e confere; e o que só se fiscaliza ou consulta, em que ninguém da casa executa",
+   "aberta": true,
+   "secao": "Três colunas: fazer, contratar e consultar",
+   "apos": "Na primeira coluna estão inspecionar, fotografar, medir e calcular; pr"
+  },
+  {
+   "id": "I-04",
+   "arq": "pintura-na-pratica-fig-02-02.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "Uma parede de 2,60 m: o que está ao alcance da mão e, acima, o que do chão só se alcança com o extensor; emassar e lixar ali é do contratado. Banco, caixote, cadeira e escada nunca servem para subir",
+   "aberta": false,
+   "secao": "Teto e alto de parede, do chão",
+   "apos": "O que o extensor não faz bem se contrata. Isso inclui o recorte no alt"
+  }
+ ],
+ "03-chumbo-amianto-e-poeira": [
+  {
+   "id": "I-05",
+   "arq": "pintura-na-pratica-fig-02-03.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "Três situações de leitura, sem ninguém executando: tinta descascando em local isolado, grade antiga com zarcão, que pode ser à base de chumbo, e telha que pode ter amianto e não se toca",
+   "aberta": true,
+   "secao": "Amianto: não tocar e não presumir",
+   "apos": "Amianto é um mineral em fibras, que foi misturado a telhas, caixas-d'á"
+  }
+ ],
+ "04-ventilacao-guarda-e-descarte": [
+  {
+   "id": "I-06",
+   "arq": "pintura-na-pratica-fig-02-04.webp",
+   "w": 1200,
+   "h": 585,
+   "legenda": "O ar nas duas salas que o exemplo projeta, com as portas abertas; a sala A fica sem janela até se levantar a posição de J1 e J2",
+   "aberta": true,
+   "secao": "A sala A que o exemplo projeta",
+   "apos": "Os produtos da piscina precisam ter saído antes, levados por quem cuid"
+  }
+ ],
+ "05-superficie-e-umidade": [
+  {
+   "id": "I-07",
+   "arq": "pintura-na-pratica-fig-03-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "De onde pode vir a água: do solo, da chuva batida, de cima e de vazamento. O desenho não aponta a causa em parede nenhuma",
+   "aberta": true,
+   "secao": "De onde vem a água",
+   "apos": "São quatro as origens. A do solo é a parede em contato com o chão úmid"
+  },
+  {
+   "id": "I-08",
+   "arq": "pintura-na-pratica-fig-03-02.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "O sistema de pintura em degraus, do bloco à segunda demão; o que é necessário depende da superfície e da embalagem",
+   "aberta": false,
+   "secao": "O sistema de pintura: base, fundo, massa e acabamento",
+   "apos": "A base é a superfície preparada; ela não vem na lata. A referência de "
+  }
+ ],
+ "06-ferramentas-e-embalagem": [
+  {
+   "id": "I-10",
+   "arq": "pintura-na-pratica-fig-04-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "As ferramentas sobre a lona, cada uma com o nome, sem marca e sem nada para subir",
+   "aberta": true,
+   "secao": "Ferramentas que trabalham do chão",
+   "apos": "A trincha é a ferramenta de cerdas, de corpo chato, usada nos cantos, "
+  },
+  {
+   "id": "I-11",
+   "arq": "pintura-na-pratica-fig-04-02.webp",
+   "w": 1200,
+   "h": 577,
+   "legenda": "O que procurar na embalagem, do uso ao lote e à validade, e a ficha com dados de segurança ao lado. Os números são os do produto comprado",
+   "aberta": false,
+   "secao": "O rótulo e a ficha com dados de segurança",
+   "apos": "O rótulo vem na embalagem e diz o uso, o modo de aplicar e os cuidados"
+  }
+ ],
+ "07-a-parede-esta-pronta": [
+  {
+   "id": "I-21",
+   "arq": "pintura-na-pratica-fig-06-05.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "As quatro conferências antes de pintar uma parede nova e sem defeito: curada, seca, firme e sem pó. Com tinta de história desconhecida não se faz o teste da fita",
+   "aberta": true,
+   "secao": "Basta um não",
+   "apos": "Basta um não para a pintura parar. Várias respostas boas não compensam"
+  }
+ ],
+ "08-medir-e-calcular": [
+  {
+   "id": "I-12",
+   "arq": "pintura-na-pratica-fig-05-01.webp",
+   "w": 1200,
+   "h": 562,
+   "legenda": "A ficha da superfície de uma parede genérica do exemplo: o que não se sabe fica escrito “não sei”, a foto leva data e a decisão é resolver a causa antes",
+   "aberta": true,
+   "secao": "A ficha de cada superfície",
+   "apos": "A ficha anota onde fica a superfície, de que material é, se já foi pin"
+  },
+  {
+   "id": "I-13",
+   "arq": "pintura-na-pratica-fig-05-02.webp",
+   "w": 1200,
+   "h": 600,
+   "legenda": "As duas salas que o exemplo projeta, com as paredes abertas, as cotas e as áreas A1 a A8; a posição das janelas J1 e J2 está a levantar",
+   "aberta": false,
+   "secao": "As salas e a parede nova",
+   "apos": "A parede nova tem 3,00 m × 2,60 m e um vão de porta de 0,80 m × 2,20 m"
+  },
+  {
+   "id": "I-14",
+   "arq": "pintura-na-pratica-fig-05-03.webp",
+   "w": 1200,
+   "h": 570,
+   "legenda": "A grade como o exemplo projeta, em duas contas: pelo contorno, g1 × g2, e barra por barra, com o perímetro de cada seção vezes o comprimento",
+   "aberta": false,
+   "secao": "A grade tem duas contas",
+   "apos": "Pela soma das barras, toma-se a volta da seção de cada barra vezes o c"
+  }
+ ],
+ "09-o-ano-e-o-calendario": [
+  {
+   "id": "I-09",
+   "arq": "pintura-na-pratica-fig-03-03.webp",
+   "w": 1200,
+   "h": 585,
+   "legenda": "Secar não é curar: da aplicação à cura, c, passando pelo intervalo entre demãos, t, e pela volta ao uso. Os tempos são os da embalagem",
+   "aberta": true,
+   "secao": "Secar e curar",
+   "apos": "Secar é a superfície deixar de estar molhada: o líquido sai e a pelícu"
+  },
+  {
+   "id": "I-16",
+   "arq": "pintura-na-pratica-fig-05-05.webp",
+   "w": 1200,
+   "h": 555,
+   "legenda": "Doze meses em branco, com as águas e a seca marcadas, para anotar reservas, manchas, serviços de fora e de dentro e o tempo até o uso",
+   "aberta": false,
+   "secao": "O calendário da casa",
+   "apos": "A pintura tem preparo, aplicação, intervalo entre demãos e um tempo at"
+  }
+ ],
+ "10-o-plano-do-deposito": [
+  {
+   "id": "I-15",
+   "arq": "pintura-na-pratica-fig-05-04.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O plano do depósito em uma folha: o que ainda não se pinta e, para a parede nova que o exemplo projeta, a sequência e quem faz cada passo",
+   "aberta": true,
+   "secao": "O plano em uma folha, sem preço",
+   "apos": "Para cada produto entram as demãos, o rendimento marcado como por demã"
+  }
+ ],
+ "11-proteger-e-limpar": [
+  {
+   "id": "I-17",
+   "arq": "pintura-na-pratica-fig-06-01.webp",
+   "w": 1200,
+   "h": 570,
+   "legenda": "Uma sala do projeto protegida: lona no piso, rodapé, ralo, espelho de tomada sem desmontar e porta de alumínio com fita e lona, aberta",
+   "aberta": true,
+   "secao": "Piso, rodapé e ralo",
+   "apos": "Comece pelo piso novo e pelo rodapé, a faixa no pé da parede. Use lona"
+  }
+ ],
+ "12-corrigir-selar-e-emassar": [
+  {
+   "id": "I-18",
+   "arq": "pintura-na-pratica-fig-06-02.webp",
+   "w": 1200,
+   "h": 570,
+   "legenda": "O reparo de um furo pequeno em parede de história conhecida, à altura do peito, em quatro quadros: tirar o pó, passar massa fina, lixar de leve depois de seca e tirar o pó de novo",
+   "aberta": true,
+   "secao": "O reparo do furo",
+   "apos": "Primeiro confirme de que é a superfície e escolha a massa que a embala"
+  }
+ ],
+ "13-preparar-madeira": [
+  {
+   "id": "I-27",
+   "arq": "pintura-na-pratica-fig-08-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A peça de estudo apoiada no chão sobre calços, com as medidas l, a e esp e as faces e bordas indicadas por letras",
+   "aberta": false,
+   "secao": "Apoio e medidas",
+   "apos": "Apoie a peça no chão, de modo que não tombe nem escorregue, em lugar v"
+  },
+  {
+   "id": "I-19",
+   "arq": "pintura-na-pratica-fig-06-03.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A peça de estudo sobre calços, antes do lixamento e depois, sem o pó, com a proteção indicada e a porta aberta",
+   "aberta": true,
+   "secao": "O preparo, passo a passo",
+   "apos": "Confirme que a madeira é nova e saiba o que já veio aplicado de fábric"
+  }
+ ],
+ "14-preparar-metal": [
+  {
+   "id": "I-20",
+   "arq": "pintura-na-pratica-fig-06-04.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "À esquerda, ferrugem superficial lixada à mão em grade ao alcance, como o exemplo projeta; à direita, barra furada, em lascas e fixação solta: leitura, serviço do contratado",
+   "aberta": true,
+   "secao": "A ferrugem que para o serviço",
+   "apos": "Em dúvida entre a primeira situação e as outras, trate como caso de pa"
+  }
+ ],
+ "15-trincha-rolo-e-extensor": [
+  {
+   "id": "I-22",
+   "arq": "pintura-na-pratica-fig-07-01.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O recorte na parede nova que o exemplo projeta: a trincha carregada em parte das cerdas, a faixa no canto e em torno do vão e o rolo cobrindo a borda ainda fresca",
+   "aberta": true,
+   "secao": "O recorte",
+   "apos": "Ele fica no encontro da parede com o teto, nos cantos, no contorno de "
+  }
+ ],
+ "16-teto-do-chao": [
+  {
+   "id": "I-25",
+   "arq": "pintura-na-pratica-fig-07-04.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "Os tetos das salas A e B com as faixas numeradas e, em corte, a posição do corpo: de pé no piso e fora da linha do respingo. Havendo fio ou luminária ao alcance, pare e chame o eletricista",
+   "aberta": false,
+   "secao": "A sequência no teto",
+   "apos": "A sequência é um roteiro de ensaio proposto, sem fonte lida. Experimen"
+  }
+ ],
+ "17-paredes-internas": [
+  {
+   "id": "I-23",
+   "arq": "pintura-na-pratica-fig-07-02.webp",
+   "w": 1200,
+   "h": 556,
+   "legenda": "Uma parede de estudo em três faixas, na ordem numerada, com a borda úmida em destaque; o que evitar é parar no meio do pano",
+   "aberta": true,
+   "secao": "Faixas, um roteiro para ensaiar",
+   "apos": "Com o rolo, a parede se pinta em faixas, que são colunas da largura de"
+  },
+  {
+   "id": "I-24",
+   "arq": "pintura-na-pratica-fig-07-03.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "A emenda em uma parede de estudo: a faixa nova sobre a borda ainda úmida e, ao lado, o que evitar, a borda já seca, conferida com luz de lado",
+   "aberta": false,
+   "secao": "O recorte e a emenda molhada",
+   "apos": "Comece perto de um canto. Distribua a tinta na faixa, espalhe por igua"
+  }
+ ],
+ "18-fachada-terrea": [
+  {
+   "id": "I-26",
+   "arq": "pintura-na-pratica-fig-07-05.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "Leitura, não execute: a frente do depósito vista do chão, com F, H e a porta P; quem fotografa fica afastado, sem erguer nada. Fio, beiral e torneira têm posição a levantar",
+   "aberta": true,
+   "secao": "A frente do depósito",
+   "apos": "Há fio, beiral e torneira perto da frente do depósito da Chácara-Model"
+  }
+ ],
+ "19-porta-e-janela": [
+  {
+   "id": "I-28",
+   "arq": "pintura-na-pratica-fig-08-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O alumínio não se pinta, se protege: perfil, vidro, borracha, puxador, fechadura, trilho e piso, em porta e janela desenhadas sem posição",
+   "aberta": true,
+   "secao": "Alumínio: proteger sem fechar a casa",
+   "apos": "Antes de colar a fita, confira na embalagem se ela é indicada para aqu"
+  }
+ ],
+ "20-grade": [
+  {
+   "id": "I-29",
+   "arq": "pintura-na-pratica-fig-08-03.webp",
+   "w": 1200,
+   "h": 585,
+   "legenda": "Uma grade de exemplo, que não é a real, com o contorno g1 × g2 e as faces da barra numeradas; parede e piso protegidos e nenhum fio na cena",
+   "aberta": true,
+   "secao": "Barra por barra",
+   "apos": "Confira se a superfície está preparada, seca e sem pó e faça um ensaio"
+  }
+ ],
+ "21-limpar-e-guardar": [
+  {
+   "id": "I-33",
+   "arq": "pintura-na-pratica-fig-09-04.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "A lata fechada, com etiqueta de ambiente, data e quantidade, e a ficha de cor e produto em branco",
+   "aberta": true,
+   "secao": "A ficha de cor e produto",
+   "apos": "A ficha se preenche no dia da pintura. Entre os campos estão o fabrica"
+  }
+ ],
+ "22-defeitos-e-causas": [
+  {
+   "id": "I-30",
+   "arq": "pintura-na-pratica-fig-09-01.webp",
+   "w": 1200,
+   "h": 563,
+   "legenda": "Os sinais em uma parede de estudo, que não é do depósito, e a ferrugem em uma barra: todos a verificar",
+   "aberta": true,
+   "secao": "Uma tabela de perguntas",
+   "apos": "Com o registro feito, entra a tabela de defeitos, que está inteira no "
+  },
+  {
+   "id": "I-31",
+   "arq": "pintura-na-pratica-fig-09-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "As oito perguntas, de cima para baixo, antes de retocar ou repintar; as respostas que mandam parar e chamar vêm primeiro",
+   "aberta": false,
+   "secao": "As oito perguntas da conduta",
+   "apos": "Há trinca, reboco oco ou que esfarela? Registre e peça avaliação. Há f"
+  }
+ ],
+ "23-conservar-e-repintar": [
+  {
+   "id": "I-32",
+   "arq": "pintura-na-pratica-fig-09-03.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O ano em roda, com as águas, a seca, os momentos de revisão, as reservas e a pintura em intervalo livre, sem data de repintura",
+   "aberta": true,
+   "secao": "A revisão na saída das águas",
+   "apos": "Na saída das águas, os sinais da chuva estão frescos, e há a seca pela"
+  }
+ ],
+ "24-contratar-e-receber": [
+  {
+   "id": "I-34",
+   "arq": "pintura-na-pratica-fig-10-01.webp",
+   "w": 1200,
+   "h": 585,
+   "legenda": "O mesmo escopo, com as mesmas fotos, para três proponentes; no depósito, a parede nova é projeto e a posição dos defeitos nas paredes existentes está a levantar",
+   "aberta": false,
+   "secao": "O escopo, igual para todos",
+   "apos": "Escreva uma vez e entregue a mesma folha, com as mesmas fotos, a todos"
+  },
+  {
+   "id": "I-35",
+   "arq": "pintura-na-pratica-fig-10-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O aceite em ambiente interno, com a parede nova do projeto: luz de lado, pés no chão e os pontos que se olham antes de aceitar",
+   "aberta": true,
+   "secao": "O aceite começa durante o serviço",
+   "apos": "Aceite é a conferência com que se recebe o serviço. Combine que você s"
+  }
+ ],
+ "25-projeto-integrador": [
+  {
+   "id": "I-36",
+   "arq": "pintura-na-pratica-fig-11-01.webp",
+   "w": 1200,
+   "h": 600,
+   "legenda": "A folha de quantidades: as duas salas que o exemplo projeta, as áreas A1 a A8, os vãos em letras e a conta dos litros",
+   "aberta": false,
+   "secao": "Quantidades com a conta à vista",
+   "apos": "A diluição, a mistura que o fabricante indicar, se anota para a aplica"
+  },
+  {
+   "id": "I-37",
+   "arq": "pintura-na-pratica-fig-11-02.webp",
+   "w": 1200,
+   "h": 578,
+   "legenda": "O destino de cada sobra e, na última linha, o que é leitura e vai para profissional; nada vai para ralo, solo, piscina ou fogo",
+   "aberta": false,
+   "secao": "Resíduo, escopo e aceite",
+   "apos": "A página do resíduo copia a lista de descarte e acrescenta quem vai pe"
+  },
+  {
+   "id": "I-38",
+   "arq": "pintura-na-pratica-fig-11-03.webp",
+   "w": 1200,
+   "h": 593,
+   "legenda": "O projeto montado: as páginas em ordem, a planta que o exemplo projeta, o que não se pinta ou tem posição a levantar e, em folha separada, a peça de estudo",
+   "aberta": true,
+   "secao": "As nove partes do plano",
+   "apos": "Cada superfície ganha uma ficha com foto, data e decisão: pronta, prec"
+  }
+ ]
+}

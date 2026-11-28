@@ -26,6 +26,7 @@ const SERIES = {
   'construcao-com-conteineres-na-pratica': 'Construção com Contêineres na Prática',
   'decoracao-de-interiores-na-pratica': 'Decoração de Interiores na Prática',
   'horta-na-pratica': 'Horta na Prática',
+  'pintura-na-pratica': 'Pintura na Prática',
   'gastronomia-villela-table': 'Gastronomia Villela Table',
 };
 

@@ -1,0 +1,207 @@
+{
+ "titulo": "Pintura na Prática",
+ "subtitulo": "Preparar, pintar e conservar paredes, portas, janelas e grades da chácara, com os pés no chão",
+ "total": 25,
+ "aulas": [
+  {
+   "n": 1,
+   "titulo": "A pintura na chácara",
+   "sub": "Para que pintar, o que a tinta não corrige e o que, no depósito do exemplo, existe, é projeto ou ainda falta levantar.",
+   "capitulos": "Elementos iniciais (Apresentação; O que este livro é, e o que não é); capítulo 1 (inteiro)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 2,
+   "titulo": "Segurança, a regra do chão e quando parar",
+   "sub": "De quem é cada serviço, por que o seu trabalho é com os dois pés no chão e os casos em que se para e se chama.",
+   "capitulos": "Capítulo 2 (As três colunas; A regra do chão; Pare e chame; Eletricidade; Quando o empregado é quem pinta)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 3,
+   "titulo": "Tinta velha: chumbo, amianto e poeira",
+   "sub": "Aula de leitura: o que o olho não informa numa camada antiga e por que, na dúvida, se para, se afasta e se pergunta.",
+   "capitulos": "Capítulo 2 (Chumbo em tinta antiga; Amianto; o parágrafo \"Pó\")",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 4,
+   "titulo": "Vapor, ventilação, guarda e descarte",
+   "sub": "Antes de abrir a lata, decidir por onde o ar passa, onde o produto fica guardado e para onde vai cada sobra.",
+   "capitulos": "Capítulo 2 (Vapor e ventilação; Solvente, panos, olhos, pele e pó; Guarda; Descarte); capítulo 7 (Ventilação e ordem nas salas do depósito)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 5,
+   "titulo": "Superfície, umidade e o sistema de pintura",
+   "sub": "Antes da cor e da compra: de que é a superfície, se é nova ou antiga, de onde vem a água e como as camadas combinam.",
+   "capitulos": "Capítulo 3 (A superfície manda; Reboco novo e pintura antiga; Umidade; Eflorescência e mofo; O sistema de pintura; Base de água e solvente; Impermeabilizante)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 6,
+   "titulo": "Ferramentas, tintas e a embalagem",
+   "sub": "O que vale para o seu produto está na embalagem e na ficha dele, lidas antes de comprar e antes de abrir a lata.",
+   "capitulos": "Capítulo 4 (Ferramentas que trabalham do chão; O que protege a casa e quem pinta; As famílias de produto; O rótulo e a ficha com dados de segurança; Como ler a embalagem e a ficha; O caminho do mesmo fabricante)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 7,
+   "titulo": "Esta parede está pronta para pintar?",
+   "sub": "Antes da primeira demão, a parede responde se está curada, seca, firme e sem pó. Basta um não para parar.",
+   "capitulos": "Capítulo 6 (Esta superfície está pronta?; Trinca; Mofo e umidade; Tinta descascando); capítulo 7 (Antes de abrir a lata)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 8,
+   "titulo": "Medir, descontar e calcular",
+   "sub": "Ficha da superfície, desenho com medidas, vãos descontados e a conta de litros escrita antes de ir à loja.",
+   "capitulos": "Capítulo 5 (Ficha da superfície; História conhecida ou desconhecida; Medir e descontar; As áreas das duas salas; A peça de estudo e a grade; A conta de litros)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 9,
+   "titulo": "O ano no Cerrado, a ordem e o calendário",
+   "sub": "O calendário da pintura soma três tempos: o do clima, o da embalagem e o da casa.",
+   "capitulos": "Capítulo 3 (Secar não é curar; Seca, chuva, sol, vento e poeira); capítulo 1 (A ordem da obra; O ano e as reservas); capítulo 5 (O ano e as reservas)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 10,
+   "titulo": "O plano do depósito",
+   "sub": "Um plano de pintura começa pelo que ainda não se pinta e diz, em cada passo, quem faz.",
+   "capitulos": "Capítulo 5 (Plano e quantidades; No depósito, começa pelo que não se pinta ainda; Sequência, proteção e ventilação); capítulo 6 (Preparar começa por saber o que não preparar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 11,
+   "titulo": "Proteger e limpar",
+   "sub": "O que não se lixa, o que sai, o que se cobre e como limpar antes de abrir a lata.",
+   "capitulos": "Capítulo 6 (Preparar começa por saber o que não preparar; O que não se lixa; Esvaziar e proteger; Limpar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 12,
+   "titulo": "Corrigir, selar e emassar",
+   "sub": "Furo pequeno em base firme, selador como a embalagem manda e massa que nivela sem esconder.",
+   "capitulos": "Capítulo 6 (Pequenos furos; Selar; Emassar, só onde cabe)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 13,
+   "titulo": "Preparar madeira",
+   "sub": "Uma peça de estudo nova e solta, medida, apoiada e preparada com produto à base de água.",
+   "capitulos": "Capítulo 6 (Madeira: a peça de estudo); capítulo 8 (Madeira: a peça de estudo; Tinta ou verniz; Preparar a peça)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 14,
+   "titulo": "Preparar metal",
+   "sub": "Material, história e estado da grade antes da lixa, e o que fica para o serralheiro.",
+   "capitulos": "Capítulo 6 (Metal: a grade; O preparo, na grade do exemplo); capítulo 8 (Metal: primeiro, de que é a grade; Ferrugem; A grade desenhada; Fundo e acabamento)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 15,
+   "titulo": "Trincha, rolo e extensor",
+   "sub": "O ensaio do gesto em chapa, com os dois pés no chão, antes de ir à parede.",
+   "capitulos": "Capítulo 7 (Antes de abrir a lata; Trincha, rolo e cabo extensor; O recorte)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 16,
+   "titulo": "Teto, do chão",
+   "sub": "Teto antes da parede, rolo no extensor, os dois pés no chão e a decisão de contratar o que o cabo não faz bem.",
+   "capitulos": "Capítulo 7 (Teto antes da parede; O que o chão permite; A sequência no teto; Ventilação e ordem nas salas do depósito); capítulo 2 (Eletricidade)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 17,
+   "titulo": "Paredes internas",
+   "sub": "Pano inteiro, demão completa e uma conferência antes de cada camada, em parede nova ou antiga de história conhecida.",
+   "capitulos": "Capítulo 7 (Faixas e emendas; Demãos; Conferência de cada demão; Parede nova e parede antiga; Forro novo)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 18,
+   "titulo": "O trecho de fachada térrea",
+   "sub": "De fora, o pano entra inteiro, em tempo firme e sem fio no alcance, ou vai para o contratado.",
+   "capitulos": "Capítulo 7 (O trecho de fachada); capítulo 2 (Eletricidade)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 19,
+   "titulo": "Porta e janela",
+   "sub": "A madeira se pinta na peça de estudo ou na sua porta simples; o alumínio do depósito se protege.",
+   "capitulos": "Capítulo 8 (O que há no exemplo; Aplicar: faces, bordas e ordem das partes; A porta e as janelas de alumínio não se pintam; Porta ou janela de madeira que seja sua; Cura antes do uso)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 20,
+   "titulo": "Grade",
+   "sub": "Grade conhecida, firme e ao alcance se pinta barra por barra; a outra se consulta ou se contrata.",
+   "capitulos": "Capítulo 8 (Metal: primeiro, de que é a grade; Quando a grade real é de contratado; Ferrugem; A grade desenhada: os passos; Cura antes do uso); capítulo 5 (A peça de estudo e a grade)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 21,
+   "titulo": "Limpar, guardar e identificar",
+   "sub": "O serviço termina com ferramenta limpa, sobra rotulada, ambiente isolado e a ficha de cor preenchida no mesmo dia.",
+   "capitulos": "Capítulo 7 (Limpar, guardar e identificar); capítulo 4 (Sobra, ferramenta limpa e guarda); capítulo 9 (Ficha de cor e produto)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 22,
+   "titulo": "Defeitos e causas",
+   "sub": "Registre o sinal, verifique o que há por trás e só então escolha a conduta, sem cobrir a pista com tinta.",
+   "capitulos": "Capítulo 9 (Causa antes de remédio; Defeito, o que verificar e conduta; Os que pedem mais cuidado; Escolher a conduta; No depósito do exemplo)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 23,
+   "titulo": "Conservar, retocar e repintar",
+   "sub": "Quando retocar um ponto, quando refazer o pano inteiro e como revisar a pintura sem se guiar por calendário.",
+   "capitulos": "Capítulo 9 (Retoque; Conservar e revisar)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 24,
+   "titulo": "Contratar e receber",
+   "sub": "Um escopo igual para todos, propostas comparadas pelo que dizem e um aceite que começa durante o serviço.",
+   "capitulos": "Capítulo 10 (Quando o serviço é de outro; Quem se procura para quê; O escopo; Comparar propostas; A ordem de grandeza da tinta; Receber o serviço)",
+   "gravada": false,
+   "tem_artigo": true
+  },
+  {
+   "n": 25,
+   "titulo": "Projeto integrador e próximos passos",
+   "sub": "Junte as páginas do curso num plano de pintura que outra pessoa entenda e que diga também o que não se pinta.",
+   "capitulos": "Capítulo 11 (Projeto integrador; Rubrica; Gabaritos; Para onde seguir)",
+   "gravada": false,
+   "tem_artigo": true
+  }
+ ]
+}
