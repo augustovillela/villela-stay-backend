@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-28T10:30:52.142Z",
+  "coletadoEm": "2026-11-28T10:37:11.787Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -273,6 +273,19 @@
       "precoCombo": 8600,
       "destaque": false,
       "url": "https://livros.villelastay.com.br/livros/pilotagem-de-drones-na-pratica-dji-mini-3"
+    },
+    {
+      "slug": "pintura-na-pratica",
+      "titulo": "Pintura na Prática",
+      "subtitulo": "Preparar, pintar e conservar paredes, portas, janelas e grades da chácara, com os pés no chão",
+      "resumo": "Como preparar, pintar e conservar paredes, madeira e metal da chácara, sempre com os pés no chão, e contratar o que fica fora do seu alcance. Coleção Viver de Chácara na Prática. PDF.",
+      "categoria": "Desenvolvimento Pessoal",
+      "capa": "https://livros.villelastay.com.br/assets/livros/pintura-na-pratica.jpg",
+      "precoPdf": 1900,
+      "precoImpresso": null,
+      "precoCombo": null,
+      "destaque": false,
+      "url": "https://livros.villelastay.com.br/livros/pintura-na-pratica"
     },
     {
       "slug": "suas-definicoes-de-marketing",
