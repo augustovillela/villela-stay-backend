@@ -1,5 +1,5 @@
 {
-  "coletadoEm": "2026-11-27T19:03:39.382Z",
+  "coletadoEm": "2026-11-28T10:30:52.142Z",
   "livros": [
     {
       "slug": "bandolim-brasileiro-do-zero-ao-avancado",
@@ -608,6 +608,14 @@
       "capa": "https://academia.villelastay.com.br/academy/capa/nT5YqxNrYLJ1?v=1ADlsmWToyc_",
       "preco": 9700,
       "url": "https://academia.villelastay.com.br/academy/cursos/horta-na-pratica"
+    },
+    {
+      "slug": "pintura-na-pratica",
+      "titulo": "Pintura na Prática",
+      "resumo": "25 videoaulas animadas, de cerca de 8 minutos, cada uma com o artigo da aula em PDF, para preparar, pintar e conservar paredes, madeira e metal da chácara com os pés no chão, e contratar bem o que fica fora do alcance. Coleção Viver de Chácara.",
+      "capa": "https://academia.villelastay.com.br/academy/capa/eswRRqFvFDoh?v=pOZvbDyob_zl",
+      "preco": 9700,
+      "url": "https://academia.villelastay.com.br/academy/cursos/pintura-na-pratica"
     },
     {
       "slug": "formacao-completa-em-gastronomia-villela-table",
